@@ -62,6 +62,13 @@ service cloud.firestore {
     function isCapoOVice(c) {
       return isMembro(c) && mioRuolo(c) in ['capo', 'vice'];
     }
+    // Capo, vice e docenti con il permesso del capoclasse modificano le liste.
+    function puoModificareListe(c) {
+      return isMembro(c) && (
+        mioRuolo(c) in ['capo', 'vice']
+        || (mioRuolo(c) == 'docente' && get(membroPath(c, request.auth.uid)).data.permessoModifica == true)
+      );
+    }
     // Il capoclasse sta eliminando la classe: nello stesso batch il documento della classe sparisce.
     function eliminazioneClasse(c) {
       return isCapo(c) && !existsAfter(classePath(c));
@@ -299,9 +306,23 @@ service cloud.firestore {
             && request.resource.data.stato == 'raccolta'
             && request.resource.data.creato == request.time
             && request.resource.data.creatoDa == request.auth.uid;
-          allow update: if isCapoOVice(c)
-            && interrogazioneValida(request.resource.data)
-            && (
+          allow update: if (
+              // Tutti interrogati (o non più): lista ↔ conclusa, anche per i docenti con permesso
+              puoModificareListe(c)
+              && interrogazioneValida(request.resource.data)
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'aggiornato'])
+              && resource.data.stato in ['lista', 'conclusa']
+              && request.resource.data.stato in ['lista', 'conclusa']
+              && (
+                request.resource.data.stato == 'conclusa'
+              ) == (
+                getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.interrogati.size()
+                == getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.ordine.size()
+              )
+            ) || (
+              isCapoOVice(c)
+              && interrogazioneValida(request.resource.data)
+              && (
               // Modifica dei dati
               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'aggiornato'])
               ||
@@ -312,6 +333,7 @@ service cloud.firestore {
                 && request.resource.data.stato == 'lista'
                 && request.time >= resource.data.scadenzaPreferenze
                 && existsAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current)
+              )
               )
             );
           allow delete: if isCapoOVice(c);
@@ -366,8 +388,36 @@ service cloud.firestore {
                 )
                 || (documento == 'rapporto' && request.resource.data.generata == request.time)
               );
-            allow update: if false;
+            // Riordino e interrogati: stesse persone, interrogati solo tra chi è in lista
+            allow update: if puoModificareListe(c) && documento == 'current'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'interrogati', 'aggiornato', 'aggiornatoDa'])
+              && request.resource.data.aggiornato == request.time
+              && request.resource.data.aggiornatoDa == request.auth.uid
+              && request.resource.data.ordine is list
+              && request.resource.data.ordine.size() == resource.data.ordine.size()
+              && request.resource.data.ordine.toSet() == resource.data.ordine.toSet()
+              && request.resource.data.interrogati is map
+              && request.resource.data.ordine.toSet().hasAll(request.resource.data.interrogati.keys());
             allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
+          }
+
+          // ───── "Sono stato interrogato" ─────
+          // segnalazioni/{uid} → { data, quando }: lo studente lo segnala, chi modifica le liste conferma.
+
+          match /segnalazioni/{u} {
+            function lista() {
+              return get(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data;
+            }
+            allow get: if isMembro(c) && (u == request.auth.uid || puoModificareListe(c));
+            allow list: if puoModificareListe(c);
+            allow create: if isMembro(c) && u == request.auth.uid
+              && u in lista().ordine
+              && !(u in lista().interrogati)
+              && request.resource.data.keys().hasOnly(['data', 'quando'])
+              && dataISO(request.resource.data.data)
+              && request.resource.data.quando == request.time;
+            allow update: if false;
+            allow delete: if (isMembro(c) && u == request.auth.uid) || puoModificareListe(c);
           }
         }
       }

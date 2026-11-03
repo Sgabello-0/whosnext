@@ -33,6 +33,10 @@ export const rifPreferenza = (db: Firestore, classId: string, subjectId: string,
   doc(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId, 'preferences', uid)
 export const rifLista = (db: Firestore, classId: string, subjectId: string, interrogazioneId: string) =>
   doc(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId, 'list', 'current')
+export const rifSegnalazioni = (db: Firestore, classId: string, subjectId: string, interrogazioneId: string) =>
+  collection(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId, 'segnalazioni')
+export const rifSegnalazione = (db: Firestore, classId: string, subjectId: string, interrogazioneId: string, uid: string) =>
+  doc(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId, 'segnalazioni', uid)
 export const rifRapporto = (db: Firestore, classId: string, subjectId: string, interrogazioneId: string) =>
   doc(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId, 'list', 'rapporto')
 
@@ -46,9 +50,13 @@ export async function documentiInterrogazione(
   subjectId: string,
   interrogazioneId: string,
 ): Promise<DocumentReference[]> {
-  const preferenze = await getDocs(rifPreferenze(db, classId, subjectId, interrogazioneId))
+  const [preferenze, segnalazioni] = await Promise.all([
+    getDocs(rifPreferenze(db, classId, subjectId, interrogazioneId)),
+    getDocs(rifSegnalazioni(db, classId, subjectId, interrogazioneId)),
+  ])
   return [
     ...preferenze.docs.map((d) => d.ref),
+    ...segnalazioni.docs.map((d) => d.ref),
     rifLista(db, classId, subjectId, interrogazioneId),
     rifRapporto(db, classId, subjectId, interrogazioneId),
     rifInterrogazione(db, classId, subjectId, interrogazioneId),

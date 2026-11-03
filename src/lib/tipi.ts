@@ -90,3 +90,9 @@ export type DocLista = {
 }
 
 export type DocRapporto = import('./generateList').Rapporto & { generata?: Timestamp }
+
+export type DocSegnalazione = {
+  /** giorno in cui dice di essere stato interrogato (AAAA-MM-GG) */
+  data: string
+  quando?: Timestamp
+}
