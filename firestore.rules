@@ -68,6 +68,13 @@ service cloud.firestore {
     function codiceValido(codice) {
       return codice is string && codice.matches('[A-Z2-9]{6}');
     }
+    function dataISO(v) {
+      return v is string && v.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}');
+    }
+    // Giorni della settimana con lezione: 0 = lunedì … 5 = sabato
+    function giorniLezione(v) {
+      return v is list && v.size() <= 6 && v.hasOnly([0, 1, 2, 3, 4, 5]);
+    }
 
     // ───────────── Utenti ─────────────
 
@@ -227,6 +234,59 @@ service cloud.firestore {
         allow update: if false;
         // Capo e vice tolgono il badge; il diretto interessato può toglierlo a sé stesso (ad esempio uscendo dalla classe).
         allow delete: if isCapoOVice(c) || (isMembro(c) && u == request.auth.uid);
+      }
+
+      // ───── Calendario ─────
+      // calendar/settings → { giorniScolastici[7], eccezioni[], fineAnno, aggiornato }
+      // Le singole eccezioni le controlla il sito: le regole non possono scorrere le liste.
+
+      match /calendar/{documento} {
+        allow read: if isMembro(c);
+        allow create, update: if isCapoOVice(c) && documento == 'settings'
+          && request.resource.data.keys().hasOnly(['giorniScolastici', 'eccezioni', 'fineAnno', 'aggiornato'])
+          && request.resource.data.giorniScolastici is list && request.resource.data.giorniScolastici.size() == 7
+          && request.resource.data.eccezioni is list && request.resource.data.eccezioni.size() <= 300
+          && dataISO(request.resource.data.fineAnno)
+          && request.resource.data.aggiornato == request.time;
+        allow delete: if false;
+      }
+
+      // ───── Materie e interrogazioni ─────
+
+      match /subjects/{s} {
+        allow read: if isMembro(c);
+        allow create, update: if isCapoOVice(c)
+          && request.resource.data.keys().hasOnly(['nome', 'orario', 'creato'])
+          && testo(request.resource.data.nome, 40)
+          && giorniLezione(request.resource.data.orario)
+          && request.resource.data.creato is timestamp;
+        allow delete: if isCapoOVice(c);
+
+        // interrogations/{i} → { nome, descrizione, giorni, perLezione, scadenzaPreferenze, stato, creato, creatoDa, aggiornato }
+        match /interrogations/{i} {
+          function interrogazioneValida(d) {
+            return d.keys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'stato', 'creato', 'creatoDa', 'aggiornato'])
+              && testo(d.nome, 60)
+              && d.descrizione is string && d.descrizione.size() <= 500
+              && giorniLezione(d.giorni)
+              && (d.perLezione == null || (d.perLezione is int && d.perLezione >= 1 && d.perLezione <= 50))
+              && d.scadenzaPreferenze is timestamp
+              && d.aggiornato == request.time;
+          }
+
+          allow read: if isMembro(c);
+          allow create: if isCapoOVice(c)
+            && exists(/databases/$(database)/documents/classes/$(c)/subjects/$(s))
+            && interrogazioneValida(request.resource.data)
+            && request.resource.data.stato == 'raccolta'
+            && request.resource.data.creato == request.time
+            && request.resource.data.creatoDa == request.auth.uid;
+          // Lo stato (raccolta → lista → conclusa) lo cambia solo il server.
+          allow update: if isCapoOVice(c)
+            && interrogazioneValida(request.resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'aggiornato']);
+          allow delete: if isCapoOVice(c);
+        }
       }
     }
 

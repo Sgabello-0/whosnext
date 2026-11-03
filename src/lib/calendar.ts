@@ -220,3 +220,62 @@ export function calendarioDa(dati: Partial<Calendario> | null | undefined): Cale
     fineAnno: dati?.fineAnno && dataValida(dati.fineAnno) ? dati.fineAnno : FINE_ANNO_DEFAULT,
   }
 }
+
+// ───────────── Validazione (prima di salvare) ─────────────
+
+/** Messaggio d'errore per un'eccezione non valida, oppure null se va bene. */
+export function erroreEccezione(e: Eccezione): string | null {
+  if (e.tipo === 'vacanza') {
+    if (!dataValida(e.da) || !dataValida(e.a)) return 'Date della vacanza non valide.'
+    if (e.a < e.da) return "La vacanza finisce prima di iniziare: controlla le date."
+    if (e.descrizione.trim().length > 60) return 'Descrizione troppo lunga (massimo 60 caratteri).'
+    return null
+  }
+  if (!dataValida(e.data)) return 'Data non valida.'
+  if (!e.subjectId) return 'Scegli la materia.'
+  return null
+}
+
+/** Messaggio d'errore per un calendario non valido, oppure null se va bene. */
+export function erroreCalendario(cal: Calendario): string | null {
+  if (cal.giorniScolastici.length !== 7) return 'Giorni della settimana non validi.'
+  if (!dataValida(cal.fineAnno)) return "Data di fine anno non valida."
+  if (cal.eccezioni.length > 300) return 'Troppe eccezioni nel calendario (massimo 300).'
+  for (const e of cal.eccezioni) {
+    const errore = erroreEccezione(e)
+    if (errore) return errore
+  }
+  return null
+}
+
+function chiaveEccezione(e: Eccezione): string {
+  return e.tipo === 'vacanza' ? `v|${e.da}|${e.a}` : `${e.tipo}|${e.data}|${e.subjectId}`
+}
+
+function dataEccezione(e: Eccezione): DataISO {
+  return e.tipo === 'vacanza' ? e.da : e.data
+}
+
+/**
+ * Aggiunge un'eccezione al calendario, in ordine di data, senza doppioni.
+ * Una lezione extra e una annullata nello stesso giorno per la stessa materia si escludono:
+ * resta l'ultima inserita.
+ */
+export function conEccezione(cal: Calendario, nuova: Eccezione): Calendario {
+  const pulita: Eccezione = nuova.tipo === 'vacanza' ? { ...nuova, descrizione: nuova.descrizione.trim() } : nuova
+  const opposta =
+    pulita.tipo === 'lezione-extra' ? 'lezione-annullata' : pulita.tipo === 'lezione-annullata' ? 'lezione-extra' : null
+  const altre = cal.eccezioni.filter(
+    (e) =>
+      chiaveEccezione(e) !== chiaveEccezione(pulita) &&
+      !(opposta && e.tipo === opposta && pulita.tipo !== 'vacanza' && e.data === pulita.data && e.subjectId === pulita.subjectId),
+  )
+  const eccezioni = [...altre, pulita].sort((x, y) => dataEccezione(x).localeCompare(dataEccezione(y)))
+  return { ...cal, eccezioni }
+}
+
+/** Toglie un'eccezione (confrontandola per contenuto). */
+export function senzaEccezione(cal: Calendario, daTogliere: Eccezione): Calendario {
+  const chiave = chiaveEccezione(daTogliere)
+  return { ...cal, eccezioni: cal.eccezioni.filter((e) => chiaveEccezione(e) !== chiave) }
+}

@@ -3,7 +3,10 @@ import {
   aggiungiGiorni,
   CALENDARIO_DEFAULT,
   calendarioDa,
+  conEccezione,
   dataValida,
+  erroreCalendario,
+  erroreEccezione,
   festaNazionale,
   festeTra,
   formattaGiorno,
@@ -14,6 +17,7 @@ import {
   oggiISO,
   pasqua,
   prossimeLezioni,
+  senzaEccezione,
   type Calendario,
 } from './calendar'
 
@@ -160,5 +164,49 @@ describe('calendarioDa', () => {
     const c = calendarioDa({ giorniScolastici: [true, true, true, true, true, true, false], fineAnno: '2027-06-10' })
     expect(c.giorniScolastici[5]).toBe(true)
     expect(c.fineAnno).toBe('2027-06-10')
+  })
+})
+
+
+describe('validazione e modifica delle eccezioni', () => {
+  it('controlla le vacanze', () => {
+    expect(erroreEccezione({ tipo: 'vacanza', da: '2026-12-23', a: '2027-01-06', descrizione: 'Natale' })).toBeNull()
+    expect(erroreEccezione({ tipo: 'vacanza', da: '2027-01-06', a: '2026-12-23', descrizione: '' })).toMatch(/prima/)
+    expect(erroreEccezione({ tipo: 'vacanza', da: '2026-02-30', a: '2026-03-01', descrizione: '' })).toMatch(/non valide/)
+    expect(erroreEccezione({ tipo: 'vacanza', da: '2026-12-23', a: '2026-12-24', descrizione: 'x'.repeat(61) })).toMatch(/lunga/)
+  })
+  it('controlla le lezioni extra e annullate', () => {
+    expect(erroreEccezione({ tipo: 'lezione-extra', data: '2026-11-04', subjectId: 'mat' })).toBeNull()
+    expect(erroreEccezione({ tipo: 'lezione-extra', data: '2026-11-04', subjectId: '' })).toMatch(/materia/)
+  })
+  it('controlla il calendario intero', () => {
+    expect(erroreCalendario(CALENDARIO_DEFAULT)).toBeNull()
+    expect(erroreCalendario({ ...CALENDARIO_DEFAULT, fineAnno: '2027-06-31' })).toMatch(/fine anno/)
+    expect(
+      erroreCalendario({ ...CALENDARIO_DEFAULT, eccezioni: [{ tipo: 'lezione-extra', data: 'x', subjectId: 'a' }] }),
+    ).toMatch(/non valida/)
+  })
+  it('aggiunge in ordine di data e senza doppioni', () => {
+    let c = conEccezione(CALENDARIO_DEFAULT, { tipo: 'vacanza', da: '2027-03-25', a: '2027-03-30', descrizione: ' Pasqua ' })
+    c = conEccezione(c, { tipo: 'lezione-extra', data: '2026-11-04', subjectId: 'mat' })
+    c = conEccezione(c, { tipo: 'lezione-extra', data: '2026-11-04', subjectId: 'mat' })
+    expect(c.eccezioni).toEqual([
+      { tipo: 'lezione-extra', data: '2026-11-04', subjectId: 'mat' },
+      { tipo: 'vacanza', da: '2027-03-25', a: '2027-03-30', descrizione: 'Pasqua' },
+    ])
+  })
+  it('extra e annullata nello stesso giorno per la stessa materia si escludono', () => {
+    let c = conEccezione(CALENDARIO_DEFAULT, { tipo: 'lezione-extra', data: '2026-11-04', subjectId: 'mat' })
+    c = conEccezione(c, { tipo: 'lezione-annullata', data: '2026-11-04', subjectId: 'mat' })
+    c = conEccezione(c, { tipo: 'lezione-extra', data: '2026-11-04', subjectId: 'ita' })
+    expect(c.eccezioni).toEqual([
+      { tipo: 'lezione-annullata', data: '2026-11-04', subjectId: 'mat' },
+      { tipo: 'lezione-extra', data: '2026-11-04', subjectId: 'ita' },
+    ])
+  })
+  it('toglie un\'eccezione', () => {
+    const v = { tipo: 'vacanza', da: '2027-03-25', a: '2027-03-30', descrizione: 'Pasqua' } as const
+    const c = conEccezione(CALENDARIO_DEFAULT, v)
+    expect(senzaEccezione(c, v).eccezioni).toEqual([])
   })
 })

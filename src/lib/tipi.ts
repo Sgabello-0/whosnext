@@ -50,3 +50,26 @@ export const IMPOSTAZIONI_DEFAULT: ImpostazioniUtente = {
   notificheEmail: true,
   notifichePush: true,
 }
+
+export type Materia = {
+  nome: string
+  /** giorni di lezione: 0 = lunedì … 5 = sabato */
+  orario: number[]
+  creato?: Timestamp
+}
+
+export type StatoInterrogazione = 'raccolta' | 'lista' | 'conclusa'
+
+export type Interrogazione = {
+  nome: string
+  descrizione: string
+  /** giorni in cui si interroga (di default quelli della materia); vuoto = nessuna data stimabile */
+  giorni: number[]
+  /** quanti studenti per lezione; null = non si sa */
+  perLezione: number | null
+  scadenzaPreferenze: Timestamp
+  stato: StatoInterrogazione
+  creato?: Timestamp
+  creatoDa: string
+  aggiornato?: Timestamp
+}
