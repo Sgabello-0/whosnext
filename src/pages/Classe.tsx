@@ -3,7 +3,10 @@ import { useNavigate, useParams } from 'react-router'
 import { db } from '../lib/firebase'
 import { richiediPermesso, rimuoviMembro } from '../lib/classi'
 import { messaggioErrore } from '../lib/errori'
-import { dividiMembri, ETICHETTA_RUOLO, puoGestireDSA } from '../lib/membri'
+import { dividiMembri, ETICHETTA_RUOLO, puoGestireDSA, puoModificareListe } from '../lib/membri'
+import { ProviderRaccolta } from '../lib/raccolta'
+import { OsservaClasse } from '../components/osservatori/Osservatori'
+import { PannelloDaFare } from '../components/osservatori/Pannelli'
 import { useClasse } from '../lib/useClasse'
 import type { Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
@@ -43,6 +46,13 @@ export default function Classe() {
           Hai il badge <strong>DSA/BES</strong>: per ogni interrogazione potrai scegliere la posizione esatta nella
           lista. Il badge lo vedono solo il capoclasse e il vice.
         </Riquadro>
+      )}
+
+      {puoModificareListe(io) && (
+        <ProviderRaccolta>
+          <OsservaClasse classId={classId} membro={io} />
+          <PannelloDaFare classId={classId} />
+        </ProviderRaccolta>
       )}
 
       <InterrogazioniClasse classId={classId} staff={staff} mioUid={io.uid} />

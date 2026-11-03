@@ -9,6 +9,9 @@ import { useDocumento, useQuery } from '../lib/hooks'
 import { ETICHETTA_RUOLO } from '../lib/membri'
 import type { Classe, Membro } from '../lib/tipi'
 import { Badge, Bottone, Caricamento, Campo, Riquadro, Scheda } from '../components/ui'
+import { ProviderRaccolta } from '../lib/raccolta'
+import { OsservaClasse } from '../components/osservatori/Osservatori'
+import { PannelloDaFare, PannelloMie } from '../components/osservatori/Pannelli'
 
 /** classes/{classId}/members/{uid} → classId */
 function classIdDa(percorso: string): string {
@@ -20,7 +23,10 @@ export default function Classi() {
   const iscrizioni = useQuery<Membro>(db && queryMieIscrizioni(db, profilo.uid), `iscrizioni/${profilo.uid}`)
 
   return (
-    <>
+    <ProviderRaccolta>
+      {iscrizioni.dati?.map((m) => (
+        <OsservaClasse key={m.percorso} classId={classIdDa(m.percorso)} membro={m} />
+      ))}
       <div>
         <h1 className="text-2xl font-semibold">Ciao {profilo.nome.split(' ')[0]}</h1>
         <p className="text-slate-600 dark:text-slate-400">
@@ -29,6 +35,9 @@ export default function Classi() {
             : 'Le tue classi e le loro interrogazioni.'}
         </p>
       </div>
+
+      <PannelloDaFare />
+      {iscrizioni.dati && iscrizioni.dati.length > 0 && <PannelloMie caricamento={!iscrizioni.dati} />}
 
       <Scheda titolo="Le tue classi">
         {iscrizioni.errore ? (
@@ -53,7 +62,7 @@ export default function Classi() {
 
       <Unisciti />
       {profilo.tipo === 'studente' && <CreaClasse />}
-    </>
+    </ProviderRaccolta>
   )
 }
 
