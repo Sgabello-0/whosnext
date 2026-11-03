@@ -93,14 +93,18 @@ function NuovaMateria({ classId }: { classId: string }) {
   async function invia(e: FormEvent) {
     e.preventDefault()
     if (!db) return
+    // Il campo si svuota subito (si può già scrivere la materia successiva); torna com'era se il salvataggio fallisce
+    const dati = { nome, orario }
+    setNome('')
+    setOrario([])
     setInCorso(true)
     setErrore(null)
     try {
-      await creaMateria(db, classId, { nome, orario })
-      avvisi.mostra(`${nome.trim()} aggiunta`)
-      setNome('')
-      setOrario([])
+      await creaMateria(db, classId, dati)
+      avvisi.mostra(`${dati.nome.trim()} aggiunta`)
     } catch (err) {
+      setNome(dati.nome)
+      setOrario(dati.orario)
       setErrore(messaggioErrore(err))
     } finally {
       setInCorso(false)
@@ -366,10 +370,14 @@ function NuovaVacanza({ onAggiungi }: { onAggiungi: (e: Eccezione) => Promise<bo
 
   async function invia(ev: FormEvent) {
     ev.preventDefault()
-    if (await onAggiungi({ tipo: 'vacanza', da, a: a || da, descrizione })) {
-      setDa('')
-      setA('')
-      setDescrizione('')
+    const dati = { da, a, descrizione }
+    setDa('')
+    setA('')
+    setDescrizione('')
+    if (!(await onAggiungi({ tipo: 'vacanza', da: dati.da, a: dati.a || dati.da, descrizione: dati.descrizione }))) {
+      setDa(dati.da)
+      setA(dati.a)
+      setDescrizione(dati.descrizione)
     }
   }
 
@@ -400,7 +408,9 @@ function NuovaLezione({ materie, onAggiungi }: { materie: ConId<Materia>[]; onAg
 
   async function invia(ev: FormEvent) {
     ev.preventDefault()
-    if (await onAggiungi({ tipo, data, subjectId })) setData('')
+    const giorno = data
+    setData('')
+    if (!(await onAggiungi({ tipo, data: giorno, subjectId }))) setData(giorno)
   }
 
   return (

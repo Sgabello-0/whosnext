@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import QRCode from 'qrcode'
 import { formattaCodice } from '../lib/codici'
 import { copiaTesto } from '../lib/diagnostica'
 import { Bottone, Scheda } from './ui'
@@ -19,7 +18,10 @@ export function Invito({ codice, nomeClasse }: { codice: string; nomeClasse: str
 
   useEffect(() => {
     if (!mostraQr) return
-    QRCode.toDataURL(link, { width: 480, margin: 1, errorCorrectionLevel: 'M' }).then(setQr, () => setQr(null))
+    // La libreria del QR si scarica solo quando serve
+    import('qrcode')
+      .then((m) => m.default.toDataURL(link, { width: 480, margin: 1, errorCorrectionLevel: 'M' }))
+      .then(setQr, () => setQr(null))
   }, [link, mostraQr])
 
   async function copia(cosa: 'codice' | 'link') {

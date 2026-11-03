@@ -12,6 +12,7 @@ import { Badge, Bottone, Caricamento, Campo, Riquadro, Scheda } from '../compone
 import { ProviderRaccolta } from '../lib/raccolta'
 import { OsservaClasse } from '../components/osservatori/Osservatori'
 import { PannelloDaFare, PannelloMie } from '../components/osservatori/Pannelli'
+import { InstallaApp } from '../components/InstallaApp'
 
 /** classes/{classId}/members/{uid} → classId */
 function classIdDa(percorso: string): string {
@@ -62,6 +63,7 @@ export default function Classi() {
 
       <Unisciti />
       {profilo.tipo === 'studente' && <CreaClasse />}
+      <InstallaApp />
     </ProviderRaccolta>
   )
 }

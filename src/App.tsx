@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import { useAuth } from './lib/auth'
 import { configMancante } from './lib/firebase'
@@ -8,10 +9,12 @@ import NonAmmesso from './pages/NonAmmesso'
 import Classi from './pages/Classi'
 import Unisciti from './pages/Unisciti'
 import Classe from './pages/Classe'
-import AdminClasse from './pages/AdminClasse'
-import Configura from './pages/Configura'
-import Materia from './pages/Materia'
-import Interrogazione from './pages/Interrogazione'
+
+// Pagine più pesanti (trascinamento, QR, configurazione): si scaricano solo quando servono
+const AdminClasse = lazy(() => import('./pages/AdminClasse'))
+const Configura = lazy(() => import('./pages/Configura'))
+const Materia = lazy(() => import('./pages/Materia'))
+const Interrogazione = lazy(() => import('./pages/Interrogazione'))
 
 export default function App() {
   const { pronto, utente, esito } = useAuth()
@@ -30,6 +33,7 @@ export default function App() {
 
   return (
     <Layout>
+      <Suspense fallback={<Caricamento />}>
       <Routes>
         <Route path="/" element={<Classi />} />
         <Route path="/unisciti/:codice" element={<Unisciti />} />
@@ -40,6 +44,7 @@ export default function App() {
         <Route path="/classe/:classId/materia/:subjectId/interrogazione/:interrogazioneId" element={<Interrogazione />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </Layout>
   )
 }

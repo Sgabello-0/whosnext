@@ -1,6 +1,12 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { connectAuthEmulator, getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth'
-import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore'
+import {
+  connectFirestoreEmulator,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+} from 'firebase/firestore'
 import { DOMINI_DEFAULT, type DominiScuola } from './domain'
 
 const env = import.meta.env
@@ -42,7 +48,10 @@ export const configMancante: string[] = USA_EMULATORI
 
 export const app: FirebaseApp | null = configMancante.length === 0 ? initializeApp(config) : null
 export const auth: Auth | null = app ? getAuth(app) : null
-export const db: Firestore | null = app ? getFirestore(app) : null
+// Cache sul dispositivo: le pagine si aprono subito con gli ultimi dati, anche con connessione lenta
+export const db: Firestore | null = app
+  ? initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
+  : null
 
 if (auth) auth.languageCode = 'it'
 if (USA_EMULATORI && auth && db) {

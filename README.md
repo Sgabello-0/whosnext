@@ -15,6 +15,8 @@ Avanzamento dettagliato in [PIANO.md](PIANO.md#avanzamento).
 - ✅ Calendario, materie e interrogazioni (configurati da capoclasse e vice)
 - ✅ Preferenze (inizio/metà/fine, posizione esatta per DSA/BES) e generazione della lista con stima delle date
 - ✅ Riordino della lista, chi è stato interrogato, "Sono stato interrogato"
+- ✅ Comodità: "Le mie interrogazioni" e "Da fare", messaggi per WhatsApp, guida della classe nuova, orario a griglia, conferme con "Annulla", cessione del ruolo, storico della lista
+- ✅ App installabile (PWA) e apertura veloce anche offline (cache dei file e dei dati sul dispositivo)
 - ⏳ Prossimo passo: Netlify (pubblicazione, funzioni sul server) per scambi, notifiche e generazione automatica
 
 ## Sviluppo
@@ -37,6 +39,8 @@ npm run test:e2e       # percorso completo nel browser (Playwright, computer e t
 ```
 
 La prima volta `test:e2e` richiede il browser di Playwright: `npx playwright install chromium-headless-shell`.
+
+Le icone dell'app (`public/pwa-*.png`, `public/apple-touch-icon.png`) si rigenerano con `node scripts/icone.mjs`.
 
 ### Pubblicazione
 
