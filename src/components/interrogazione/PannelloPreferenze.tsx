@@ -8,6 +8,8 @@ import { generaEPubblicaLista } from '../../lib/preferenze'
 import { ETICHETTA_SCELTA } from '../../lib/testiPreferenze'
 import type { DocPreferenza, Membro } from '../../lib/tipi'
 import { Bottone, Caricamento, Riquadro, Scheda } from '../ui'
+import { Condividi } from '../Condividi'
+import { linkAssoluto, messaggioPromemoria, percorsoInterrogazione } from '../../lib/messaggi'
 import { useAvvisi } from '../Avvisi'
 import { useConferma } from '../Conferma'
 
@@ -21,6 +23,9 @@ export function PannelloPreferenze(p: {
   mioUid: string
   studenti: Membro[]
   scaduta: boolean
+  nomeInterrogazione: string
+  nomeMateria: string
+  scadenza: Date
 }) {
   const preferenze = useQuery<DocPreferenza>(
     db && rifPreferenze(db, p.classId, p.subjectId, p.interrogazioneId),
@@ -92,10 +97,23 @@ export function PannelloPreferenze(p: {
             </Bottone>
           </div>
         ) : (
-          <p className="text-slate-500">
-            Potrai generare la lista dopo la scadenza. Se tutti hanno già risposto, puoi anticipare la scadenza da
-            "Modifica".
-          </p>
+          <div className="space-y-3">
+            <p className="text-slate-500">
+              Potrai generare la lista dopo la scadenza. Se tutti hanno già risposto, puoi anticipare la scadenza da
+              "Modifica".
+            </p>
+            <Condividi
+              etichetta={senzaRisposta.length > 0 ? 'Promemoria per chi non ha scelto' : 'Messaggio per la classe'}
+              titolo={`${p.nomeMateria} – ${p.nomeInterrogazione}`}
+              testo={messaggioPromemoria({
+                interrogazione: p.nomeInterrogazione,
+                materia: p.nomeMateria,
+                scadenza: p.scadenza,
+                link: linkAssoluto(percorsoInterrogazione(p.classId, p.subjectId, p.interrogazioneId)),
+                mancanti: senzaRisposta.length,
+              })}
+            />
+          </div>
         )}
         {errore && <Riquadro tono="errore">{errore}</Riquadro>}
       </div>

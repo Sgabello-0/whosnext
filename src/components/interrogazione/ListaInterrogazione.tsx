@@ -11,6 +11,8 @@ import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/ti
 import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda } from '../ui'
 import { useAvvisi } from '../Avvisi'
 import { RiordinaLista } from './RiordinaLista'
+import { Condividi } from '../Condividi'
+import { linkAssoluto, percorsoInterrogazione, testoLista } from '../../lib/messaggi'
 import { SegnaInterrogati } from './SegnaInterrogati'
 import { Segnalazioni, SonoStatoInterrogato } from './Segnalazioni'
 
@@ -26,6 +28,7 @@ type Props = {
   staff: boolean
   /** capo, vice e docenti con permesso: riordinano e segnano gli interrogati */
   puoModificare: boolean
+  nomeMateria: string
 }
 
 /** La lista generata, con la data stimata per ognuno e gli strumenti per chi la gestisce. */
@@ -172,6 +175,22 @@ export function ListaInterrogazione(p: Props) {
               )
             })}
           </ol>
+          <div className="mt-4 border-t border-slate-200 pt-3 dark:border-slate-800">
+            <Condividi
+              etichetta="Condividi la lista"
+              titolo={`${p.nomeMateria} – ${p.interrogazione.nome}`}
+              testo={testoLista({
+                materia: p.nomeMateria,
+                interrogazione: p.interrogazione.nome,
+                link: linkAssoluto(percorsoInterrogazione(p.classId, p.subjectId, p.interrogazioneId)),
+                righe: ordine.map((uid) => ({
+                  nome: perUid.get(uid)?.nome ?? 'Ex membro',
+                  interrogato: !!interrogati[uid],
+                  nota: interrogati[uid] ? `interrogato ${formattaGiorno(interrogati[uid]!)}` : stima(uid),
+                })),
+              })}
+            />
+          </div>
         </Scheda>
       )}
 

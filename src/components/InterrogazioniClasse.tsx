@@ -1,24 +1,45 @@
-import { Link } from 'react-router'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { orderBy, query } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import { rifInterrogazioni, rifMaterie } from '../lib/configurazione'
+import { creaInterrogazione, rifInterrogazioni, rifMaterie } from '../lib/configurazione'
+import { percorsoInterrogazione } from '../lib/messaggi'
 import { messaggioErrore } from '../lib/errori'
 import { formattaScadenza } from '../lib/formatoDate'
 import { useQuery, type ConId } from '../lib/hooks'
 import type { Interrogazione, Materia } from '../lib/tipi'
 import { BadgeStato } from './BadgeStato'
-import { Caricamento, LinkBottone, Riquadro, Scheda } from './ui'
+import { Bottone, Caricamento, CLASSE_INPUT, Etichetta, LinkBottone, Riquadro, Scheda } from './ui'
+import { FormInterrogazione } from './FormInterrogazione'
+import { useAvvisi } from './Avvisi'
 
 /** Elenco delle materie della classe con le loro interrogazioni. */
-export function InterrogazioniClasse({ classId, staff }: { classId: string; staff: boolean }) {
+export function InterrogazioniClasse({ classId, staff, mioUid }: { classId: string; staff: boolean; mioUid: string }) {
   const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
   const elenco = [...(materie.dati ?? [])].sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+  const [nuova, setNuova] = useState(false)
 
   return (
     <Scheda
       titolo="Interrogazioni"
-      azioni={staff ? <LinkBottone to={`/classe/${classId}/configura`}>Materie e calendario</LinkBottone> : undefined}
+      azioni={
+        staff ? (
+          <div className="flex flex-wrap gap-2">
+            {elenco.length > 0 && !nuova && (
+              <Bottone variante="piccolo" onClick={() => setNuova(true)}>
+                Nuova interrogazione
+              </Bottone>
+            )}
+            <LinkBottone to={`/classe/${classId}/configura`}>Materie e calendario</LinkBottone>
+          </div>
+        ) : undefined
+      }
     >
+      {nuova && (
+        <div className="mb-4">
+          <NuovaInterrogazione classId={classId} materie={elenco} mioUid={mioUid} onAnnulla={() => setNuova(false)} />
+        </div>
+      )}
       {materie.errore ? (
         <Riquadro tono="errore">{messaggioErrore(materie.errore)}</Riquadro>
       ) : !materie.dati ? (
@@ -76,5 +97,40 @@ function MateriaConInterrogazioni({ classId, materia }: { classId: string; mater
         </ul>
       )}
     </li>
+  )
+}
+
+/** Crea un'interrogazione scegliendo la materia, senza entrare prima nella sua pagina. */
+function NuovaInterrogazione(p: { classId: string; materie: ConId<Materia>[]; mioUid: string; onAnnulla: () => void }) {
+  const [subjectId, setSubjectId] = useState(p.materie[0]?.id ?? '')
+  const navigate = useNavigate()
+  const avvisi = useAvvisi()
+  const materia = p.materie.find((m) => m.id === subjectId)
+
+  return (
+    <div className="space-y-4 rounded-xl bg-slate-50 p-3 dark:bg-slate-950/50">
+      <Etichetta testo="Materia">
+        <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className={`${CLASSE_INPUT} max-w-72`}>
+          {p.materie.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.nome}
+            </option>
+          ))}
+        </select>
+      </Etichetta>
+      {materia && db && (
+        <FormInterrogazione
+          key={materia.id}
+          giorniMateria={materia.orario}
+          testoSalva="Crea interrogazione"
+          onAnnulla={p.onAnnulla}
+          onSalva={async (d) => {
+            const id = await creaInterrogazione(db!, p.classId, materia.id, d, p.mioUid)
+            avvisi.mostra('Interrogazione creata: ora tutti possono scegliere la preferenza')
+            navigate(percorsoInterrogazione(p.classId, materia.id, id))
+          }}
+        />
+      )}
+    </div>
   )
 }

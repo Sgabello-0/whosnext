@@ -45,7 +45,7 @@ export default function Classe() {
         </Riquadro>
       )}
 
-      <InterrogazioniClasse classId={classId} staff={staff} />
+      <InterrogazioniClasse classId={classId} staff={staff} mioUid={io.uid} />
 
       <Invito codice={classe.codiceInvito} nomeClasse={classe.nome} />
 

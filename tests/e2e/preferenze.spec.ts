@@ -40,8 +40,11 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await giorni.getByRole('button', { name: 'martedì' }).click()
   await giorni.getByRole('button', { name: 'giovedì' }).click()
   await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
-  await anna.getByRole('link', { name: 'Storia' }).click()
+  await expect(anna.getByRole('link', { name: 'Storia' })).toBeVisible()
+  // Nuova interrogazione direttamente dalla pagina della classe
+  await anna.getByRole('link', { name: /4ªB/ }).click()
   await anna.getByRole('button', { name: 'Nuova interrogazione' }).click()
+  await expect(anna.getByLabel('Materia')).toHaveValue(/.+/)
   await anna.getByLabel('Nome', { exact: true }).fill('Orale Risorgimento')
   await anna.getByLabel('Interrogati per lezione (facoltativo)').fill('1')
   await anna.getByRole('button', { name: 'Crea interrogazione' }).click()
@@ -66,7 +69,8 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await expect(rossi.getByText('Gli studenti stanno scegliendo le preferenze')).toBeVisible()
   await expect(rossi.getByRole('radio')).toHaveCount(0)
 
-  // Anna vede chi ha scelto cosa
+  // Anna vede chi ha scelto cosa (e prima ha il promemoria per chi manca)
+  await expect(anna.getByText('Messaggio per la classe')).toBeVisible()
   await expect(anna.getByText('Preferenze ricevute (3/3)')).toBeVisible()
   await expect(anna.getByText('Carla Blu (n° 1)')).toBeVisible()
   await expect(anna.getByRole('button', { name: 'Genera lista' })).toHaveCount(0)
@@ -100,6 +104,14 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await expect(rossi.getByRole('list', { name: 'Ordine delle interrogazioni' }).getByRole('listitem')).toHaveCount(3)
   await expect(rossi.getByText(/^Sei il n°/)).toHaveCount(0)
   await expect(rossi.getByText('Rapporto (visibile a capoclasse e vice)')).toHaveCount(0)
+
+  // Bruno condivide la lista: testo copiato e link di WhatsApp
+  await bruno.getByRole('button', { name: 'Copia messaggio' }).click()
+  const copiato = await bruno.evaluate(() => navigator.clipboard.readText())
+  expect(copiato).toContain('*Storia – Orale Risorgimento*')
+  expect(copiato).toMatch(/1\. Carla Blu — Stimata: /)
+  expect(copiato).toContain('/interrogazione/')
+  await expect(bruno.getByRole('link', { name: 'WhatsApp' })).toHaveAttribute('href', /^https:\/\/wa\.me\/\?text=.*Carla%20Blu/)
 
   await bruno.screenshot({ path: info.outputPath('lista-studente.png'), fullPage: true })
   await anna.screenshot({ path: info.outputPath('lista-capo.png'), fullPage: true })

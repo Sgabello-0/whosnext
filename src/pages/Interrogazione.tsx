@@ -157,6 +157,9 @@ export default function Interrogazione() {
           mioUid={io.uid}
           studenti={studenti}
           scaduta={scaduta}
+          nomeInterrogazione={i.nome}
+          nomeMateria={materia.dati.nome}
+          scadenza={scadenza}
         />
       )}
       {i.stato !== 'raccolta' && cal && (
@@ -170,6 +173,7 @@ export default function Interrogazione() {
           cal={cal}
           staff={staff}
           puoModificare={puoModificareListe(io)}
+          nomeMateria={materia.dati.nome}
         />
       )}
     </>

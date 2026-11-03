@@ -29,6 +29,12 @@ test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ b
   await expect(anna.getByRole('heading', { name: '4ªB Informatica' })).toBeVisible()
   await expect(anna.getByText('tu sei capoclasse')).toBeVisible()
   const codice = await leggiCodice(anna)
+  // messaggio d'invito pronto con link e codice
+  await anna.getByRole('button', { name: 'Copia messaggio' }).click()
+  const invito = await anna.evaluate(() => navigator.clipboard.readText())
+  expect(invito).toContain('*4ªB Informatica*')
+  expect(invito).toContain(`/unisciti/${codice}`)
+  expect(invito).toContain(`${codice.slice(0, 3)}-${codice.slice(3)}`)
 
   // 2. Bruno entra con il link d'invito (login dopo aver aperto il link)
   const bruno = await accedi(browser, 'bruno.neri@studenti.ittsrimini.edu.it', 'Bruno Neri', `/unisciti/${codice}`)

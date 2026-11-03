@@ -3,9 +3,11 @@ import QRCode from 'qrcode'
 import { formattaCodice } from '../lib/codici'
 import { copiaTesto } from '../lib/diagnostica'
 import { Bottone, Scheda } from './ui'
+import { Condividi } from './Condividi'
+import { linkAssoluto, messaggioInvito } from '../lib/messaggi'
 
 export function linkInvito(codice: string): string {
-  return `${location.origin}/unisciti/${codice}`
+  return linkAssoluto(`/unisciti/${codice}`)
 }
 
 /** Codice d'invito con link, QR code e condivisione. */
@@ -27,13 +29,6 @@ export function Invito({ codice, nomeClasse }: { codice: string; nomeClasse: str
     }
   }
 
-  async function condividi() {
-    try {
-      await navigator.share({ title: `Unisciti a ${nomeClasse}`, text: `Entra in ${nomeClasse} su Interrogazioni di Classe`, url: link })
-    } catch {
-      /* annullato dall'utente */
-    }
-  }
 
   return (
     <Scheda titolo="Invita i compagni">
@@ -51,15 +46,15 @@ export function Invito({ codice, nomeClasse }: { codice: string; nomeClasse: str
           <Bottone variante="piccolo" onClick={() => copia('link')}>
             {copiato === 'link' ? 'Copiato' : 'Copia link'}
           </Bottone>
-          {'share' in navigator && (
-            <Bottone variante="piccolo" onClick={condividi}>
-              Condividi
-            </Bottone>
-          )}
           <Bottone variante="piccolo" onClick={() => setMostraQr((v) => !v)}>
             {mostraQr ? 'Nascondi QR' : 'Mostra QR'}
           </Bottone>
         </div>
+        <Condividi
+          etichetta="Messaggio d'invito pronto"
+          titolo={`Unisciti a ${nomeClasse}`}
+          testo={messaggioInvito({ nomeClasse, link, codice })}
+        />
         {mostraQr && qr && (
           <img
             src={qr}

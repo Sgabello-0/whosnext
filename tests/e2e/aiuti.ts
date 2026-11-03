@@ -10,7 +10,8 @@ export async function svuotaEmulatori() {
 
 /** Apre una nuova finestra (contesto separato = utente separato) e fa login con un account finto. */
 export async function accedi(browser: Browser, email: string, nome: string, percorso = '/'): Promise<Page> {
-  const contesto = await browser.newContext()
+  // Permesso agli appunti per verificare i testi copiati con "Copia messaggio"
+  const contesto = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] })
   const page = await contesto.newPage()
   await page.goto(percorso)
   const [popup] = await Promise.all([
