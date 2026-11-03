@@ -78,7 +78,9 @@ test('galleria', async ({ browser }, info) => {
   await bruno.getByRole('radio', { name: /Fine/ }).click()
 
   // Chiude le preferenze e genera la lista
+  await anna.getByText('Prossime lezioni').click()
   await anna.getByRole('button', { name: 'Modifica' }).click()
+  await foto(anna, '06b-modifica')
   await anna.getByLabel('Scadenza per le preferenze').fill(dataOraLocale(new Date(Date.now() - 60_000)))
   await anna.getByRole('button', { name: 'Salva modifiche' }).click()
   await anna.getByRole('button', { name: 'Genera lista' }).click()

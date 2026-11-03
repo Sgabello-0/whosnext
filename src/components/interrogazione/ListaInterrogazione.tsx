@@ -244,7 +244,7 @@ function RapportoSoddisfazione(p: Props) {
     )
   return (
     <Soffietto titolo="Rapporto (visibile a capoclasse e vice)" icona={ChartPie}>
-      <ul className="space-y-1 text-sm">
+      <ul className="space-y-2 text-sm">
         <li>
           Hanno risposto <strong>{r.risposte}</strong> su {r.totale}
           {r.indifferenti > 0 && `, di cui ${r.indifferenti} "non mi interessa"`}.

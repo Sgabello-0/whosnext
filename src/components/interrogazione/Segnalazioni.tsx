@@ -101,7 +101,7 @@ export function SonoStatoInterrogato(p: { r: Rif; uid: string }) {
       ) : (
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-sm">
-            <span className="block font-medium">Quando?</span>
+            <span className="mb-2 block font-medium">Quando?</span>
             <input type="date" value={data} max={oggiISO()} onChange={(e) => setData(e.target.value)} className={`${CLASSE_INPUT} max-w-48`} />
           </label>
           <Bottone onClick={() => db && esegui(() => segnalaInterrogato(db!, p.r, p.uid, data), 'Segnalazione inviata al capoclasse')}>

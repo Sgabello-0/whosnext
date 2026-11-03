@@ -17,9 +17,9 @@ export function ProssimeLezioni(props: { giorni: number[]; subjectId: string; ca
     )
   }
   return (
-    <ul className="flex flex-wrap gap-1.5" aria-label="Prossime lezioni">
+    <ul className="flex flex-wrap gap-2" aria-label="Prossime lezioni">
       {lezioni.map((d) => (
-        <li key={d} className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium dark:bg-slate-800">
+        <li key={d} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium dark:bg-slate-800">
           {formattaGiorno(d)}
         </li>
       ))}

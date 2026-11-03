@@ -376,7 +376,7 @@ function ConfiguraCalendario({
       </Scheda>
 
       <Soffietto titolo={`Feste nazionali già incluse (${feste.length})`} icona={CalendarDays}>
-        <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+        <ul className="space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
           {feste.map((f) => (
             <li key={f.data}>
               {formattaData(f.data)} · {f.nome}
@@ -425,7 +425,7 @@ function ElencoEccezioni(props: {
       {props.eccezioni.map((e) => {
         const testo = props.descrivi(e)
         return (
-          <li key={JSON.stringify(e)} className="flex items-center justify-between gap-3 py-2">
+          <li key={JSON.stringify(e)} className="flex items-center justify-between gap-3 py-3">
             <span>{testo}</span>
             <Bottone variante="piccolo" icona={X} aria-label={`Togli ${testo}`} onClick={() => props.onTogli(e)}>
               Togli

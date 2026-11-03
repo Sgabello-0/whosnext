@@ -20,7 +20,7 @@ export function Riquadro(props: { tono: Tono; titolo?: ReactNode; icona?: Lucide
     >
       {Icona && <Icona aria-hidden className="mt-0.5 size-5 shrink-0 opacity-80" />}
       <div className="min-w-0 flex-1">
-        {props.titolo && <p className="mb-1 text-base font-semibold">{props.titolo}</p>}
+        {props.titolo && <p className="mb-1.5 text-base font-semibold">{props.titolo}</p>}
         {props.children}
       </div>
     </div>
@@ -124,7 +124,7 @@ export function Scheda(props: {
   return (
     <section className={`rounded-2xl border bg-white p-4 shadow-sm sm:p-5 dark:bg-slate-900 ${bordo}`}>
       {(props.titolo || props.azioni) && (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
             {Icona && (
               <span
@@ -227,7 +227,7 @@ export function Vuoto(props: { icona?: LucideIcon; titolo?: string; children?: R
       {Icona && <Icona aria-hidden className="size-7 text-slate-400" />}
       {props.titolo && <p className="font-semibold">{props.titolo}</p>}
       {props.children && <div className="max-w-sm text-sm text-slate-500 dark:text-slate-400">{props.children}</div>}
-      {props.azione && <div className="mt-1">{props.azione}</div>}
+      {props.azione && <div className="mt-2">{props.azione}</div>}
     </div>
   )
 }
@@ -252,7 +252,7 @@ export function Soffietto(props: {
         {props.destra}
         <ChevronRight aria-hidden className="size-4 shrink-0 text-slate-400 transition group-open:rotate-90" />
       </summary>
-      <div className="px-4 pb-4 sm:px-5 sm:pb-5">{props.children}</div>
+      <div className="mx-4 border-t border-slate-100 pt-4 pb-4 sm:mx-5 sm:pb-5 dark:border-slate-800">{props.children}</div>
     </details>
   )
 }
@@ -337,8 +337,8 @@ export function Campo(props: {
   autoFocus?: boolean
 }) {
   return (
-    <label className="block space-y-1.5 text-sm">
-      <span className="font-medium">{props.etichetta}</span>
+    <label className="block text-sm">
+      <span className="mb-2 block font-medium">{props.etichetta}</span>
       <input
         value={props.valore}
         onChange={(e) => props.onChange(e.target.value)}
@@ -348,7 +348,7 @@ export function Campo(props: {
         autoFocus={props.autoFocus}
         className={CLASSE_INPUT}
       />
-      {props.aiuto && <span className="block text-xs text-slate-500">{props.aiuto}</span>}
+      {props.aiuto && <span className="mt-1.5 block text-xs text-slate-500">{props.aiuto}</span>}
     </label>
   )
 }
@@ -356,17 +356,17 @@ export function Campo(props: {
 /** Etichetta con un controllo qualsiasi dentro (input, select, textarea). */
 export function Etichetta(props: { testo: string; aiuto?: string; children: ReactNode }) {
   return (
-    <label className="block space-y-1.5 text-sm">
-      <span className="font-medium">{props.testo}</span>
+    <label className="block text-sm">
+      <span className="mb-2 block font-medium">{props.testo}</span>
       {props.children}
-      {props.aiuto && <span className="block text-xs text-slate-500">{props.aiuto}</span>}
+      {props.aiuto && <span className="mt-1.5 block text-xs text-slate-500">{props.aiuto}</span>}
     </label>
   )
 }
 
 /** Riquadro grigio chiaro per i moduli dentro una scheda. */
 export function Modulo(props: { children: ReactNode }) {
-  return <div className="space-y-4 rounded-xl bg-slate-50 p-3 sm:p-4 dark:bg-slate-950/50">{props.children}</div>
+  return <div className="space-y-5 rounded-xl bg-slate-50 p-4 dark:bg-slate-950/50">{props.children}</div>
 }
 
 /** Pulsanti lun–sab da accendere e spegnere. */
@@ -380,8 +380,8 @@ export function SelettoreGiorni(props: {
   const nomiLunghi = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
   const elenco = props.giorni ?? [0, 1, 2, 3, 4, 5]
   return (
-    <fieldset className="space-y-1.5 text-sm">
-      <legend className="mb-1.5 font-medium">{props.etichetta}</legend>
+    <fieldset className="text-sm">
+      <legend className="mb-2 font-medium">{props.etichetta}</legend>
       <div className="grid grid-cols-6 gap-1.5 sm:flex sm:flex-wrap">
         {elenco.map((g) => {
           const attivo = props.valore.includes(g)

@@ -72,7 +72,7 @@ export function PannelloPreferenze(p: {
       tono={p.scaduta ? 'avviso' : 'normale'}
     >
       <div className="space-y-4 text-sm">
-        <ul className="space-y-1.5">
+        <ul className="space-y-2.5">
           {ORDINE_SCELTE.map((s) => {
             const chi = risposte.filter((d) => d.scelta === s)
             if (chi.length === 0) return null

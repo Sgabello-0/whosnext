@@ -71,8 +71,8 @@ export function ProviderConferma({ children }: { children: ReactNode }) {
             </h2>
             {opz.testo && <div className="text-sm text-slate-600 dark:text-slate-400">{opz.testo}</div>}
             {opz.richiediTesto && (
-              <label className="block space-y-1 text-sm">
-                <span className="font-medium">Per confermare scrivi: {opz.richiediTesto}</span>
+              <label className="block text-sm">
+                <span className="mb-2 block font-medium">Per confermare scrivi: {opz.richiediTesto}</span>
                 <input
                   value={scritto}
                   onChange={(e) => setScritto(e.target.value)}

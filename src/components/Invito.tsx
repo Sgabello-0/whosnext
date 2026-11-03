@@ -66,7 +66,7 @@ export function Invito({ codice, nomeClasse }: { codice: string; nomeClasse: str
           </button>
         </div>
         <Condividi titolo={`Unisciti a ${nomeClasse}`} testo={messaggioInvito({ nomeClasse, link, codice })} />
-        <div className="flex flex-wrap gap-1 border-t border-slate-100 pt-2 dark:border-slate-800">
+        <div className="flex flex-wrap gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">
           <PulsanteTesto icona={copiato === 'link' ? Check : Link2} onClick={() => copia('link')}>
             {copiato === 'link' ? 'Copiato' : 'Copia link'}
           </PulsanteTesto>

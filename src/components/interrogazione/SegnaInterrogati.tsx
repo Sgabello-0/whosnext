@@ -72,13 +72,13 @@ export function SegnaInterrogati(p: Props) {
 
   return (
     <Scheda titolo="Segna chi è stato interrogato" icona={ListChecks} tono="evidenza">
-      <div className="space-y-4 text-sm">
+      <div className="space-y-5 text-sm">
         <Etichetta testo="Lezione del">
           <input type="date" value={data} max={oggiISO()} onChange={(e) => setData(e.target.value)} className={`${CLASSE_INPUT} max-w-48`} />
         </Etichetta>
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p>Probabilmente interrogati: togli la spunta a chi era assente (resterà in testa alla lista).</p>
-          <ul className="space-y-1">
+          <ul className="space-y-0.5">
             {elenco.map((u) => (
               <li key={u}>
                 <label className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60">

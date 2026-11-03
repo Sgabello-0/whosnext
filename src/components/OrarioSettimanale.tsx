@@ -49,7 +49,6 @@ export function OrarioSettimanale({ classId, materie, cal }: { classId: string; 
 
   return (
     <Scheda titolo="Orario settimanale" icona={Grid3x3} sottotitolo="Spunta i giorni di lezione di ogni materia.">
-      <p className="mb-3 text-sm text-slate-500">Spunta i giorni di lezione di ogni materia, poi salva.</p>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -84,7 +83,7 @@ export function OrarioSettimanale({ classId, materie, cal }: { classId: string; 
           </tbody>
         </table>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <Bottone onClick={salva} disabled={inCorso || cambiate.length === 0}>
           {inCorso ? 'Salvataggio…' : 'Salva orario'}
         </Bottone>

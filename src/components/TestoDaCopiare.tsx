@@ -2,7 +2,7 @@
 export function TestoDaCopiare({ testo }: { testo: string | null }) {
   if (!testo) return null
   return (
-    <div className="space-y-1 text-sm">
+    <div className="space-y-2 text-sm">
       <p>Copia questo testo a mano (tieni premuto per selezionarlo):</p>
       <textarea
         readOnly

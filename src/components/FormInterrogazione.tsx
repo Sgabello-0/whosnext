@@ -39,7 +39,7 @@ export function FormInterrogazione(props: {
   }
 
   return (
-    <form onSubmit={invia} className="space-y-4">
+    <form onSubmit={invia} className="space-y-5">
       <Campo etichetta="Nome" valore={nome} onChange={setNome} placeholder="Es. Orale sul capitolo 3" maxLength={60} />
       <Etichetta testo="Descrizione (facoltativa)">
         <textarea
@@ -51,9 +51,9 @@ export function FormInterrogazione(props: {
           className={CLASSE_INPUT}
         />
       </Etichetta>
-      <div className="space-y-1">
+      <div>
         <SelettoreGiorni etichetta="Giorni in cui si interroga" valore={giorni} onChange={setGiorni} />
-        <p className="text-xs text-slate-500">
+        <p className="mt-1.5 text-xs text-slate-500">
           Proposti quelli della materia. Se li togli tutti, la stima dirà solo "tra N lezioni".
         </p>
       </div>
@@ -78,7 +78,7 @@ export function FormInterrogazione(props: {
         />
       </Etichetta>
       {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 pt-1">
         <Bottone type="submit" disabled={inCorso || !nome.trim()}>
           {inCorso ? 'Salvataggio…' : props.testoSalva}
         </Bottone>
