@@ -10,11 +10,13 @@ import {
   type UserCredential,
 } from 'firebase/auth'
 import { FirebaseError } from 'firebase/app'
-import { auth, configMancante, DOMINIO_SCUOLA, providerGoogle } from '../lib/firebase'
-import { dominioEmail, verificaAccesso, type EsitoAccesso } from '../lib/domain'
+import { auth, configMancante, DOMINI, providerGoogle } from '../lib/firebase'
+import { dominioEmail, verificaAccesso, type EsitoAccesso, type TipoAccount } from '../lib/domain'
 import { messaggioErroreAuth, type MessaggioErrore } from '../lib/authErrors'
 
 type Errore = MessaggioErrore & { codice?: string }
+
+const ETICHETTA_TIPO: Record<TipoAccount, string> = { studente: 'studente', docente: 'docente' }
 
 /**
  * Pagina di test del login scolastico.
@@ -78,7 +80,7 @@ export default function Login() {
   }
 
   const esito: EsitoAccesso | null = utente
-    ? verificaAccesso({ email: utente.email, emailVerified: utente.emailVerified }, DOMINIO_SCUOLA)
+    ? verificaAccesso({ email: utente.email, emailVerified: utente.emailVerified }, DOMINI)
     : null
 
   async function copiaDiagnostica() {
@@ -86,7 +88,7 @@ export default function Login() {
       quando: new Date().toISOString(),
       sito: location.origin,
       browser: navigator.userAgent,
-      dominioAtteso: DOMINIO_SCUOLA,
+      dominiAttesi: DOMINI,
       dominioEmail: dominioEmail(utente?.email),
       emailVerificata: utente?.emailVerified ?? null,
       hd,
@@ -110,8 +112,8 @@ export default function Login() {
         </p>
         <h1 className="text-3xl font-semibold">Interrogazioni di Classe</h1>
         <p className="text-slate-600 dark:text-slate-400">
-          Accedi con il tuo account <strong>@{DOMINIO_SCUOLA}</strong> per verificare che la scuola consenta
-          l'accesso.
+          Accedi con l'account della scuola: <strong>@{DOMINI.studenti}</strong> per gli studenti,{' '}
+          <strong>@{DOMINI.docenti}</strong> per i professori.
         </p>
       </header>
 
@@ -132,14 +134,18 @@ export default function Login() {
       ) : utente ? (
         <section className="space-y-4">
           {esito?.ammesso ? (
-            <Riquadro tono="ok" titolo="Funziona: accesso consentito">
-              <p>La scuola permette il login con Google e l'account è del dominio giusto.</p>
+            <Riquadro tono="ok" titolo={`Funziona: accesso consentito come ${ETICHETTA_TIPO[esito.tipo]}`}>
+              <p>
+                La scuola permette il login con Google e l'account è del dominio giusto.
+                {esito.tipo === 'docente' &&
+                  ' I professori vedono le liste ma non possono modificarle, a meno che il capoclasse non dia il permesso.'}
+              </p>
             </Riquadro>
           ) : (
             <Riquadro tono="errore" titolo="Accesso riuscito, ma l'account non è ammesso">
               <p>
                 {esito?.ammesso === false && esito.motivo === 'dominio-errato' &&
-                  `Questo account non è @${DOMINIO_SCUOLA}. Esci e scegli l'account della scuola.`}
+                  `Questo account non è @${DOMINI.studenti} né @${DOMINI.docenti}. Esci e scegli l'account della scuola.`}
                 {esito?.ammesso === false && esito.motivo === 'email-non-verificata' &&
                   "Google non segnala l'email come verificata."}
                 {esito?.ammesso === false && esito.motivo === 'email-mancante' &&
@@ -153,6 +159,8 @@ export default function Login() {
             <dd className="break-words">{utente.displayName ?? '—'}</dd>
             <dt className="text-slate-500">Email</dt>
             <dd className="break-all">{utente.email ?? '—'}</dd>
+            <dt className="text-slate-500">Tipo</dt>
+            <dd>{esito?.ammesso ? ETICHETTA_TIPO[esito.tipo] : '—'}</dd>
             <dt className="text-slate-500">Verificata</dt>
             <dd>{utente.emailVerified ? 'sì' : 'no'}</dd>
             <dt className="text-slate-500">Workspace (hd)</dt>

@@ -8,7 +8,8 @@ Sito per organizzare l'ordine delle interrogazioni della classe: preferenze (ini
 
 ## Stato
 
-Fase 1: **test del login** con un account `@studenti.ittsrimini.edu.it`.
+- ✅ Fase 1: test del login con un account `@studenti.ittsrimini.edu.it` (riuscito il 03/11/2026).
+- Accesso consentito a studenti (`@studenti.ittsrimini.edu.it`) e docenti (`@ittsrimini.edu.it`, sola lettura salvo permesso del capoclasse).
 
 ## Sviluppo
 

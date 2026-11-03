@@ -1,6 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth'
-import { DOMINIO_SCUOLA_DEFAULT } from './domain'
+import { DOMINI_DEFAULT, type DominiScuola } from './domain'
 
 const env = import.meta.env
 
@@ -13,7 +13,11 @@ const config = {
   appId: env.VITE_FIREBASE_APP_ID,
 }
 
-export const DOMINIO_SCUOLA: string = env.VITE_DOMINIO_SCUOLA || DOMINIO_SCUOLA_DEFAULT
+export const DOMINI: DominiScuola = {
+  // VITE_DOMINIO_SCUOLA è il vecchio nome, tenuto per compatibilità con i .env già creati
+  studenti: env.VITE_DOMINIO_STUDENTI || env.VITE_DOMINIO_SCUOLA || DOMINI_DEFAULT.studenti,
+  docenti: env.VITE_DOMINIO_DOCENTI || DOMINI_DEFAULT.docenti,
+}
 
 /** Variabili d'ambiente obbligatorie ancora vuote (lista vuota = configurazione completa). */
 export const configMancante: string[] = Object.entries({
@@ -32,9 +36,10 @@ if (auth) auth.languageCode = 'it'
 export function providerGoogle(): GoogleAuthProvider {
   const provider = new GoogleAuthProvider()
   provider.setCustomParameters({
-    // Suggerisce a Google di mostrare solo gli account della scuola.
+    // '*' chiede a Google di mostrare solo account Google Workspace (niente Gmail personali).
+    // Non si può indicare più di un dominio: studenti e docenti stanno su domini diversi.
     // È solo un suggerimento: il controllo vero è su email e regole Firestore.
-    hd: DOMINIO_SCUOLA,
+    hd: '*',
     prompt: 'select_account',
   })
   return provider

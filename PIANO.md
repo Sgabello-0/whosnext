@@ -9,7 +9,11 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 1. Creare un repository sul GitHub dell'utente, caricare tutto il progetto e fare commit regolari. Netlify si collega al repository per pubblicare il sito automaticamente.
 2. **Test del login scolastico** prima di tutto il resto: pagina minima con login Google, da provare con un account `@studenti.ittsrimini.edu.it`. Se la scuola lo blocca ("il tuo amministratore non consente l'accesso"), bisogna chiedere al referente informatico di autorizzare l'ID client OAuth.
 3. Pubblicare in modalità "Produzione" la schermata di consenso OAuth di Firebase. In modalità "Test" possono entrare al massimo 100 utenti, aggiunti a mano.
-4. Accesso: se il test funziona, solo `@studenti.ittsrimini.edu.it`, controllato sia nella pagina sia nelle regole di Firestore. **Piano B** se il login è bloccato: anche Gmail personali, con codice d'invito e approvazione del capoclasse.
+4. Accesso: ~~se il test funziona~~ **il test ha funzionato (03/11/2026)**, quindi entrano solo gli account della scuola, controllati sia nella pagina sia nelle regole di Firestore:
+   - `@studenti.ittsrimini.edu.it` → **studenti**;
+   - `@ittsrimini.edu.it` → **docenti** (aggiunto il 03/11/2026, non ancora provato con un account reale: la scuola potrebbe avere regole diverse per i docenti).
+
+   Il tipo di account dipende solo dal dominio dell'email verificata da Google, non si sceglie. Il Piano B (Gmail personali con codice d'invito) per ora non serve.
 
 ## Stack (tutto gratuito)
 
@@ -24,7 +28,8 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 ```
 users/{uid}               nome, email, foto, impostazioni { autoRifiutaScambi, notificheEmail, notifichePush }, fcmTokens[]
 classes/{classId}         nome, codiceInvito, capoclasseUid, viceUids[], dominioConsentito?
-  members/{uid}           nome, ruolo (capo|vice|studente), dsa: bool
+  members/{uid}           nome, ruolo (capo|vice|studente|docente), dsa: bool, permessoModifica?: bool (solo docenti)
+  permissionRequests/{uid}  richiesta di permesso di modifica di un docente: stato pending|accettato|rifiutato, creato
   calendar/settings       giorniScolastici (lun-sab on/off), eccezioni [{data, tipo: vacanza|lezione-extra}], fineAnno: 2027-06-06
   subjects/{subjectId}    nome, orario: [giorniSettimana]
     interrogations/{iId}  nome, descrizione?, giorni?, perLezione?, scadenzaPreferenze, stato: raccolta|lista|conclusa
@@ -43,6 +48,14 @@ Le regole di sicurezza permettono letture e scritture solo ai membri della class
 - Login con Google, eventualmente limitato al dominio della scuola.
 - "Crea classe": chi la crea diventa capoclasse e riceve un codice o link d'invito, anche come QR. "Unisciti" con il codice.
 - Il capoclasse gestisce i membri: li rimuove, dà il badge DSA/BES, nomina un vice.
+
+### Professori
+
+- Entrano con l'account `@ittsrimini.edu.it` e si uniscono a una classe con il codice d'invito, come gli studenti. Non possono creare classi.
+- Di base **vedono soltanto**: lista delle interrogazioni, chi è già stato interrogato, date stimate. Non vedono le preferenze né il badge DSA/BES.
+- **Non fanno parte delle liste**: niente preferenze, niente posizione, niente scambi, e non vengono contati nel numero di studenti (posizioni DSA da 1 a N studenti).
+- Possono **chiedere il permesso di modifica** al capoclasse, che lo accetta o lo rifiuta (notifica nell'inbox). Con il permesso possono fare ciò che fa il vice sulle liste: riordinare e segnare chi è stato interrogato. Il capoclasse può revocarlo in qualsiasi momento.
+- Le regole di Firestore ricontrollano il dominio: un account studente non può mai avere il ruolo docente e viceversa.
 
 ### Configurazione del capoclasse
 
@@ -108,7 +121,7 @@ La logica pura (lista, stime, calendario, redistribuzione degli scambi) sta in m
 
 ## Verifica
 
-- Vitest: fasce, DSA, conflitti, classi piccole; stime con feste, senza giorni, senza numero, oltre il 06/06; il caso Leonardo → Mario → me.
+- Vitest: domini studenti/docenti; fasce, DSA, conflitti, classi piccole, docenti esclusi dalla lista; stime con feste, senza giorni, senza numero, oltre il 06/06; il caso Leonardo → Mario → me.
 - Firebase Emulator + `netlify dev` in locale con 3-4 account di test, per provare l'intero percorso: classe, preferenze, lista, scambi, interrogati.
 - Prova a larghezza da telefono.
 - Il deploy su Netlify e il progetto Firebase li crea l'utente con il proprio account, con una guida passo passo.
