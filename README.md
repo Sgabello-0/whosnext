@@ -4,6 +4,7 @@ Sito per organizzare l'ordine delle interrogazioni della classe: preferenze (ini
 
 - Piano completo: [PIANO.md](PIANO.md)
 - Configurazione Firebase e test del login: [GUIDA-FIREBASE.md](GUIDA-FIREBASE.md)
+- Informativa sulla privacy: [PRIVACY.md](PRIVACY.md)
 
 ## Stato
 
