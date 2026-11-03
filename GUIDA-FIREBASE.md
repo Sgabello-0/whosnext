@@ -48,7 +48,18 @@ Firebase crea in automatico una schermata di consenso in modalità **Test**: in 
 1. Vai su <https://console.cloud.google.com>, in alto seleziona lo **stesso progetto** creato con Firebase.
 2. Menu → **API e servizi → Schermata consenso OAuth** (nelle versioni nuove: **Google Auth Platform → Pubblico**).
 3. Tipo di utente: **Esterno**.
-4. Stato di pubblicazione: **Pubblica app** → conferma. Diventa **In produzione**.
+4. Prima compila la pagina **Branding**:
+   - Nome dell'app: `Interrogazioni di Classe`
+   - Email di assistenza utenti: il tuo Gmail
+   - **Logo: lascialo vuoto** (caricare un logo obbliga a far verificare l'app da Google, con attese di settimane)
+   - Home page dell'applicazione: `https://github.com/Sgabello-0/whosnext`
+   - Norme sulla privacy: `https://github.com/Sgabello-0/whosnext/blob/main/PRIVACY.md`
+   - Termini di servizio: vuoto (facoltativo)
+   - Domini autorizzati: lascia quello `….firebaseapp.com` e aggiungi `github.com`
+   - Email del contatto sviluppatore: il tuo Gmail → **Salva**
+
+   Quando il sito sarà su Netlify, sostituisci questi due link con quelli del sito.
+5. Stato di pubblicazione: **Pubblica app** → conferma. Diventa **In produzione**.
 
 Usiamo solo nome, email e foto profilo (ambiti `openid`, `email`, `profile`), quindi Google non chiede la verifica dell'app.
 
