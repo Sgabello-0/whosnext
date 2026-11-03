@@ -86,6 +86,12 @@ describe('eliminare una classe', () => {
     expect(await documentiRimasti()).toBe(0)
   })
 
+  it('funziona anche con una classe vuota (niente calendario salvato, niente materie)', async () => {
+    const { classId, codice } = await creaClasse(dbDi(env, anna), anna, 'Vuota', () => 'VVVVVV')
+    await assertSucceeds(eliminaClasse(dbDi(env, anna), classId, codice))
+    expect(await documentiRimasti()).toBe(0)
+  })
+
   it('vice, studenti e docenti non la eliminano', async () => {
     const { classId, codice } = await classePiena()
     await assertFails(eliminaClasse(dbDi(env, bruno), classId, codice))

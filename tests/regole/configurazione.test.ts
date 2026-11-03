@@ -50,6 +50,14 @@ async function classeConfigurata() {
   return { classId, subjectId }
 }
 
+describe('classe appena creata', () => {
+  it('il capoclasse salva il primo calendario e crea la prima materia', async () => {
+    const { classId } = await creaClasse(dbDi(env, anna), anna, 'Nuova', () => 'NNNNNN')
+    await assertSucceeds(salvaCalendario(dbDi(env, anna), classId, CALENDARIO_DEFAULT))
+    await assertSucceeds(creaMateria(dbDi(env, anna), classId, { nome: 'Storia', orario: [2] }))
+  })
+})
+
 describe('calendario', () => {
   it('capo e vice lo salvano, tutti i membri lo leggono', async () => {
     const { classId } = await classeConfigurata()
