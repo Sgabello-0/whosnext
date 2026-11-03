@@ -7,6 +7,7 @@ import { dividiMembri, ETICHETTA_RUOLO, puoGestireDSA, puoModificareListe } from
 import { ProviderRaccolta } from '../lib/raccolta'
 import { OsservaClasse } from '../components/osservatori/Osservatori'
 import { PannelloDaFare } from '../components/osservatori/Pannelli'
+import { Guida } from '../components/Guida'
 import { useClasse } from '../lib/useClasse'
 import type { Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
@@ -51,6 +52,9 @@ export default function Classe() {
       {puoModificareListe(io) && (
         <ProviderRaccolta>
           <OsservaClasse classId={classId} membro={io} />
+          {io.ruolo === 'capo' && (
+            <Guida classId={classId} nomeClasse={classe.nome} codice={classe.codiceInvito} numeroMembri={membri.length} />
+          )}
           <PannelloDaFare classId={classId} />
         </ProviderRaccolta>
       )}

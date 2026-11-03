@@ -5,6 +5,7 @@ import { creaClasse, impostaPermessoDocente, impostaVice, uniscitiConCodice } fr
 import {
   aggiornaInterrogazione,
   aggiornaMateria,
+  aggiornaOrari,
   creaInterrogazione,
   creaMateria,
   eliminaInterrogazione,
@@ -107,6 +108,20 @@ describe('materie', () => {
     await assertSucceeds(aggiornaMateria(dbDi(env, anna), classId, subjectId, { nome: 'Matematica', orario: [1, 3, 4] }))
     await assertSucceeds(eliminaMateria(dbDi(env, bruno), classId, idIta))
     expect((await getDocs(rifMaterie(dbDi(env, carla), classId))).size).toBe(1)
+  })
+
+  it('capo e vice salvano l\'orario di più materie insieme (giorni puliti)', async () => {
+    const { classId, subjectId } = await classeConfigurata()
+    const idIta = await creaMateria(dbDi(env, anna), classId, { nome: 'Italiano', orario: [] })
+    await assertSucceeds(
+      aggiornaOrari(dbDi(env, bruno), classId, [
+        { subjectId, orario: [0] },
+        { subjectId: idIta, orario: [4, 2, 2] },
+      ]),
+    )
+    expect((await getDoc(rifMateria(dbDi(env, carla), classId, idIta))).data()?.orario).toEqual([2, 4])
+    await assertFails(aggiornaOrari(dbDi(env, carla), classId, [{ subjectId, orario: [1] }]))
+    await assertFails(aggiornaOrari(dbDi(env, rossi), classId, [{ subjectId, orario: [1] }]))
   })
 
   it('studenti e docenti non toccano le materie', async () => {

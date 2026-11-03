@@ -120,6 +120,18 @@ export async function aggiornaMateria(db: Firestore, classId: string, subjectId:
   await updateDoc(rifMateria(db, classId, subjectId), pulisciMateria(d))
 }
 
+/** Salva insieme i giorni di lezione di più materie (orario settimanale a griglia). */
+export async function aggiornaOrari(
+  db: Firestore,
+  classId: string,
+  cambi: { subjectId: string; orario: number[] }[],
+): Promise<void> {
+  if (cambi.length === 0) return
+  const batch = writeBatch(db)
+  for (const c of cambi) batch.update(rifMateria(db, classId, c.subjectId), { orario: pulisciGiorni(c.orario) })
+  await batch.commit()
+}
+
 /** Elimina la materia con le sue interrogazioni, preferenze e liste. */
 export async function eliminaMateria(db: Firestore, classId: string, subjectId: string): Promise<void> {
   await cancellaTutti(db, await documentiMateria(db, classId, subjectId))

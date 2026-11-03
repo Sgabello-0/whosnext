@@ -24,6 +24,7 @@ import { StatoClasse } from '../components/StatoClasse'
 import { useAvvisi } from '../components/Avvisi'
 import { useConferma } from '../components/Conferma'
 import { GiorniMateria } from '../components/GiorniMateria'
+import { OrarioSettimanale } from '../components/OrarioSettimanale'
 import { Bottone, Caricamento, Campo, CLASSE_INPUT, Etichetta, LinkBottone, Riquadro, Scheda, SelettoreGiorni } from '../components/ui'
 
 /** Materie e calendario della classe: li configurano capoclasse e vice. */
@@ -72,6 +73,8 @@ export default function Configura() {
           </div>
         )}
       </Scheda>
+
+      {cal && <OrarioSettimanale classId={classId} materie={elencoMaterie} cal={cal} />}
 
       {cal ? <ConfiguraCalendario classId={classId} cal={cal} materie={elencoMaterie} /> : <Caricamento />}
     </>
