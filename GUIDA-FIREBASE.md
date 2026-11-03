@@ -1,7 +1,11 @@
 # Guida: progetto Firebase e test del login
 
 Obiettivo: verificare che un account `@studenti.ittsrimini.edu.it` possa entrare nel sito con "Accedi con Google".
-Tempo: circa 10 minuti. Serve solo un account Google personale (il progetto Firebase è gratuito, piano Spark).
+Tempo: circa 10 minuti. Il progetto Firebase è gratuito (piano Spark).
+
+> **Due account, due ruoli:**
+> - con l'account **personale** (Gmail) **crei e gestisci** il progetto Firebase (passi 1–4);
+> - con l'account **della scuola** fai solo **la prova di accesso** al sito (passo 5).
 
 ## 1. Crea il progetto Firebase
 
