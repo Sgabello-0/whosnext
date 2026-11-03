@@ -11,6 +11,7 @@ import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/ti
 import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda } from '../ui'
 import { useAvvisi } from '../Avvisi'
 import { RiordinaLista } from './RiordinaLista'
+import { StoricoLista } from './StoricoLista'
 import { Condividi } from '../Condividi'
 import { linkAssoluto, percorsoInterrogazione, testoLista } from '../../lib/messaggi'
 import { SegnaInterrogati } from './SegnaInterrogati'
@@ -195,6 +196,7 @@ export function ListaInterrogazione(p: Props) {
       )}
 
       {p.staff && <RapportoSoddisfazione {...p} />}
+      <StoricoLista classId={p.classId} subjectId={p.subjectId} interrogazioneId={p.interrogazioneId} membri={perUid} />
     </>
   )
 }

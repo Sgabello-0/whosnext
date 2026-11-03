@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { db } from '../lib/firebase'
 import {
@@ -16,6 +16,7 @@ import { dividiMembri, puoGestireDSA } from '../lib/membri'
 import { useClasse } from '../lib/useClasse'
 import { useAvvisi } from '../components/Avvisi'
 import { useConferma } from '../components/Conferma'
+import { CediRuolo } from '../components/CediRuolo'
 import type { Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
 import { StatoClasse } from '../components/StatoClasse'
@@ -209,12 +210,19 @@ export default function AdminClasse() {
         <ListaMembri membri={docenti} mioUid={io.uid} dsa={new Set()} mostraEmail azioni={azioniDocente} />
       </Scheda>
 
-      {capo && <ImpostazioniClasse classId={classId} nome={classe.nome} codice={classe.codiceInvito} />}
+      {capo && (
+        <ImpostazioniClasse
+          classId={classId}
+          nome={classe.nome}
+          codice={classe.codiceInvito}
+          cedi={<CediRuolo classId={classId} mioUid={io.uid} studenti={studenti} />}
+        />
+      )}
     </>
   )
 }
 
-function ImpostazioniClasse({ classId, nome, codice }: { classId: string; nome: string; codice: string }) {
+function ImpostazioniClasse({ classId, nome, codice, cedi }: { classId: string; nome: string; codice: string; cedi: ReactNode }) {
   const [nuovoNome, setNuovoNome] = useState(nome)
   const [inCorso, setInCorso] = useState(false)
   const avvisi = useAvvisi()
@@ -272,6 +280,7 @@ function ImpostazioniClasse({ classId, nome, codice }: { classId: string; nome: 
             Cambia codice d'invito
           </Bottone>
         </div>
+        {cedi}
         <EliminaClasse classId={classId} nome={nome} codice={codice} />
       </div>
     </Scheda>

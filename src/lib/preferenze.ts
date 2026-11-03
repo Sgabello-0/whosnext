@@ -14,6 +14,7 @@ import {
 import { ErroreApp, rifDSA, rifMembri } from './classi'
 import { rifInterrogazione, rifLista, rifPreferenza, rifPreferenze, rifRapporto } from './configurazione'
 import { generaLista, semeCasuale, type Preferenza, type Risultato, type Scelta } from './generateList'
+import { aggiungiVoceStorico } from './storico'
 import type { DocPreferenza, Interrogazione, Membro } from './tipi'
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
@@ -82,11 +83,13 @@ export async function generaEPubblicaLista(
   })
 
   const batch = writeBatch(db)
+  const voce = aggiungiVoceStorico(db, batch, r, mioUid, 'generata', { seme })
   batch.set(rifLista(db, r.classId, r.subjectId, r.interrogazioneId), {
     ordine: risultato.ordine,
     interrogati: {},
     generata: serverTimestamp(),
     generataDa: mioUid,
+    ultimaModifica: voce,
   })
   batch.set(rifRapporto(db, r.classId, r.subjectId, r.interrogazioneId), {
     ...risultato.rapporto,

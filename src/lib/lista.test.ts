@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CALENDARIO_DEFAULT } from './calendar'
-import { nonInterrogati, propostaLezione, sposta, stessiElementi, tuttiInterrogati, ultimaLezione } from './lista'
+import { nonInterrogati, propostaLezione, sposta, spostati, stessiElementi, tuttiInterrogati, ultimaLezione } from './lista'
 
 const ordine = ['a', 'b', 'c', 'd', 'e']
 
@@ -51,5 +51,26 @@ describe('lista', () => {
     expect(tuttiInterrogati(['a', 'b'], { a: 'x', b: 'x' })).toBe(true)
     expect(tuttiInterrogati(['a', 'b'], { a: 'x' })).toBe(false)
     expect(tuttiInterrogati([], {})).toBe(false)
+  })
+})
+
+describe('spostati', () => {
+  it('trascinando un nome registra solo quello', () => {
+    expect(spostati(ordine, sposta(ordine, 0, 3))).toEqual([{ uid: 'a', da: 1, a: 4 }])
+    expect(spostati(ordine, sposta(ordine, 4, 0))).toEqual([{ uid: 'e', da: 5, a: 1 }])
+  })
+  it('nessuno se l\'ordine non cambia', () => {
+    expect(spostati(ordine, [...ordine])).toEqual([])
+  })
+  it('più spostamenti', () => {
+    // a ↔ e: restano fermi b, c, d
+    const r = spostati(ordine, ['e', 'b', 'c', 'd', 'a'])
+    expect(r).toEqual([
+      { uid: 'e', da: 5, a: 1 },
+      { uid: 'a', da: 1, a: 5 },
+    ])
+  })
+  it('lista invertita: si spostano tutti tranne uno', () => {
+    expect(spostati(ordine, [...ordine].reverse())).toHaveLength(4)
   })
 })

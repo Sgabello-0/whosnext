@@ -137,6 +137,12 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await expect(carla.getByText('Sei il n° 3 di 3')).toBeVisible() // in tempo reale
   await expect(bruno.getByText('Sei il n° 2 di 3')).toBeVisible()
 
+  // Lo storico registra chi ha spostato chi (solo Carla, non chi è scalato di un posto)
+  await bruno.getByText(/Storico delle modifiche/).click()
+  const storico = bruno.getByRole('list', { name: 'Storico delle modifiche' })
+  await expect(storico.getByText('Anna Verdi ha spostato Carla Blu da 1 a 3')).toBeVisible()
+  await expect(storico.getByText('Anna Verdi ha generato la lista')).toBeVisible()
+
   // ── Lezione: proposta Anna (la prima); era "assente", interrogato invece Bruno ──
   const segna = anna.getByRole('region', { name: 'Segna chi è stato interrogato' }).or(anna.locator('section', { hasText: 'Segna chi è stato interrogato' }))
   await expect(segna.getByRole('checkbox', { name: 'Anna Verdi' })).toBeChecked()
@@ -145,6 +151,7 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await segna.getByRole('button', { name: 'Conferma 1 interrogato' }).click()
   await expect(ordine.getByRole('listitem').nth(1)).toContainText('interrogato')
   await expect(bruno.getByText(/Sei stato interrogato/)).toBeVisible()
+  await expect(storico.getByText(/Anna Verdi ha segnato Bruno Neri come interrogati/)).toBeVisible()
   // Anna (assente) resta la prima da interrogare: è di nuovo proposta
   await expect(segna.getByRole('checkbox', { name: 'Anna Verdi' })).toBeChecked()
   // capo e vice non hanno "Sono stato interrogato" (si segnano da soli)

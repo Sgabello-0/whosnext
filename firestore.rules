@@ -152,17 +152,30 @@ service cloud.firestore {
 
       // Il capoclasse può rinominare la classe o cambiare il codice d'invito.
       // Se cambia il codice, nello stesso batch crea il nuovo e cancella il vecchio.
-      allow update: if isCapo(c)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'codiceInvito'])
-        && testo(request.resource.data.nome, 60)
-        && codiceValido(request.resource.data.codiceInvito)
-        && (
-          request.resource.data.codiceInvito == resource.data.codiceInvito
-          || (
-            getAfter(invitoPath(request.resource.data.codiceInvito)).data.classId == c
-            && !existsAfter(invitoPath(resource.data.codiceInvito))
+      allow update: if isCapo(c) && (
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'codiceInvito'])
+          && testo(request.resource.data.nome, 60)
+          && codiceValido(request.resource.data.codiceInvito)
+          && (
+            request.resource.data.codiceInvito == resource.data.codiceInvito
+            || (
+              getAfter(invitoPath(request.resource.data.codiceInvito)).data.classId == c
+              && !existsAfter(invitoPath(resource.data.codiceInvito))
+            )
           )
-        );
+        )
+        ||
+        // Il capoclasse cede il ruolo a uno studente (o al vice): nello stesso batch
+        // il nuovo diventa "capo" e lui torna vice o studente. Mai due capi, mai un docente.
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['capoclasseUid'])
+          && request.resource.data.capoclasseUid != request.auth.uid
+          && get(membroPath(c, request.resource.data.capoclasseUid)).data.ruolo in ['studente', 'vice']
+          && getAfter(membroPath(c, request.resource.data.capoclasseUid)).data.ruolo == 'capo'
+          && getAfter(membroPath(c, request.auth.uid)).data.ruolo in ['vice', 'studente']
+        )
+      );
 
       // Solo il capoclasse, e nello stesso batch spariscono anche il codice d'invito e il suo documento membro
       // (il sito cancella insieme anche gli altri membri, materie, calendario e badge).
@@ -218,11 +231,30 @@ service cloud.firestore {
             )
           )
           ||
-          // Il capoclasse sugli altri: nomina o toglie il vice, dà o toglie il permesso ai docenti
+          // Il capoclasse che cede il ruolo: il proprio documento torna vice o studente
+          (
+            u == request.auth.uid
+            && isCapo(c)
+            && resource.data.ruolo == 'capo'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ruolo'])
+            && request.resource.data.ruolo in ['vice', 'studente']
+            && getAfter(classePath(c)).data.capoclasseUid != request.auth.uid
+          )
+          ||
+          // Il capoclasse sugli altri: nomina o toglie il vice, dà o toglie il permesso ai docenti,
+          // oppure (cedendo il ruolo) nomina il nuovo capoclasse
           (
             isCapo(c) && u != request.auth.uid
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ruolo', 'permessoModifica', 'richiestaPermesso'])
             && (
+              (
+                resource.data.ruolo in ['studente', 'vice']
+                && request.resource.data.ruolo == 'capo'
+                && getAfter(classePath(c)).data.capoclasseUid == u
+                && request.resource.data.permessoModifica == false
+                && request.resource.data.richiestaPermesso == false
+              )
+              ||
               (
                 resource.data.ruolo in ['studente', 'vice']
                 && request.resource.data.ruolo in ['studente', 'vice']
@@ -380,7 +412,8 @@ service cloud.firestore {
               && (
                 (
                   documento == 'current'
-                  && request.resource.data.keys().hasOnly(['ordine', 'interrogati', 'generata', 'generataDa'])
+                  && request.resource.data.keys().hasOnly(['ordine', 'interrogati', 'generata', 'generataDa', 'ultimaModifica'])
+                  && voceStoricoNuova(request.resource.data.get('ultimaModifica', null))
                   && request.resource.data.ordine is list && request.resource.data.ordine.size() <= 200
                   && request.resource.data.interrogati is map && request.resource.data.interrogati.size() == 0
                   && request.resource.data.generata == request.time
@@ -390,7 +423,10 @@ service cloud.firestore {
               );
             // Riordino e interrogati: stesse persone, interrogati solo tra chi è in lista
             allow update: if puoModificareListe(c) && documento == 'current'
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'interrogati', 'aggiornato', 'aggiornatoDa'])
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'interrogati', 'aggiornato', 'aggiornatoDa', 'ultimaModifica'])
+              // ogni modifica lascia una voce nuova nello storico, scritta nello stesso batch
+              && request.resource.data.get('ultimaModifica', null) != resource.data.get('ultimaModifica', null)
+              && voceStoricoNuova(request.resource.data.get('ultimaModifica', null))
               && request.resource.data.aggiornato == request.time
               && request.resource.data.aggiornatoDa == request.auth.uid
               && request.resource.data.ordine is list
@@ -398,6 +434,29 @@ service cloud.firestore {
               && request.resource.data.ordine.toSet() == resource.data.ordine.toSet()
               && request.resource.data.interrogati is map
               && request.resource.data.ordine.toSet().hasAll(request.resource.data.interrogati.keys());
+            allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
+          }
+
+          // ───── Storico delle modifiche alla lista ─────
+          // storico/{id} → { tipo, chi, quando, dettagli }: lo vedono tutti, non si modifica mai.
+
+          function voceStoricoNuova(id) {
+            return id is string
+              && !exists(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/storico/$(id))
+              && existsAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/storico/$(id));
+          }
+
+          match /storico/{voce} {
+            allow read: if isMembro(c);
+            allow create: if puoModificareListe(c)
+              && request.resource.data.keys().hasOnly(['tipo', 'chi', 'quando', 'dettagli'])
+              && request.resource.data.tipo in ['generata', 'riordino', 'interrogati', 'annullato']
+              && request.resource.data.chi == request.auth.uid
+              && request.resource.data.quando == request.time
+              && request.resource.data.dettagli is map
+              // la voce va insieme a una modifica della lista che la indica
+              && getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('ultimaModifica', null) == voce;
+            allow update: if false;
             allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
           }
 

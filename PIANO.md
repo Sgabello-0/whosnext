@@ -26,6 +26,7 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 - [x] Lista pubblica, riordino trascinando (anche con frecce e tastiera)
 - [ ] Scambi (con le Netlify Functions: accettare uno scambio cambia la lista di tutti, quindi lo fa il server)
 - [x] Segnare chi è stato interrogato (proposta dei primi N, assenti in testa, "Sono stato interrogato" con conferma) e stima delle date
+- [x] Comodità: "Le mie interrogazioni" e "Da fare" nella pagina iniziale, messaggi pronti per WhatsApp, condividi la lista, guida per la classe nuova e orario a griglia, conferme con "Annulla", cessione del ruolo di capoclasse, storico delle modifiche alla lista
 - [ ] Notifiche (inbox, email, push) e job pianificato
 - [ ] Deploy su Netlify
 
@@ -52,6 +53,8 @@ classes/{classId}         nome, codiceInvito, capoclasseUid, creato
       preferences/{uid}   scelta: inizio|meta|fine|indifferente|posizione, posizioneDSA|null, aggiornato
       list/current        ordine: [uid], interrogati: {uid: data}, generata, generataDa
       list/rapporto       rapporto di soddisfazione e seme del sorteggio (solo capo e vice)
+      storico/{id}        tipo (generata|riordino|interrogati|annullato), chi, quando, dettagli — obbligatorio a ogni modifica della lista
+      segnalazioni/{uid}  "Sono stato interrogato": data, quando
       swaps/{swapId}      daUid, aUid, stato: pending|accettato|rifiutato|annullato, creato
 inbox/{uid}/items/{id}    tipo, riferimento, letto
 ```

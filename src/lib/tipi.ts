@@ -87,6 +87,8 @@ export type DocLista = {
   interrogati: Record<string, string>
   generata?: Timestamp
   generataDa: string
+  /** id dell'ultima voce di storico */
+  ultimaModifica?: string
 }
 
 export type DocRapporto = import('./generateList').Rapporto & { generata?: Timestamp }
@@ -95,4 +97,17 @@ export type DocSegnalazione = {
   /** giorno in cui dice di essere stato interrogato (AAAA-MM-GG) */
   data: string
   quando?: Timestamp
+}
+
+export type DocStorico = {
+  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato'
+  chi: string
+  quando?: Timestamp
+  dettagli: {
+    seme?: number
+    spostati?: { uid: string; da: number; a: number }[]
+    uids?: string[]
+    uid?: string
+    data?: string
+  }
 }

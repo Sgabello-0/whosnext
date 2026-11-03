@@ -214,3 +214,16 @@ export async function richiediPermesso(db: Firestore, classId: string, uid: stri
 export async function impostaPermessoDocente(db: Firestore, classId: string, uid: string, concedi: boolean): Promise<void> {
   await updateDoc(rifMembro(db, classId, uid), { permessoModifica: concedi, richiestaPermesso: false })
 }
+
+/**
+ * Il capoclasse cede il ruolo a uno studente o al vice; lui resta vice (o torna studente).
+ * Tutto in un'unica operazione: non ci sono mai due capoclasse.
+ */
+export async function cediRuolo(db: Firestore, classId: string, mioUid: string, nuovoUid: string, restaVice: boolean): Promise<void> {
+  if (nuovoUid === mioUid) throw new ErroreApp('dati-non-validi', 'Scegli un altro compagno.')
+  const batch = writeBatch(db)
+  batch.update(rifClasse(db, classId), { capoclasseUid: nuovoUid })
+  batch.update(rifMembro(db, classId, nuovoUid), { ruolo: 'capo' })
+  batch.update(rifMembro(db, classId, mioUid), { ruolo: restaVice ? 'vice' : 'studente' })
+  await batch.commit()
+}

@@ -57,3 +57,32 @@ export function ultimaLezione(
 export function tuttiInterrogati(ordine: readonly string[], interrogati: Readonly<Record<string, string>>): boolean {
   return ordine.length > 0 && ordine.every((u) => !!interrogati[u])
 }
+
+/**
+ * Chi è stato spostato davvero passando da `vecchio` a `nuovo` (stesse persone):
+ * quelli fuori dalla sottosequenza crescente più lunga delle vecchie posizioni.
+ * Così trascinando un nome si registra solo quello, non tutti quelli scalati di un posto.
+ * Posizioni da 1.
+ */
+export function spostati(vecchio: readonly string[], nuovo: readonly string[]): { uid: string; da: number; a: number }[] {
+  const posVecchia = new Map(vecchio.map((u, i) => [u, i]))
+  const seq = nuovo.map((u) => posVecchia.get(u) ?? -1)
+  // Sottosequenza crescente più lunga (O(n²): le classi sono piccole)
+  const lunghezza = seq.map(() => 1)
+  const precedente = seq.map(() => -1)
+  for (let i = 0; i < seq.length; i++) {
+    for (let j = 0; j < i; j++) {
+      if (seq[j]! < seq[i]! && lunghezza[j]! + 1 > lunghezza[i]!) {
+        lunghezza[i] = lunghezza[j]! + 1
+        precedente[i] = j
+      }
+    }
+  }
+  let fine = -1
+  for (let i = 0; i < seq.length; i++) if (fine === -1 || lunghezza[i]! > lunghezza[fine]!) fine = i
+  const fermi = new Set<number>()
+  for (let i = fine; i !== -1; i = precedente[i]!) fermi.add(i)
+  return nuovo.flatMap((uid, i) =>
+    fermi.has(i) ? [] : [{ uid, da: (posVecchia.get(uid) ?? -1) + 1, a: i + 1 }],
+  )
+}

@@ -15,7 +15,8 @@ import {
 import { dataValida } from './calendar'
 import { ErroreApp } from './classi'
 import { rifInterrogazione, rifLista, rifSegnalazione } from './configurazione'
-import { stessiElementi, tuttiInterrogati } from './lista'
+import { spostati, stessiElementi, tuttiInterrogati } from './lista'
+import { aggiungiVoceStorico } from './storico'
 import type { DocLista, Interrogazione } from './tipi'
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
@@ -36,7 +37,13 @@ export async function riordinaLista(db: Firestore, r: Rif, nuovoOrdine: string[]
     throw new ErroreApp('dati-non-validi', 'La lista è cambiata nel frattempo: ricarica la pagina e riprova.')
   }
   const batch = writeBatch(db)
-  batch.update(listaDi(db, r), { ordine: nuovoOrdine, aggiornato: serverTimestamp(), aggiornatoDa: mioUid })
+  const voce = aggiungiVoceStorico(db, batch, r, mioUid, 'riordino', { spostati: spostati(lista.ordine, nuovoOrdine) })
+  batch.update(listaDi(db, r), {
+    ordine: nuovoOrdine,
+    aggiornato: serverTimestamp(),
+    aggiornatoDa: mioUid,
+    ultimaModifica: voce,
+  })
   await batch.commit()
 }
 
@@ -52,9 +59,19 @@ export async function segnaInterrogati(db: Firestore, r: Rif, uids: string[], da
   for (const u of uids) interrogati[u] = data
 
   const batch = writeBatch(db)
+  const voce = aggiungiVoceStorico(db, batch, r, mioUid, 'interrogati', { uids, data })
   const campi: unknown[] = []
   for (const u of uids) campi.push(new FieldPath('interrogati', u), data)
-  batch.update(listaDi(db, r), new FieldPath('aggiornato'), serverTimestamp(), new FieldPath('aggiornatoDa'), mioUid, ...campi)
+  batch.update(
+    listaDi(db, r),
+    new FieldPath('aggiornato'),
+    serverTimestamp(),
+    new FieldPath('aggiornatoDa'),
+    mioUid,
+    new FieldPath('ultimaModifica'),
+    voce,
+    ...campi,
+  )
   for (const u of uids) batch.delete(rifSegnalazione(db, r.classId, r.subjectId, r.interrogazioneId, u))
   if (stato === 'lista' && tuttiInterrogati(lista.ordine, interrogati)) {
     batch.update(interrogazioneDi(db, r), { stato: 'conclusa', aggiornato: serverTimestamp() })
@@ -64,8 +81,9 @@ export async function segnaInterrogati(db: Firestore, r: Rif, uids: string[], da
 
 /** Toglie il segno "interrogato" (ad esempio se segnato per sbaglio). */
 export async function togliInterrogato(db: Firestore, r: Rif, uid: string, mioUid: string): Promise<void> {
-  const { stato } = await leggi(db, r)
+  const { stato, lista } = await leggi(db, r)
   const batch = writeBatch(db)
+  const voce = aggiungiVoceStorico(db, batch, r, mioUid, 'annullato', { uid, data: lista.interrogati[uid] ?? '' })
   batch.update(
     listaDi(db, r),
     new FieldPath('interrogati', uid),
@@ -74,6 +92,8 @@ export async function togliInterrogato(db: Firestore, r: Rif, uid: string, mioUi
     serverTimestamp(),
     new FieldPath('aggiornatoDa'),
     mioUid,
+    new FieldPath('ultimaModifica'),
+    voce,
   )
   if (stato === 'conclusa') batch.update(interrogazioneDi(db, r), { stato: 'lista', aggiornato: serverTimestamp() })
   await batch.commit()
