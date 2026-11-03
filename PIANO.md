@@ -77,7 +77,7 @@ Le regole di sicurezza permettono letture e scritture solo ai membri della class
 ### Configurazione del capoclasse
 
 - **Calendario** completamente personalizzabile: giorni con o senza scuola, materie per giorno, vacanze regionali o d'istituto, lezioni extra o annullate.
-- Feste nazionali 2026-27 già inserite: 1/11, 8/12, 25-26/12, 1/1, 6/1, Pasqua 28/3/2027, Pasquetta 29/3, 25/4, 1/5, 2/6. Sono calcolate per ogni anno (Pasqua compresa), con anche il 4 ottobre, festa nazionale dal 2026. Le vacanze regionali e la festa del patrono (San Gaudenzo, 14/10 a Rimini) le aggiunge il capoclasse.
+- Feste nazionali 2026-27 già inserite: 1/11, 8/12, 25-26/12, 1/1, 6/1, Pasqua 28/3/2027, Pasquetta 29/3, 25/4, 1/5, 2/6. Sono calcolate per ogni anno (Pasqua compresa), con anche il 4 ottobre, festa nazionale dal 2026. Le vacanze dell'Emilia-Romagna 2026-27 sono già inserite nei calendari nuovi ([delibera regionale](https://scuola.regione.emilia-romagna.it/novita/notizie/2026/calendario-scolastico-2026-27)): 2/11/2026 (commemorazione dei defunti), Natale dal 24/12/2026 al 6/1/2027, Pasqua dal 25/3 al 30/3/2027. Per gli anni dopo si calcolano con la stessa regola (Natale 24/12–6/1, Pasqua dal giovedì prima al martedì dopo). Il capoclasse può toglierle e aggiungere quelle d'istituto (ponti, festa del patrono San Gaudenzo il 14/10…). La Regione fissa la fine delle lezioni a sabato 5/6/2027; nel sito resta il 6/6 (domenica), che per le lezioni è lo stesso.
 - Giorni di scuola predefiniti: dal lunedì al venerdì (il sabato si attiva dal calendario).
 - **Materie**: nome e giorni di lezione.
 - **Interrogazioni**: nome, descrizione facoltativa, giorni (di default quelli della materia), quanti interroga per lezione (facoltativo), scadenza per le preferenze.

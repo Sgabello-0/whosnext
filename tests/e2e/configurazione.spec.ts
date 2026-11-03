@@ -88,6 +88,17 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   await expect(anna.getByText(`Vacanze di Natale: 02/01/${anno + 1} – 06/01/${anno + 1}`)).toBeVisible()
   await anna.screenshot({ path: info.outputPath('configura.png'), fullPage: true })
 
+  // Le vacanze dell'Emilia-Romagna 2026-27 ci sono già; se se ne toglie una si può rimettere
+  await expect(anna.getByText('Vacanze di Natale: 24/12/2026 – 06/01/2027')).toBeVisible()
+  await expect(anna.getByText('Vacanze di Pasqua: 25/03/2027 – 30/03/2027')).toBeVisible()
+  await expect(anna.getByText('Commemorazione dei defunti: 02/11/2026')).toBeVisible()
+  await expect(anna.getByText('Vacanze regionali mancanti')).toHaveCount(0)
+  await anna.getByRole('button', { name: 'Togli Vacanze di Pasqua: 25/03/2027 – 30/03/2027' }).click()
+  await expect(anna.getByText('Vacanze regionali mancanti')).toBeVisible()
+  await anna.getByRole('button', { name: 'Aggiungi le vacanze regionali' }).click()
+  await expect(anna.getByText('Vacanze regionali mancanti')).toHaveCount(0)
+  await expect(anna.getByText('Vacanze di Pasqua: 25/03/2027 – 30/03/2027')).toBeVisible()
+
   // Anna elimina l'interrogazione
   await anna.getByRole('link', { name: 'Matematica' }).click()
   await anna.getByRole('link', { name: /Orale capitolo 3/ }).click()

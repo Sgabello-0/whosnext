@@ -3,6 +3,7 @@ import {
   aggiungiGiorni,
   CALENDARIO_DEFAULT,
   calendarioDa,
+  calendarioIniziale,
   conEccezione,
   dataValida,
   erroreCalendario,
@@ -18,6 +19,8 @@ import {
   pasqua,
   prossimeLezioni,
   senzaEccezione,
+  vacanzeEmiliaRomagna,
+  vacanzeRegionaliMancanti,
   type Calendario,
 } from './calendar'
 
@@ -154,8 +157,9 @@ describe('lezioni di una materia', () => {
 })
 
 describe('calendarioDa', () => {
-  it('usa i valori predefiniti se il documento non c\'è', () => {
-    expect(calendarioDa(null)).toEqual(CALENDARIO_DEFAULT)
+  it('se il documento non c\'è propone il calendario iniziale (con le vacanze regionali)', () => {
+    expect(calendarioDa(null)).toEqual(calendarioIniziale())
+    expect(calendarioDa(null).eccezioni).toHaveLength(3)
   })
   it('corregge i campi non validi', () => {
     expect(calendarioDa({ giorniScolastici: [true], fineAnno: 'boh' })).toEqual(CALENDARIO_DEFAULT)
@@ -208,5 +212,34 @@ describe('validazione e modifica delle eccezioni', () => {
     const v = { tipo: 'vacanza', da: '2027-03-25', a: '2027-03-30', descrizione: 'Pasqua' } as const
     const c = conEccezione(CALENDARIO_DEFAULT, v)
     expect(senzaEccezione(c, v).eccezioni).toEqual([])
+  })
+})
+
+describe('vacanze dell\'Emilia-Romagna', () => {
+  it('2026-27 come nella delibera regionale', () => {
+    expect(vacanzeEmiliaRomagna(2026)).toEqual([
+      { tipo: 'vacanza', da: '2026-11-02', a: '2026-11-02', descrizione: 'Commemorazione dei defunti' },
+      { tipo: 'vacanza', da: '2026-12-24', a: '2027-01-06', descrizione: 'Vacanze di Natale' },
+      { tipo: 'vacanza', da: '2027-03-25', a: '2027-03-30', descrizione: 'Vacanze di Pasqua' },
+    ])
+  })
+  it('Pasqua: dal giovedì prima al martedì dopo, anche negli anni seguenti', () => {
+    const pasqua2028 = vacanzeEmiliaRomagna(2027).find((v) => v.descrizione === 'Vacanze di Pasqua')
+    expect(pasqua2028).toMatchObject({ da: '2028-04-13', a: '2028-04-18' }) // Pasqua 16/04/2028
+    expect(giornoSettimana(pasqua2028!.da)).toBe(3) // giovedì
+    expect(giornoSettimana(pasqua2028!.a)).toBe(1) // martedì
+  })
+  it('il calendario iniziale salta Natale e Pasqua', () => {
+    const c = calendarioIniziale()
+    expect(prossimeLezioni({ giorni: MAR_GIO, subjectId: 'mat', cal: c, da: '2026-12-22', quante: 2 })).toEqual([
+      '2026-12-22', '2027-01-07',
+    ])
+    expect(prossimeLezioni({ giorni: MAR_GIO, subjectId: 'mat', cal: c, da: '2027-03-23', quante: 2 })).toEqual([
+      '2027-03-23', '2027-04-01',
+    ])
+  })
+  it('trova le vacanze regionali che mancano', () => {
+    expect(vacanzeRegionaliMancanti(CALENDARIO_DEFAULT)).toHaveLength(3)
+    expect(vacanzeRegionaliMancanti(calendarioIniziale())).toHaveLength(0)
   })
 })

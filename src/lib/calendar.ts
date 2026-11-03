@@ -210,8 +210,10 @@ export function prossimeLezioni(opz: {
   return risultato
 }
 
-/** Normalizza un calendario letto dal database (campi mancanti → valori predefiniti). */
+/** Normalizza un calendario letto dal database (campi mancanti → valori predefiniti; nessun documento → calendario iniziale). */
 export function calendarioDa(dati: Partial<Calendario> | null | undefined): Calendario {
+  // Mai salvato: si propone il calendario iniziale con le vacanze regionali
+  if (!dati) return calendarioIniziale()
   const giorni = dati?.giorniScolastici
   return {
     giorniScolastici:
@@ -278,4 +280,36 @@ export function conEccezione(cal: Calendario, nuova: Eccezione): Calendario {
 export function senzaEccezione(cal: Calendario, daTogliere: Eccezione): Calendario {
   const chiave = chiaveEccezione(daTogliere)
   return { ...cal, eccezioni: cal.eccezioni.filter((e) => chiaveEccezione(e) !== chiave) }
+}
+
+// ───────────── Vacanze regionali (Emilia-Romagna) ─────────────
+
+/**
+ * Vacanze scolastiche dell'Emilia-Romagna per l'anno che inizia a settembre di `annoInizio`.
+ * Regola fissa della Regione: Natale dal 24/12 al 06/01, Pasqua dal giovedì prima al martedì dopo.
+ * Per il 2026-27 c'è anche il 2 novembre (delibera regionale del 22/05/2026,
+ * https://scuola.regione.emilia-romagna.it/novita/notizie/2026/calendario-scolastico-2026-27).
+ */
+export function vacanzeEmiliaRomagna(annoInizio: number): Vacanza[] {
+  const p = pasqua(annoInizio + 1)
+  const vacanze: Vacanza[] = [
+    { tipo: 'vacanza', da: `${annoInizio}-12-24`, a: `${annoInizio + 1}-01-06`, descrizione: 'Vacanze di Natale' },
+    { tipo: 'vacanza', da: aggiungiGiorni(p, -3), a: aggiungiGiorni(p, 2), descrizione: 'Vacanze di Pasqua' },
+  ]
+  if (annoInizio === 2026) {
+    vacanze.unshift({ tipo: 'vacanza', da: '2026-11-02', a: '2026-11-02', descrizione: 'Commemorazione dei defunti' })
+  }
+  return vacanze
+}
+
+/** Calendario proposto per una classe nuova: lun–ven, feste nazionali e vacanze dell'Emilia-Romagna 2026-27. */
+export function calendarioIniziale(): Calendario {
+  return vacanzeEmiliaRomagna(2026).reduce(conEccezione, { ...CALENDARIO_DEFAULT, eccezioni: [] })
+}
+
+/** Le vacanze regionali che mancano nel calendario (per proporre di aggiungerle). */
+export function vacanzeRegionaliMancanti(cal: Calendario, annoInizio = 2026): Vacanza[] {
+  return vacanzeEmiliaRomagna(annoInizio).filter(
+    (v) => !cal.eccezioni.some((e) => e.tipo === 'vacanza' && e.da === v.da && e.a === v.a),
+  )
 }

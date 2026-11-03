@@ -9,6 +9,7 @@ import {
   formattaGiorno,
   oggiISO,
   senzaEccezione,
+  vacanzeRegionaliMancanti,
   type Calendario,
   type Eccezione,
 } from '../lib/calendar'
@@ -213,6 +214,7 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
   const nomeMateria = (id: string) => materie.find((m) => m.id === id)?.nome ?? 'Materia eliminata'
   const vacanze = cal.eccezioni.filter((e) => e.tipo === 'vacanza')
   const lezioni = cal.eccezioni.filter((e) => e.tipo !== 'vacanza')
+  const mancanti = vacanzeRegionaliMancanti(cal)
   const oggi = oggiISO()
   const feste = festeTra(oggi < '2026-09-01' ? '2026-09-01' : oggi, cal.fineAnno)
 
@@ -246,8 +248,25 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
         <div className="space-y-3">
           <h3 className="font-semibold">Vacanze e chiusure</h3>
           <p className="text-sm text-slate-500">
-            Vacanze regionali o d'istituto, ponti, festa del patrono, chiusure per elezioni…
+            Le vacanze dell'Emilia-Romagna 2026-27 sono già inserite (calendario regionale). Aggiungi quelle
+            d'istituto: ponti, festa del patrono, chiusure per elezioni…
           </p>
+          {mancanti.length > 0 && (
+            <Riquadro tono="info" titolo="Vacanze regionali mancanti">
+              <ul className="list-disc pl-5">
+                {mancanti.map((v) => (
+                  <li key={v.da}>
+                    {v.descrizione}: {v.da === v.a ? formattaData(v.da) : `${formattaData(v.da)} – ${formattaData(v.a)}`}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-2">
+                <Bottone variante="piccolo" onClick={() => salva(mancanti.reduce(conEccezione, cal))}>
+                  Aggiungi le vacanze regionali
+                </Bottone>
+              </div>
+            </Riquadro>
+          )}
           <ElencoEccezioni
             eccezioni={vacanze}
             descrivi={(e) =>
