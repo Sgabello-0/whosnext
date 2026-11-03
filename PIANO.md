@@ -22,7 +22,7 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 - [x] Dominio docenti `@ittsrimini.edu.it`
 - [x] Classi: crea, unisciti con codice/link/QR, gestione membri (vice, DSA/BES, rimozione), permessi dei docenti, cambio codice
 - [x] Calendario (giorni di scuola, feste nazionali calcolate, vacanze, lezioni extra/annullate), materie e interrogazioni; stima delle date pronta (`estimate.ts`)
-- [ ] Preferenze e generazione della lista
+- [x] Preferenze e generazione della lista (per ora la genera il capoclasse o il vice con un pulsante dopo la scadenza; con Netlify diventerà automatica)
 - [ ] Lista pubblica e scambi
 - [ ] Segnare chi è stato interrogato e stima delle date
 - [ ] Notifiche (inbox, email, push) e job pianificato
@@ -48,8 +48,9 @@ classes/{classId}         nome, codiceInvito, capoclasseUid, creato
                           eccezioni [{tipo: vacanza, da, a, descrizione} | {tipo: lezione-extra|lezione-annullata, data, subjectId}]
   subjects/{subjectId}    nome, orario: [giorniSettimana]
     interrogations/{iId}  nome, descrizione, giorni [] (vuoto = nessun giorno), perLezione|null, scadenzaPreferenze, stato: raccolta|lista|conclusa, creato, creatoDa
-      preferences/{uid}   scelta: inizio|meta|fine|indifferente, posizioneDSA?
-      list/current        ordine: [uid], interrogati: {uid: data}
+      preferences/{uid}   scelta: inizio|meta|fine|indifferente|posizione, posizioneDSA|null, aggiornato
+      list/current        ordine: [uid], interrogati: {uid: data}, generata, generataDa
+      list/rapporto       rapporto di soddisfazione e seme del sorteggio (solo capo e vice)
       swaps/{swapId}      daUid, aUid, stato: pending|accettato|rifiutato|annullato, creato
 inbox/{uid}/items/{id}    tipo, riferimento, letto
 ```
@@ -91,6 +92,14 @@ Prima della scadenza ogni studente sceglie: Inizio / Metà / Fine / Non mi inter
 3. Chi ha scelto Inizio viene mescolato a caso e messo dai primi posti liberi. Chi ha scelto Fine viene messo dagli ultimi. Chi ha scelto Metà occupa la fascia centrale partendo dal centro. Se una fascia è troppo piena, chi è in più passa ai posti liberi più vicini.
 4. "Non mi interessa" occupa a caso i posti rimasti. Chi non ha risposto viene trattato allo stesso modo, ma per ultimo.
 5. Viene salvato un rapporto di soddisfazione (quanti hanno ottenuto la fascia scelta), visibile al capo.
+
+Dettagli decisi durante lo sviluppo:
+- Le fasce: inizio e fine sono un terzo (arrotondato) dei posti liberi dopo i DSA, la metà prende il resto.
+- Chi ha il badge DSA/BES può anche scegliere una fascia come tutti. Se il badge viene tolto dopo aver chiesto una posizione, quella preferenza vale come "non mi interessa".
+- A parità di distanza, chi è spostato va al posto più in alto.
+- Il sorteggio usa un seme salvato nel rapporto: con gli stessi dati si ricalcola la stessa lista.
+- I docenti non sono nella lista e non esprimono preferenze. Le preferenze degli altri le vedono solo capo e vice.
+- Il capoclasse può anticipare la scadenza modificando l'interrogazione.
 
 Dopo la generazione il capo può riordinare la lista trascinando i nomi.
 

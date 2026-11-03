@@ -34,7 +34,10 @@ describe('strumenti', () => {
       meta: [3, 4, 5, 6],
       fine: [7, 8, 9],
     })
-    expect(dividiInFasce([0, 1])).toEqual({ inizio: [], meta: [0, 1], fine: [] })
+    expect(dividiInFasce([0, 1, 2, 3, 4, 5, 6, 7])).toEqual({ inizio: [0, 1, 2], meta: [3, 4], fine: [5, 6, 7] })
+    expect(dividiInFasce([0, 1])).toEqual({ inizio: [0], meta: [], fine: [1] })
+    expect(dividiInFasce([0])).toEqual({ inizio: [], meta: [0], fine: [] })
+    expect(dividiInFasce([])).toEqual({ inizio: [], meta: [], fine: [] })
   })
   it('ordina dal centro verso l\'esterno', () => {
     expect(dalCentro([3, 4, 5, 6, 7])).toEqual([5, 4, 6, 3, 7])
@@ -90,6 +93,13 @@ describe('fasce', () => {
     for (const u of studenti(5)) p[u] = pref('fine')
     const pos = posizioni(genera(9, p).ordine)
     expect(studenti(5).map((u) => pos[u]).sort()).toEqual([4, 5, 6, 7, 8])
+  })
+
+  it('con un DSA e due posti liberi, inizio e fine ottengono ciò che chiedono (caso reale)', () => {
+    const { ordine, rapporto } = genera(3, { s00: pref('posizione', 0, 1), s01: pref('inizio'), s02: pref('fine') }, ['s00'])
+    expect(ordine).toEqual(['s00', 's01', 's02'])
+    expect(rapporto.inizio).toEqual({ richieste: 1, ottenute: 1 })
+    expect(rapporto.fine).toEqual({ richieste: 1, ottenute: 1 })
   })
 
   it('se tutti vogliono la metà, si allargano dal centro', () => {
@@ -160,6 +170,8 @@ describe('casi limite e garanzie', () => {
     expect(genera(1, { s00: pref('fine') }).ordine).toEqual(['s00'])
     const due = genera(2, { s00: pref('fine'), s01: pref('inizio') })
     expect(due.ordine).toEqual(['s01', 's00'])
+    expect(due.rapporto.inizio).toEqual({ richieste: 1, ottenute: 1 })
+    expect(due.rapporto.fine).toEqual({ richieste: 1, ottenute: 1 })
   })
 
   it('ignora le preferenze di chi non è più nella classe', () => {

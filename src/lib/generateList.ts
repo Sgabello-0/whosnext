@@ -70,9 +70,12 @@ export function mescola<T>(elementi: readonly T[], casuale: () => number): T[] {
 
 // ───────────── Fasce ─────────────
 
-/** Divide i posti liberi (in ordine) in tre fasce: inizio e fine uguali, la metà prende l'avanzo. */
+/**
+ * Divide i posti liberi (in ordine) in tre fasce: inizio e fine uguali (un terzo arrotondato),
+ * la metà prende il resto. Con 2 posti: uno all'inizio e uno alla fine; con 1 posto: solo la metà.
+ */
 export function dividiInFasce(liberi: readonly number[]): Record<Fascia, number[]> {
-  const t = Math.floor(liberi.length / 3)
+  const t = Math.round(liberi.length / 3)
   return {
     inizio: liberi.slice(0, t),
     meta: liberi.slice(t, liberi.length - t),

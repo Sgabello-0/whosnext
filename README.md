@@ -13,7 +13,8 @@ Avanzamento dettagliato in [PIANO.md](PIANO.md#avanzamento).
 - ✅ Login con account della scuola: studenti (`@studenti.ittsrimini.edu.it`) e docenti (`@ittsrimini.edu.it`, sola lettura salvo permesso del capoclasse)
 - ✅ Classi: crea, unisciti con codice / link / QR, gestione membri, badge DSA/BES, vice, permessi dei docenti
 - ✅ Calendario, materie e interrogazioni (configurati da capoclasse e vice)
-- ⏳ Prossimo passo: preferenze e generazione della lista
+- ✅ Preferenze (inizio/metà/fine, posizione esatta per DSA/BES) e generazione della lista con stima delle date
+- ⏳ Prossimo passo: riordino della lista, scambi tra compagni, segnare chi è stato interrogato
 
 ## Sviluppo
 

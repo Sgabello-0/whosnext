@@ -9,11 +9,15 @@ import { useDocumento } from '../lib/hooks'
 import { puoGestireDSA } from '../lib/membri'
 import { useCalendario } from '../lib/useCalendario'
 import { useClasse } from '../lib/useClasse'
+import { useAdesso } from '../lib/useAdesso'
 import type { Interrogazione as TipoInterrogazione, Materia } from '../lib/tipi'
 import { BadgeStato } from '../components/BadgeStato'
 import { FormInterrogazione } from '../components/FormInterrogazione'
 import { ProssimeLezioni } from '../components/ProssimeLezioni'
 import { StatoClasse } from '../components/StatoClasse'
+import { SceltaPreferenza } from '../components/interrogazione/SceltaPreferenza'
+import { PannelloPreferenze } from '../components/interrogazione/PannelloPreferenze'
+import { ListaInterrogazione } from '../components/interrogazione/ListaInterrogazione'
 import { Bottone, Caricamento, LinkBottone, Riquadro, Scheda } from '../components/ui'
 
 export default function Interrogazione() {
@@ -22,6 +26,7 @@ export default function Interrogazione() {
   const { cal } = useCalendario(classId)
   const materia = useDocumento<Materia>(db && rifMateria(db, classId, subjectId))
   const interr = useDocumento<TipoInterrogazione>(db && rifInterrogazione(db, classId, subjectId, interrogazioneId))
+  const adesso = useAdesso()
   const [modifica, setModifica] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -40,8 +45,11 @@ export default function Interrogazione() {
   }
 
   const i = interr.dati
-  const staff = puoGestireDSA(dati.io)
+  const io = dati.io
+  const staff = puoGestireDSA(io)
   const scadenza = i.scadenzaPreferenze.toDate()
+  const scaduta = scadenza <= adesso
+  const studenti = dati.membri.filter((m) => m.ruolo !== 'docente')
 
   async function elimina() {
     if (!db) return
@@ -101,7 +109,7 @@ export default function Interrogazione() {
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt className="text-slate-500">Preferenze entro</dt>
             <dd>
-              {formattaScadenza(scadenza)} <span className="text-slate-500">({tempoMancante(scadenza)})</span>
+              {formattaScadenza(scadenza)} <span className="text-slate-500">({tempoMancante(scadenza, adesso)})</span>
             </dd>
             <dt className="text-slate-500">Giorni</dt>
             <dd>{i.giorni.length ? i.giorni.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}</dd>
@@ -115,11 +123,41 @@ export default function Interrogazione() {
         {cal ? <ProssimeLezioni giorni={i.giorni} subjectId={subjectId} cal={cal} /> : <Caricamento />}
       </Scheda>
 
-      {i.stato === 'raccolta' && (
-        <Riquadro tono="info" titolo="Preferenze">
-          A breve qui sceglierai se essere interrogato all'inizio, a metà o alla fine. Dopo la scadenza il sito genererà
-          la lista.
-        </Riquadro>
+      {i.stato === 'raccolta' && io.ruolo !== 'docente' && (
+        <SceltaPreferenza
+          classId={classId}
+          subjectId={subjectId}
+          interrogazioneId={interrogazioneId}
+          uid={io.uid}
+          dsa={dati.dsa.has(io.uid)}
+          numeroStudenti={studenti.length}
+          aperta={!scaduta}
+        />
+      )}
+      {i.stato === 'raccolta' && io.ruolo === 'docente' && (
+        <Riquadro tono="info">Gli studenti stanno scegliendo le preferenze. La lista comparirà qui dopo la scadenza.</Riquadro>
+      )}
+      {i.stato === 'raccolta' && staff && (
+        <PannelloPreferenze
+          classId={classId}
+          subjectId={subjectId}
+          interrogazioneId={interrogazioneId}
+          mioUid={io.uid}
+          studenti={studenti}
+          scaduta={scaduta}
+        />
+      )}
+      {i.stato !== 'raccolta' && cal && (
+        <ListaInterrogazione
+          classId={classId}
+          subjectId={subjectId}
+          interrogazioneId={interrogazioneId}
+          interrogazione={i}
+          membri={dati.membri}
+          mioUid={io.uid}
+          cal={cal}
+          staff={staff}
+        />
       )}
     </>
   )
