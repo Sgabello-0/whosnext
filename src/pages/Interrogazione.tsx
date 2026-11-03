@@ -6,7 +6,7 @@ import { aggiornaInterrogazione, eliminaInterrogazione, rifInterrogazione, rifMa
 import { messaggioErrore } from '../lib/errori'
 import { formattaScadenza, tempoMancante } from '../lib/formatoDate'
 import { useDocumento } from '../lib/hooks'
-import { puoGestireDSA } from '../lib/membri'
+import { puoGestireDSA, puoModificareListe } from '../lib/membri'
 import { useCalendario } from '../lib/useCalendario'
 import { useClasse } from '../lib/useClasse'
 import { useAdesso } from '../lib/useAdesso'
@@ -157,6 +157,7 @@ export default function Interrogazione() {
           mioUid={io.uid}
           cal={cal}
           staff={staff}
+          puoModificare={puoModificareListe(io)}
         />
       )}
     </>

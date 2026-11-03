@@ -1,11 +1,17 @@
+import { useState } from 'react'
 import { db } from '../../lib/firebase'
-import { oggiISO, type Calendario } from '../../lib/calendar'
+import { formattaGiorno, oggiISO, type Calendario } from '../../lib/calendar'
 import { rifLista, rifRapporto } from '../../lib/configurazione'
 import { messaggioErrore } from '../../lib/errori'
 import { stimaInterrogazione, testoStima } from '../../lib/estimate'
+import { togliInterrogato } from '../../lib/gestioneLista'
 import { useDocumento } from '../../lib/hooks'
+import { nonInterrogati } from '../../lib/lista'
 import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/tipi'
-import { Avatar, Badge, Caricamento, Riquadro, Scheda } from '../ui'
+import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda } from '../ui'
+import { RiordinaLista } from './RiordinaLista'
+import { SegnaInterrogati } from './SegnaInterrogati'
+import { Segnalazioni, SonoStatoInterrogato } from './Segnalazioni'
 
 type Props = {
   classId: string
@@ -15,70 +21,152 @@ type Props = {
   membri: Membro[]
   mioUid: string
   cal: Calendario
+  /** capo e vice: vedono il rapporto */
   staff: boolean
+  /** capo, vice e docenti con permesso: riordinano e segnano gli interrogati */
+  puoModificare: boolean
 }
 
-/** La lista generata, con la data stimata per ognuno. */
+/** La lista generata, con la data stimata per ognuno e gli strumenti per chi la gestisce. */
 export function ListaInterrogazione(p: Props) {
   const lista = useDocumento<DocLista>(db && rifLista(db, p.classId, p.subjectId, p.interrogazioneId))
+  const [riordino, setRiordino] = useState(false)
+  const [errore, setErrore] = useState<string | null>(null)
+
   if (lista.errore) return <Riquadro tono="errore">{messaggioErrore(lista.errore)}</Riquadro>
   if (lista.dati === undefined) return <Caricamento />
   if (lista.dati === null) return <Riquadro tono="avviso">La lista non è ancora disponibile.</Riquadro>
 
+  const r = { classId: p.classId, subjectId: p.subjectId, interrogazioneId: p.interrogazioneId }
   const { ordine, interrogati } = lista.dati
   const perUid = new Map(p.membri.map((m) => [m.uid, m]))
   const oggi = oggiISO()
   // k = posizione tra i non ancora interrogati
-  const nonInterrogati = ordine.filter((u) => !interrogati[u])
+  const mancanti = nonInterrogati(ordine, interrogati)
+  const interrogatiOggi = Object.values(interrogati).filter((d) => d === oggi).length
   const stima = (uid: string) =>
     testoStima(
       stimaInterrogazione({
-        k: nonInterrogati.indexOf(uid),
+        k: mancanti.indexOf(uid),
         perLezione: p.interrogazione.perLezione,
         giorni: p.interrogazione.giorni,
         subjectId: p.subjectId,
         cal: p.cal,
         da: oggi,
+        giaInterrogatiDa: interrogatiOggi,
       }),
     )
   const miaPosizione = ordine.indexOf(p.mioUid)
 
+  async function annullaInterrogato(uid: string) {
+    if (!db) return
+    setErrore(null)
+    try {
+      await togliInterrogato(db, r, uid, p.mioUid)
+    } catch (e) {
+      setErrore(messaggioErrore(e))
+    }
+  }
+
   return (
     <>
       {miaPosizione >= 0 && (
-        <Riquadro tono="info" titolo={`Sei il n° ${miaPosizione + 1} di ${ordine.length}`}>
-          {interrogati[p.mioUid] ? 'Sei già stato interrogato.' : stima(p.mioUid)}
+        <Riquadro
+          tono={interrogati[p.mioUid] ? 'ok' : 'info'}
+          titolo={`Sei il n° ${miaPosizione + 1} di ${ordine.length}`}
+        >
+          {interrogati[p.mioUid] ? (
+            `Sei stato interrogato ${formattaGiorno(interrogati[p.mioUid]!).toLowerCase()}.`
+          ) : (
+            <div className="space-y-3">
+              <p>{stima(p.mioUid)}</p>
+              {/* chi modifica le liste si segna da solo nella scheda qui sotto */}
+              {!p.puoModificare && <SonoStatoInterrogato r={r} uid={p.mioUid} />}
+            </div>
+          )}
         </Riquadro>
       )}
 
-      <Scheda titolo="Lista">
-        <ol className="divide-y divide-slate-200 dark:divide-slate-800" aria-label="Ordine delle interrogazioni">
-          {ordine.map((uid, i) => {
-            const m = perUid.get(uid)
-            const io = uid === p.mioUid
-            const fatto = !!interrogati[uid]
-            return (
-              <li
-                key={uid}
-                className={`flex items-center gap-3 py-2.5 ${io ? '-mx-2 rounded-lg bg-accento-chiaro px-2 dark:bg-blue-950/60' : ''}`}
-              >
-                <span className="w-7 shrink-0 text-right font-mono text-sm text-slate-500">{i + 1}</span>
-                <Avatar nome={m?.nome ?? '?'} foto={m?.foto ?? null} />
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-1.5">
-                    <span className={`truncate font-medium ${fatto ? 'text-slate-400 line-through' : ''}`}>
-                      {m?.nome ?? 'Ex membro'}
-                    </span>
-                    {io && <Badge>tu</Badge>}
-                    {fatto && <Badge colore="verde">interrogato</Badge>}
-                  </p>
-                  {!fatto && <p className="text-xs text-slate-500">{stima(uid)}</p>}
-                </div>
-              </li>
-            )
-          })}
-        </ol>
-      </Scheda>
+      {p.interrogazione.stato === 'conclusa' && (
+        <Riquadro tono="ok" titolo="Interrogazione conclusa">
+          Sono stati interrogati tutti.
+        </Riquadro>
+      )}
+
+      {p.puoModificare && !riordino && (
+        <>
+          <Segnalazioni r={r} membri={perUid} mioUid={p.mioUid} />
+          <SegnaInterrogati
+            key={`${mancanti.slice(0, 10).join()}|${p.interrogazione.perLezione}`}
+            r={r}
+            interrogazione={p.interrogazione}
+            ordine={ordine}
+            interrogati={interrogati}
+            membri={perUid}
+            cal={p.cal}
+            mioUid={p.mioUid}
+          />
+        </>
+      )}
+
+      {riordino ? (
+        <RiordinaLista
+          r={r}
+          ordine={ordine}
+          interrogati={interrogati}
+          membri={perUid}
+          mioUid={p.mioUid}
+          onFine={() => setRiordino(false)}
+        />
+      ) : (
+        <Scheda
+          titolo="Lista"
+          azioni={
+            p.puoModificare ? (
+              <Bottone variante="piccolo" onClick={() => setRiordino(true)}>
+                Riordina
+              </Bottone>
+            ) : undefined
+          }
+        >
+          {errore && (
+            <div className="mb-3">
+              <Riquadro tono="errore">{errore}</Riquadro>
+            </div>
+          )}
+          <ol className="divide-y divide-slate-200 dark:divide-slate-800" aria-label="Ordine delle interrogazioni">
+            {ordine.map((uid, i) => {
+              const m = perUid.get(uid)
+              const io = uid === p.mioUid
+              const quando = interrogati[uid]
+              return (
+                <li
+                  key={uid}
+                  className={`flex items-center gap-3 py-2.5 ${io ? '-mx-2 rounded-lg bg-accento-chiaro px-2 dark:bg-blue-950/60' : ''}`}
+                >
+                  <span className="w-7 shrink-0 text-right font-mono text-sm text-slate-500">{i + 1}</span>
+                  <Avatar nome={m?.nome ?? '?'} foto={m?.foto ?? null} />
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-1.5">
+                      <span className={`truncate font-medium ${quando ? 'text-slate-400 line-through' : ''}`}>
+                        {m?.nome ?? 'Ex membro'}
+                      </span>
+                      {io && <Badge>tu</Badge>}
+                      {quando && <Badge colore="verde">interrogato</Badge>}
+                    </p>
+                    <p className="text-xs text-slate-500">{quando ? formattaGiorno(quando) : stima(uid)}</p>
+                  </div>
+                  {quando && p.puoModificare && (
+                    <Bottone variante="piccolo" aria-label={`Annulla interrogato ${m?.nome ?? ''}`} onClick={() => annullaInterrogato(uid)}>
+                      Annulla
+                    </Bottone>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
+        </Scheda>
+      )}
 
       {p.staff && <RapportoSoddisfazione {...p} />}
     </>
@@ -106,7 +194,10 @@ function RapportoSoddisfazione(p: Props) {
         {riga('Metà ottenuta', r.meta.ottenute, r.meta.richieste)}
         {riga('Fine ottenuta', r.fine.ottenute, r.fine.richieste)}
         {riga('DSA/BES alla posizione esatta', r.dsa.esatte, r.dsa.richieste)}
-        <li className="text-xs text-slate-500">Seme del sorteggio: {r.seme}</li>
+        <li className="text-xs text-slate-500">
+          Seme del sorteggio: {r.seme}. Il rapporto si riferisce alla lista appena generata, prima di eventuali
+          riordini.
+        </li>
       </ul>
     </Scheda>
   )

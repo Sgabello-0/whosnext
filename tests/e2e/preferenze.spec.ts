@@ -103,4 +103,58 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
 
   await bruno.screenshot({ path: info.outputPath('lista-studente.png'), fullPage: true })
   await anna.screenshot({ path: info.outputPath('lista-capo.png'), fullPage: true })
+
+  // ── Riordino: il docente senza permesso non può; Anna sposta Carla giù con la freccia ──
+  await expect(rossi.getByRole('button', { name: 'Riordina' })).toHaveCount(0)
+  await expect(bruno.getByRole('button', { name: 'Riordina' })).toHaveCount(0)
+  await anna.getByRole('button', { name: 'Riordina' }).click()
+  await anna.getByRole('button', { name: 'Sposta giù Carla Blu' }).click()
+  const nuovo = anna.getByRole('list', { name: 'Nuovo ordine' })
+  await expect(nuovo.getByRole('listitem').nth(0)).toContainText('Anna Verdi')
+  // ... e Bruno su di uno con la tastiera (spazio, freccia su, spazio)
+  await anna.getByRole('button', { name: 'Trascina Bruno Neri' }).focus()
+  // dnd-kit misura le posizioni all'inizio del trascinamento: tra un tasto e l'altro serve un attimo
+  for (const tasto of ['Space', 'ArrowUp', 'Space']) {
+    await anna.keyboard.press(tasto)
+    await anna.waitForTimeout(250)
+  }
+  await expect(nuovo.getByRole('listitem').nth(1)).toContainText('Bruno Neri')
+  await expect(nuovo.getByRole('listitem').nth(2)).toContainText('Carla Blu')
+  await anna.getByRole('button', { name: 'Salva ordine' }).click()
+  await expect(ordine.getByRole('listitem').nth(0)).toContainText('Anna Verdi')
+  await expect(carla.getByText('Sei il n° 3 di 3')).toBeVisible() // in tempo reale
+  await expect(bruno.getByText('Sei il n° 2 di 3')).toBeVisible()
+
+  // ── Lezione: proposta Anna (la prima); era "assente", interrogato invece Bruno ──
+  const segna = anna.getByRole('region', { name: 'Segna chi è stato interrogato' }).or(anna.locator('section', { hasText: 'Segna chi è stato interrogato' }))
+  await expect(segna.getByRole('checkbox', { name: 'Anna Verdi' })).toBeChecked()
+  await segna.getByRole('checkbox', { name: 'Anna Verdi' }).uncheck()
+  await segna.getByLabel('Interrogato anche qualcun altro?').selectOption({ label: 'Bruno Neri' })
+  await segna.getByRole('button', { name: 'Conferma 1 interrogato' }).click()
+  await expect(ordine.getByRole('listitem').nth(1)).toContainText('interrogato')
+  await expect(bruno.getByText(/Sei stato interrogato/)).toBeVisible()
+  // Anna (assente) resta la prima da interrogare: è di nuovo proposta
+  await expect(segna.getByRole('checkbox', { name: 'Anna Verdi' })).toBeChecked()
+  // capo e vice non hanno "Sono stato interrogato" (si segnano da soli)
+  await expect(anna.getByRole('button', { name: 'Sono stato interrogato' })).toHaveCount(0)
+
+  // ── Carla segnala "Sono stato interrogato", Anna conferma ──
+  await carla.getByRole('button', { name: 'Sono stato interrogato' }).click()
+  await carla.getByRole('button', { name: 'Segnala' }).click()
+  await expect(carla.getByText(/in attesa che il capoclasse confermi/)).toBeVisible()
+  await expect(anna.getByText(/Carla Blu segnala l'interrogazione di/)).toBeVisible()
+  await anna.screenshot({ path: info.outputPath('gestione-lista.png'), fullPage: true })
+  await anna.getByRole('button', { name: 'Conferma', exact: true }).click()
+  await expect(carla.getByText(/Sei stato interrogato/)).toBeVisible()
+
+  // ── Anna segna sé stessa: interrogazione conclusa ──
+  await segna.getByRole('button', { name: 'Conferma 1 interrogato' }).click()
+  await expect(anna.getByText('Interrogazione conclusa')).toBeVisible()
+  await expect(rossi.getByText('Interrogazione conclusa')).toBeVisible()
+  await expect(rossi.getByText('Conclusa', { exact: true })).toBeVisible()
+
+  // ── Annullando un interrogato torna "Lista pronta" ──
+  await anna.getByRole('button', { name: 'Annulla interrogato Carla Blu' }).click()
+  await expect(anna.getByText('Interrogazione conclusa')).toHaveCount(0)
+  await expect(carla.getByText('Sei il n° 3 di 3')).toBeVisible()
 })

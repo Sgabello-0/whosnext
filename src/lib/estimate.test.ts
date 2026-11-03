@@ -30,6 +30,28 @@ describe('stimaInterrogazione', () => {
       prossimaLezione: null,
     })
   })
+  it('chi è già stato interrogato oggi occupa i posti della lezione di oggi', () => {
+    // martedì 03/11, 1 per lezione, già interrogato uno oggi → il primo rimasto va a giovedì
+    expect(stimaInterrogazione({ ...base, k: 0, perLezione: 1, giorni: MAR_GIO, giaInterrogatiDa: 1 })).toEqual({
+      tipo: 'data',
+      data: '2026-11-05',
+    })
+    // 2 per lezione, uno già fatto oggi → c'è ancora un posto oggi
+    expect(stimaInterrogazione({ ...base, k: 0, perLezione: 2, giorni: MAR_GIO, giaInterrogatiDa: 1 })).toEqual({
+      tipo: 'data',
+      data: '2026-11-03',
+    })
+    // mercoledì: oggi niente lezione, quindi non conta
+    expect(
+      stimaInterrogazione({ ...base, da: '2026-11-04', k: 0, perLezione: 1, giorni: MAR_GIO, giaInterrogatiDa: 1 }),
+    ).toEqual({ tipo: 'data', data: '2026-11-05' })
+    // senza giorni: "tra N lezioni" non lo sa
+    expect(stimaInterrogazione({ ...base, k: 0, perLezione: 1, giorni: [], giaInterrogatiDa: 1 })).toEqual({
+      tipo: 'lezioni',
+      tra: 1,
+    })
+  })
+
   it('oltre il 06/06/2027', () => {
     expect(stimaInterrogazione({ ...base, da: '2027-06-01', k: 10, perLezione: 2, giorni: MAR_GIO })).toEqual({
       tipo: 'oltre-fine-anno',

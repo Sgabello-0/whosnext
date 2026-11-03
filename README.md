@@ -14,7 +14,8 @@ Avanzamento dettagliato in [PIANO.md](PIANO.md#avanzamento).
 - ✅ Classi: crea, unisciti con codice / link / QR, gestione membri, badge DSA/BES, vice, permessi dei docenti
 - ✅ Calendario, materie e interrogazioni (configurati da capoclasse e vice)
 - ✅ Preferenze (inizio/metà/fine, posizione esatta per DSA/BES) e generazione della lista con stima delle date
-- ⏳ Prossimo passo: riordino della lista, scambi tra compagni, segnare chi è stato interrogato
+- ✅ Riordino della lista, chi è stato interrogato, "Sono stato interrogato"
+- ⏳ Prossimo passo: Netlify (pubblicazione, funzioni sul server) per scambi, notifiche e generazione automatica
 
 ## Sviluppo
 

@@ -23,8 +23,9 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 - [x] Classi: crea, unisciti con codice/link/QR, gestione membri (vice, DSA/BES, rimozione), permessi dei docenti, cambio codice
 - [x] Calendario (giorni di scuola, feste nazionali calcolate, vacanze, lezioni extra/annullate), materie e interrogazioni; stima delle date pronta (`estimate.ts`)
 - [x] Preferenze e generazione della lista (per ora la genera il capoclasse o il vice con un pulsante dopo la scadenza; con Netlify diventerà automatica)
-- [ ] Lista pubblica e scambi
-- [ ] Segnare chi è stato interrogato e stima delle date
+- [x] Lista pubblica, riordino trascinando (anche con frecce e tastiera)
+- [ ] Scambi (con le Netlify Functions: accettare uno scambio cambia la lista di tutti, quindi lo fa il server)
+- [x] Segnare chi è stato interrogato (proposta dei primi N, assenti in testa, "Sono stato interrogato" con conferma) e stima delle date
 - [ ] Notifiche (inbox, email, push) e job pianificato
 - [ ] Deploy su Netlify
 
@@ -115,6 +116,8 @@ Dopo la generazione il capo può riordinare la lista trascinando i nomi.
 
 - Dopo ogni lezione il sito prepara i primi N non ancora interrogati come "probabilmente interrogati". Il capo o il vice conferma con un tocco e corregge chi era assente.
 - Ognuno può segnarsi da solo con "Sono stato interrogato" e il capo approva. Gli assenti tornano in testa ai non interrogati.
+
+Chi segna gli interrogati: capo, vice e docenti con permesso. Se il giorno stesso ne sono già stati segnati alcuni, la stima tiene conto dei posti già occupati in quella lezione. Quando sono stati interrogati tutti l'interrogazione diventa "conclusa" (torna "lista" se se ne toglie uno).
 
 ### Stima della data
 

@@ -3,7 +3,7 @@
  *
  * k = posizione tra i non ancora interrogati (da 0); lezioneIndex = floor(k / perLezione).
  */
-import { formattaGiorno, prossimeLezioni, type Calendario, type DataISO } from './calendar'
+import { formattaGiorno, haLezione, prossimeLezioni, type Calendario, type DataISO } from './calendar'
 
 export type Stima =
   /** "Stimata: Martedì 03/11" */
@@ -24,9 +24,16 @@ export function stimaInterrogazione(opz: {
   cal: Calendario
   /** primo giorno da considerare (di solito oggi) */
   da: DataISO
+  /**
+   * quanti sono già stati segnati come interrogati nel giorno `da`:
+   * se quel giorno c'è lezione, hanno già occupato dei posti
+   */
+  giaInterrogatiDa?: number
 }): Stima {
-  const { k, perLezione, giorni, subjectId, cal, da } = opz
+  const { perLezione, giorni, subjectId, cal, da } = opz
   const conGiorni = giorni.length > 0
+  const lezioneOggi = haLezione(da, giorni, subjectId, cal)
+  const k = opz.k + (lezioneOggi ? (opz.giaInterrogatiDa ?? 0) : 0)
 
   if (!perLezione || perLezione < 1) {
     const [prossima] = conGiorni ? prossimeLezioni({ giorni, subjectId, cal, da, quante: 1 }) : []
