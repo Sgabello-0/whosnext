@@ -1,0 +1,239 @@
+rules_version = '2';
+
+// Regole di sicurezza di "Interrogazioni di Classe".
+// Tutto ciò che non è esplicitamente permesso è vietato.
+// I domini della scuola sono gli stessi di src/lib/domain.ts (DOMINI_DEFAULT).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ───────────── Identità ─────────────
+
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email_verified == true;
+    }
+    function emailMinuscola() {
+      return request.auth.token.email.lower();
+    }
+    // matches() confronta l'intera stringa: niente sottodomini o suffissi.
+    function isStudente() {
+      return signedIn() && emailMinuscola().matches('[^@\\s]+@studenti[.]ittsrimini[.]edu[.]it');
+    }
+    function isDocente() {
+      return signedIn() && emailMinuscola().matches('[^@\\s]+@ittsrimini[.]edu[.]it');
+    }
+    function isScuola() {
+      return isStudente() || isDocente();
+    }
+    // Il tipo di account dipende solo dal dominio: non si può scegliere.
+    function tipoAccount() {
+      return isStudente() ? 'studente' : 'docente';
+    }
+
+    // ───────────── Percorsi e ruoli ─────────────
+
+    function classePath(c) {
+      return /databases/$(database)/documents/classes/$(c);
+    }
+    function membroPath(c, u) {
+      return /databases/$(database)/documents/classes/$(c)/members/$(u);
+    }
+    function invitoPath(codice) {
+      return /databases/$(database)/documents/invites/$(codice);
+    }
+
+    function isMembro(c) {
+      return isScuola() && exists(membroPath(c, request.auth.uid));
+    }
+    function mioRuolo(c) {
+      return get(membroPath(c, request.auth.uid)).data.ruolo;
+    }
+    function isCapo(c) {
+      return isMembro(c) && get(classePath(c)).data.capoclasseUid == request.auth.uid;
+    }
+    function isCapoOVice(c) {
+      return isMembro(c) && mioRuolo(c) in ['capo', 'vice'];
+    }
+
+    // ───────────── Validazioni ─────────────
+
+    function testo(v, max) {
+      return v is string && v.size() >= 1 && v.size() <= max;
+    }
+    function fotoValida(v) {
+      return v == null || (v is string && v.size() <= 2048);
+    }
+    function codiceValido(codice) {
+      return codice is string && codice.matches('[A-Z2-9]{6}');
+    }
+
+    // ───────────── Utenti ─────────────
+
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if isScuola() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nome', 'email', 'foto', 'tipo', 'impostazioni', 'creato', 'aggiornato'])
+        && testo(request.resource.data.nome, 100)
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.tipo == tipoAccount()
+        && fotoValida(request.resource.data.get('foto', null))
+        && request.resource.data.impostazioni is map;
+      allow delete: if false;
+    }
+
+    // ───────────── Codici d'invito ─────────────
+    // invites/{codice} → { classId, nomeClasse }
+    // Si può leggere un codice che si conosce (get), mai elencarli tutti (list).
+
+    match /invites/{codice} {
+      allow get: if isScuola();
+      allow list: if false;
+
+      allow create: if isScuola() && codiceValido(codice)
+        && request.resource.data.keys().hasOnly(['classId', 'nomeClasse'])
+        && getAfter(classePath(request.resource.data.classId)).data.capoclasseUid == request.auth.uid
+        && getAfter(classePath(request.resource.data.classId)).data.codiceInvito == codice
+        && request.resource.data.nomeClasse == getAfter(classePath(request.resource.data.classId)).data.nome;
+
+      // Solo per aggiornare il nome quando il capoclasse rinomina la classe.
+      allow update: if isCapo(resource.data.classId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nomeClasse'])
+        && request.resource.data.nomeClasse == getAfter(classePath(resource.data.classId)).data.nome;
+
+      // Solo quando il codice della classe viene sostituito da uno nuovo.
+      allow delete: if isCapo(resource.data.classId)
+        && getAfter(classePath(resource.data.classId)).data.codiceInvito != codice;
+    }
+
+    // ───────────── Classi ─────────────
+
+    match /classes/{c} {
+      allow read: if isMembro(c);
+
+      // Solo gli studenti creano classi. Nello stesso batch vanno creati
+      // il proprio documento membro (ruolo capo) e il codice d'invito.
+      allow create: if isStudente()
+        && request.resource.data.keys().hasOnly(['nome', 'codiceInvito', 'capoclasseUid', 'creato'])
+        && testo(request.resource.data.nome, 60)
+        && request.resource.data.capoclasseUid == request.auth.uid
+        && codiceValido(request.resource.data.codiceInvito)
+        && request.resource.data.creato == request.time
+        && getAfter(membroPath(c, request.auth.uid)).data.ruolo == 'capo'
+        && getAfter(invitoPath(request.resource.data.codiceInvito)).data.classId == c;
+
+      // Il capoclasse può rinominare la classe o cambiare il codice d'invito.
+      // Se cambia il codice, nello stesso batch crea il nuovo e cancella il vecchio.
+      allow update: if isCapo(c)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'codiceInvito'])
+        && testo(request.resource.data.nome, 60)
+        && codiceValido(request.resource.data.codiceInvito)
+        && (
+          request.resource.data.codiceInvito == resource.data.codiceInvito
+          || (
+            getAfter(invitoPath(request.resource.data.codiceInvito)).data.classId == c
+            && !existsAfter(invitoPath(resource.data.codiceInvito))
+          )
+        );
+
+      allow delete: if false;
+
+      // ───── Membri ─────
+      // members/{uid} → { uid, nome, email, foto, ruolo, permessoModifica, richiestaPermesso, codiceUsato, entrato }
+      // ruolo: capo | vice | studente | docente
+
+      match /members/{u} {
+        allow read: if isMembro(c);
+        // Il proprio documento si può sempre leggere, anche se non esiste ancora (per sapere se si è già iscritti).
+        allow get: if isScuola() && u == request.auth.uid;
+
+        allow create: if isScuola() && u == request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid', 'nome', 'email', 'foto', 'ruolo', 'permessoModifica', 'richiestaPermesso', 'codiceUsato', 'entrato'])
+          && request.resource.data.uid == u
+          && testo(request.resource.data.nome, 100)
+          && request.resource.data.email == request.auth.token.email
+          && fotoValida(request.resource.data.get('foto', null))
+          && request.resource.data.permessoModifica == false
+          && request.resource.data.richiestaPermesso == false
+          && codiceValido(request.resource.data.codiceUsato)
+          && request.resource.data.entrato == request.time
+          && (
+            // Il capoclasse mentre crea la classe
+            (
+              request.resource.data.ruolo == 'capo'
+              && !exists(classePath(c))
+              && getAfter(classePath(c)).data.capoclasseUid == u
+            )
+            ||
+            // Chiunque della scuola con un codice d'invito valido: entra come studente o docente
+            (
+              request.resource.data.ruolo == tipoAccount()
+              && exists(classePath(c))
+              && get(invitoPath(request.resource.data.codiceUsato)).data.classId == c
+            )
+          );
+
+        allow update: if isMembro(c) && (
+          // Sé stessi: nome e foto; i docenti anche la richiesta di permesso
+          (
+            u == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'foto', 'richiestaPermesso'])
+            && testo(request.resource.data.nome, 100)
+            && fotoValida(request.resource.data.get('foto', null))
+            && (
+              request.resource.data.richiestaPermesso == resource.data.richiestaPermesso
+              || (resource.data.ruolo == 'docente' && request.resource.data.richiestaPermesso is bool && resource.data.permessoModifica == false)
+            )
+          )
+          ||
+          // Il capoclasse sugli altri: nomina o toglie il vice, dà o toglie il permesso ai docenti
+          (
+            isCapo(c) && u != request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ruolo', 'permessoModifica', 'richiestaPermesso'])
+            && (
+              (
+                resource.data.ruolo in ['studente', 'vice']
+                && request.resource.data.ruolo in ['studente', 'vice']
+                && request.resource.data.permessoModifica == false
+                && request.resource.data.richiestaPermesso == false
+              )
+              ||
+              (
+                resource.data.ruolo == 'docente'
+                && request.resource.data.ruolo == 'docente'
+                && request.resource.data.permessoModifica is bool
+                && request.resource.data.richiestaPermesso == false
+              )
+            )
+          )
+        );
+
+        // Si esce da soli, oppure il capoclasse rimuove. Il capoclasse non può uscire.
+        allow delete: if isMembro(c) && resource.data.ruolo != 'capo'
+          && (u == request.auth.uid || isCapo(c));
+      }
+
+      // ───── Badge DSA/BES ─────
+      // dsa/{uid} esiste se lo studente ha il badge. Lo vedono solo capo, vice e il diretto interessato.
+
+      match /dsa/{u} {
+        allow read: if isMembro(c) && (u == request.auth.uid || mioRuolo(c) in ['capo', 'vice']);
+        allow create: if isCapoOVice(c)
+          && get(membroPath(c, u)).data.ruolo in ['capo', 'vice', 'studente']
+          && request.resource.data.keys().hasOnly(['impostatoDa', 'quando'])
+          && request.resource.data.impostatoDa == request.auth.uid
+          && request.resource.data.quando == request.time;
+        allow update: if false;
+        // Capo e vice tolgono il badge; il diretto interessato può toglierlo a sé stesso (ad esempio uscendo dalla classe).
+        allow delete: if isCapoOVice(c) || (isMembro(c) && u == request.auth.uid);
+      }
+    }
+
+    // ───────────── Le mie classi (query su tutti i "members") ─────────────
+
+    match /{percorso=**}/members/{u} {
+      allow read: if isScuola() && resource.data.uid == request.auth.uid;
+    }
+  }
+}
