@@ -14,7 +14,10 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:regole": "firebase emulators:exec --only firestore --project demo-whosnext \"vitest run --config vitest.rules.config.ts\""
+    "test:regole": "firebase emulators:exec --only firestore --project demo-whosnext \"vitest run --config vitest.rules.config.ts\"",
+    "dev:emu": "firebase emulators:exec --only auth,firestore --project demo-whosnext --ui \"vite --mode emulator\"",
+    "test:e2e": "firebase emulators:exec --only auth,firestore --project demo-whosnext \"playwright test\"",
+    "deploy:regole": "firebase deploy --only firestore:rules,firestore:indexes"
   },
   "dependencies": {
     "firebase": "^13.2.0",
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^6.0.0",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.3.4",
     "@types/node": "^26.6.6",
     "@types/qrcode": "^1.5.6",

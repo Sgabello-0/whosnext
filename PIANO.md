@@ -15,6 +15,19 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 
    Il tipo di account dipende solo dal dominio dell'email verificata da Google, non si sceglie. Il Piano B (Gmail personali con codice d'invito) per ora non serve.
 
+## Avanzamento
+
+- [x] Repository GitHub e piano (03/11/2026)
+- [x] Test del login con account `@studenti.ittsrimini.edu.it` (riuscito il 03/11/2026)
+- [x] Dominio docenti `@ittsrimini.edu.it`
+- [x] Classi: crea, unisciti con codice/link/QR, gestione membri (vice, DSA/BES, rimozione), permessi dei docenti, cambio codice
+- [ ] Calendario, materie e interrogazioni
+- [ ] Preferenze e generazione della lista
+- [ ] Lista pubblica e scambi
+- [ ] Segnare chi è stato interrogato e stima delle date
+- [ ] Notifiche (inbox, email, push) e job pianificato
+- [ ] Deploy su Netlify
+
 ## Stack (tutto gratuito)
 
 - **Frontend**: React + Vite + TypeScript, Tailwind, `@dnd-kit` per il trascinamento, installabile come PWA (serve per le notifiche push su iPhone).
@@ -26,10 +39,11 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 ## Modello dati (Firestore)
 
 ```
-users/{uid}               nome, email, foto, impostazioni { autoRifiutaScambi, notificheEmail, notifichePush }, fcmTokens[]
-classes/{classId}         nome, codiceInvito, capoclasseUid, viceUids[], dominioConsentito?
-  members/{uid}           nome, ruolo (capo|vice|studente|docente), dsa: bool, permessoModifica?: bool (solo docenti)
-  permissionRequests/{uid}  richiesta di permesso di modifica di un docente: stato pending|accettato|rifiutato, creato
+users/{uid}               nome, email, foto, tipo (studente|docente), impostazioni { autoRifiutaScambi, notificheEmail, notifichePush }, fcmTokens[]
+invites/{codice}          classId, nomeClasse            (si legge solo conoscendo il codice, non si può elencare)
+classes/{classId}         nome, codiceInvito, capoclasseUid, creato
+  members/{uid}           uid, nome, email, foto, ruolo (capo|vice|studente|docente), permessoModifica, richiestaPermesso, codiceUsato, entrato
+  dsa/{uid}               impostatoDa, quando            (esiste = badge DSA/BES; lo leggono solo capo, vice e il diretto interessato)
   calendar/settings       giorniScolastici (lun-sab on/off), eccezioni [{data, tipo: vacanza|lezione-extra}], fineAnno: 2027-06-06
   subjects/{subjectId}    nome, orario: [giorniSettimana]
     interrogations/{iId}  nome, descrizione?, giorni?, perLezione?, scadenzaPreferenze, stato: raccolta|lista|conclusa
@@ -38,6 +52,8 @@ classes/{classId}         nome, codiceInvito, capoclasseUid, viceUids[], dominio
       swaps/{swapId}      daUid, aUid, stato: pending|accettato|rifiutato|annullato, creato
 inbox/{uid}/items/{id}    tipo, riferimento, letto
 ```
+
+Il badge DSA/BES sta in una collezione separata (`dsa`) perché le regole di Firestore proteggono documenti interi, non singoli campi: se fosse un campo di `members` lo vedrebbe tutta la classe. Il vice e i docenti con permesso sono indicati dal `ruolo` e da `permessoModifica` nel documento del membro.
 
 Le regole di sicurezza permettono letture e scritture solo ai membri della classe. Ordine della lista, badge DSA e calendario li modificano solo capo e vice. Gli scambi li accetta solo il server (Functions).
 
@@ -121,6 +137,8 @@ La logica pura (lista, stime, calendario, redistribuzione degli scambi) sta in m
 
 ## Verifica
 
+- Regole di Firestore: test contro l'emulatore (`npm run test:regole`), compresi i tentativi di aggirare il sito scrivendo direttamente sul database.
+- Browser: test Playwright del percorso completo con più utenti, da computer e da telefono (`npm run test:e2e`).
 - Vitest: domini studenti/docenti; fasce, DSA, conflitti, classi piccole, docenti esclusi dalla lista; stime con feste, senza giorni, senza numero, oltre il 06/06; il caso Leonardo → Mario → me.
 - Firebase Emulator + `netlify dev` in locale con 3-4 account di test, per provare l'intero percorso: classe, preferenze, lista, scambi, interrogati.
 - Prova a larghezza da telefono.

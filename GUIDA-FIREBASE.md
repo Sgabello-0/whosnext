@@ -99,6 +99,51 @@ Serve che il referente informatico autorizzi l'app nella Console di amministrazi
 
 3. **Piano B**, se la scuola non autorizza: il sito accetterà anche account Gmail personali, con codice d'invito della classe e approvazione del capoclasse (vedi `PIANO.md`).
 
+## 7. Crea il database Firestore
+
+Serve per classi, membri e liste. Si fa una volta sola, con il tuo account **personale**.
+
+1. Console Firebase → menu a sinistra **Build → Firestore Database** → **Crea database**.
+2. Edizione: **Standard** (se te lo chiede).
+3. ID database: lascia `(default)`.
+4. Località: **`eur3 (Europe)`** oppure **`europe-west8 (Milano)`**. **Non si può cambiare dopo**, quindi scegli una località in Europa.
+5. Regole: **Avvia in modalità produzione** (blocca tutto finché non pubblichiamo le nostre regole) → **Crea**.
+
+## 8. Pubblica le regole di sicurezza
+
+Le regole (`firestore.rules`) decidono chi può leggere e scrivere cosa: solo account della scuola, solo membri della classe, ecc. Vanno pubblicate ogni volta che cambiano.
+
+Nel terminale, nella cartella del progetto:
+
+```sh
+npx firebase login          # una volta sola: si apre il browser, usa il tuo account personale
+npm run deploy:regole       # pubblica firestore.rules e firestore.indexes.json
+```
+
+Deve finire con `✔  Deploy complete!`. Il progetto di destinazione è già indicato in `.firebaserc` (`whosnext-4b067`).
+
+> Se `firebase login` non apre il browser, usa `npx firebase login --no-localhost` e segui le istruzioni.
+
+## 9. Prova il sito
+
+```sh
+npm run dev
+```
+
+Apri <http://localhost:5173>, accedi con l'account della scuola, crea una classe e prova a entrare con un secondo account (ad esempio da un'altra finestra in navigazione privata o dal telefono, se è sulla stessa rete: vedi `npm run dev -- --host`).
+
+## Prove senza account veri (emulatore)
+
+Per provare con tanti account finti (anche di docenti) senza toccare il database vero:
+
+```sh
+npm run dev:emu
+```
+
+Apri <http://localhost:5173>: la finestra di login è finta, clicca **Add new account** e inventa un'email `@studenti.ittsrimini.edu.it` o `@ittsrimini.edu.it`. Usa più finestre in navigazione privata per avere più utenti insieme. I dati spariscono quando chiudi (Ctrl+C). Su <http://localhost:4000> c'è il pannello dell'emulatore, per guardare cosa c'è nel database.
+
+Serve Java (è già installato su questo computer).
+
 ## Dopo il deploy su Netlify
 
 Quando il sito sarà pubblicato (ad esempio `whosnext.netlify.app`), aggiungi quell'indirizzo in **Firebase → Authentication → Impostazioni → Domini autorizzati** e copia le stesse variabili `VITE_*` in **Netlify → Site configuration → Environment variables**.

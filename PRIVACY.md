@@ -14,14 +14,14 @@ Ultimo aggiornamento: 3 novembre 2026
 Non abbiamo accesso alla password, a Gmail, a Google Drive, al calendario o ad altri dati del tuo account Google.
 
 **Dati che inserisci tu nel sito:**
-- la classe di cui fai parte e il tuo ruolo (studente, capoclasse, vice);
+- la classe di cui fai parte e il tuo ruolo (studente, capoclasse, vice, docente);
 - le preferenze per le interrogazioni (inizio, metà, fine, indifferente);
 - le richieste di scambio di posizione e le relative risposte;
 - l'indicazione di chi è già stato interrogato;
 - le tue impostazioni (ad esempio notifiche email e push);
 - se attivi le notifiche push, un identificativo tecnico del dispositivo.
 
-Il capoclasse può assegnare un'indicazione "DSA/BES" ad alcuni studenti. Questa indicazione serve solo a permettere loro di scegliere una posizione precisa nella lista, ed è visibile solo al capoclasse e al vice.
+Il capoclasse o il vice possono assegnare un'indicazione "DSA/BES" ad alcuni studenti. Questa indicazione serve solo a permettere loro di scegliere una posizione precisa nella lista, ed è visibile solo al capoclasse, al vice e allo studente interessato (non ai compagni né ai professori).
 
 ## Perché li usiamo
 
@@ -31,7 +31,7 @@ I dati **non** vengono venduti, ceduti a terzi o usati per pubblicità o profila
 
 ## Chi vede i tuoi dati
 
-- I membri della tua classe vedono il tuo nome, la tua foto e la tua posizione nelle liste.
+- I membri della tua classe (compagni e professori iscritti) vedono il tuo nome, la tua foto, il tuo indirizzo email della scuola e la tua posizione nelle liste.
 - Il capoclasse e il vice vedono anche le preferenze espresse e il rapporto sulla generazione della lista.
 - Persone esterne alla classe non possono vedere i dati della classe.
 

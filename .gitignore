@@ -1,8 +1,10 @@
 node_modules/
 dist/
+dist-emu/
 .env
 .env.*
 !.env.example
+!.env.emulator
 .netlify/
 *.log
 .firebase/
@@ -12,3 +14,7 @@ ui-debug.log
 
 # Emulatori Firebase
 emulator-data/
+
+# Playwright
+test-results/
+playwright-report/
