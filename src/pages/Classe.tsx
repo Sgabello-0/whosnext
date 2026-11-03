@@ -8,6 +8,7 @@ import { useClasse } from '../lib/useClasse'
 import type { Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
 import { Invito } from '../components/Invito'
+import { InterrogazioniClasse } from '../components/InterrogazioniClasse'
 import { StatoClasse } from '../components/StatoClasse'
 import { Bottone, LinkBottone, Riquadro, Scheda } from '../components/ui'
 
@@ -42,11 +43,7 @@ export default function Classe() {
         </Riquadro>
       )}
 
-      <Scheda titolo="Interrogazioni">
-        <p className="text-sm text-slate-500">
-          Materie e interrogazioni arriveranno nella prossima fase: il capoclasse potrà configurarle da qui.
-        </p>
-      </Scheda>
+      <InterrogazioniClasse classId={classId} staff={staff} />
 
       <Invito codice={classe.codiceInvito} nomeClasse={classe.nome} />
 

@@ -12,7 +12,8 @@ Avanzamento dettagliato in [PIANO.md](PIANO.md#avanzamento).
 
 - ✅ Login con account della scuola: studenti (`@studenti.ittsrimini.edu.it`) e docenti (`@ittsrimini.edu.it`, sola lettura salvo permesso del capoclasse)
 - ✅ Classi: crea, unisciti con codice / link / QR, gestione membri, badge DSA/BES, vice, permessi dei docenti
-- ⏳ Prossimo passo: calendario, materie e interrogazioni
+- ✅ Calendario, materie e interrogazioni (configurati da capoclasse e vice)
+- ⏳ Prossimo passo: preferenze e generazione della lista
 
 ## Sviluppo
 
@@ -46,7 +47,7 @@ npm run build          # build di produzione in dist/ (Netlify la fa da solo)
 
 ```
 src/lib/        logica e accesso ai dati (domain, codici, membri, classi, auth, hooks…)
-src/pages/      Login, Classi, Unisciti, Classe, AdminClasse, NonAmmesso
+src/pages/      Login, Classi, Unisciti, Classe, AdminClasse, Configura, Materia, Interrogazione, NonAmmesso
 src/components/ componenti grafici condivisi
 firestore.rules regole di sicurezza del database
 tests/regole/   test delle regole (emulatore)

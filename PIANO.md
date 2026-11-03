@@ -21,7 +21,7 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 - [x] Test del login con account `@studenti.ittsrimini.edu.it` (riuscito il 03/11/2026)
 - [x] Dominio docenti `@ittsrimini.edu.it`
 - [x] Classi: crea, unisciti con codice/link/QR, gestione membri (vice, DSA/BES, rimozione), permessi dei docenti, cambio codice
-- [ ] Calendario, materie e interrogazioni
+- [x] Calendario (giorni di scuola, feste nazionali calcolate, vacanze, lezioni extra/annullate), materie e interrogazioni; stima delle date pronta (`estimate.ts`)
 - [ ] Preferenze e generazione della lista
 - [ ] Lista pubblica e scambi
 - [ ] Segnare chi è stato interrogato e stima delle date
@@ -44,9 +44,10 @@ invites/{codice}          classId, nomeClasse            (si legge solo conoscen
 classes/{classId}         nome, codiceInvito, capoclasseUid, creato
   members/{uid}           uid, nome, email, foto, ruolo (capo|vice|studente|docente), permessoModifica, richiestaPermesso, codiceUsato, entrato
   dsa/{uid}               impostatoDa, quando            (esiste = badge DSA/BES; lo leggono solo capo, vice e il diretto interessato)
-  calendar/settings       giorniScolastici (lun-sab on/off), eccezioni [{data, tipo: vacanza|lezione-extra}], fineAnno: 2027-06-06
+  calendar/settings       giorniScolastici [7 bool, lun→dom], fineAnno: 2027-06-06,
+                          eccezioni [{tipo: vacanza, da, a, descrizione} | {tipo: lezione-extra|lezione-annullata, data, subjectId}]
   subjects/{subjectId}    nome, orario: [giorniSettimana]
-    interrogations/{iId}  nome, descrizione?, giorni?, perLezione?, scadenzaPreferenze, stato: raccolta|lista|conclusa
+    interrogations/{iId}  nome, descrizione, giorni [] (vuoto = nessun giorno), perLezione|null, scadenzaPreferenze, stato: raccolta|lista|conclusa, creato, creatoDa
       preferences/{uid}   scelta: inizio|meta|fine|indifferente, posizioneDSA?
       list/current        ordine: [uid], interrogati: {uid: data}
       swaps/{swapId}      daUid, aUid, stato: pending|accettato|rifiutato|annullato, creato
@@ -76,7 +77,8 @@ Le regole di sicurezza permettono letture e scritture solo ai membri della class
 ### Configurazione del capoclasse
 
 - **Calendario** completamente personalizzabile: giorni con o senza scuola, materie per giorno, vacanze regionali o d'istituto, lezioni extra o annullate.
-- Feste nazionali 2026-27 già inserite: 1/11, 8/12, 25-26/12, 1/1, 6/1, Pasqua 28/3/2027, Pasquetta 29/3, 25/4, 1/5, 2/6.
+- Feste nazionali 2026-27 già inserite: 1/11, 8/12, 25-26/12, 1/1, 6/1, Pasqua 28/3/2027, Pasquetta 29/3, 25/4, 1/5, 2/6. Sono calcolate per ogni anno (Pasqua compresa), con anche il 4 ottobre, festa nazionale dal 2026. Le vacanze regionali e la festa del patrono (San Gaudenzo, 14/10 a Rimini) le aggiunge il capoclasse.
+- Giorni di scuola predefiniti: dal lunedì al venerdì (il sabato si attiva dal calendario).
 - **Materie**: nome e giorni di lezione.
 - **Interrogazioni**: nome, descrizione facoltativa, giorni (di default quelli della materia), quanti interroga per lezione (facoltativo), scadenza per le preferenze.
 

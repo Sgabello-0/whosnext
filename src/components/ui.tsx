@@ -159,3 +159,55 @@ export function Campo(props: {
     </label>
   )
 }
+
+export const CLASSE_INPUT =
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base outline-none focus:border-accento focus:ring-2 focus:ring-accento/30 dark:border-slate-700 dark:bg-slate-950'
+
+/** Etichetta con un controllo qualsiasi dentro (input, select, textarea). */
+export function Etichetta(props: { testo: string; aiuto?: string; children: ReactNode }) {
+  return (
+    <label className="block space-y-1 text-sm">
+      <span className="font-medium">{props.testo}</span>
+      {props.children}
+      {props.aiuto && <span className="block text-xs text-slate-500">{props.aiuto}</span>}
+    </label>
+  )
+}
+
+/** Pulsanti lun–sab da accendere e spegnere. */
+export function SelettoreGiorni(props: {
+  valore: number[]
+  onChange: (giorni: number[]) => void
+  etichetta: string
+  giorni?: readonly number[]
+}) {
+  const nomi = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']
+  const nomiLunghi = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
+  const elenco = props.giorni ?? [0, 1, 2, 3, 4, 5]
+  return (
+    <fieldset className="space-y-1 text-sm">
+      <legend className="font-medium">{props.etichetta}</legend>
+      <div className="flex flex-wrap gap-1.5">
+        {elenco.map((g) => {
+          const attivo = props.valore.includes(g)
+          return (
+            <button
+              key={g}
+              type="button"
+              aria-pressed={attivo}
+              aria-label={nomiLunghi[g]}
+              onClick={() => props.onChange(attivo ? props.valore.filter((x) => x !== g) : [...props.valore, g].sort())}
+              className={`min-w-12 rounded-lg border px-3 py-2 text-sm font-semibold transition focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-accento ${
+                attivo
+                  ? 'border-accento bg-accento text-white'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              {nomi[g]}
+            </button>
+          )
+        })}
+      </div>
+    </fieldset>
+  )
+}

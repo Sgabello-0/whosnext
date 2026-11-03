@@ -4,6 +4,7 @@ import { defineConfig, devices } from '@playwright/test'
 // npm run test:e2e avvia gli emulatori, il sito in modalità emulatore e i test.
 export default defineConfig({
   testDir: 'tests/e2e',
+  globalSetup: './tests/e2e/riscaldamento.ts',
   fullyParallel: false,
   workers: 1,
   // La finestra di login finta dell'emulatore carica i suoi script da internet (unpkg.com):

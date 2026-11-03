@@ -120,7 +120,7 @@ npx firebase login          # una volta sola: si apre il browser, usa il tuo acc
 npm run deploy:regole       # pubblica firestore.rules e firestore.indexes.json
 ```
 
-Deve finire con `✔  Deploy complete!`. Il progetto di destinazione è già indicato in `.firebaserc` (`whosnext-4b067`).
+Deve finire con `✔  Deploy complete!`. **Ripetilo ogni volta che `firestore.rules` cambia** (te lo dirò io), altrimenti le nuove funzioni del sito vengono bloccate. Il progetto di destinazione è già indicato in `.firebaserc` (`whosnext-4b067`).
 
 > Se `firebase login` non apre il browser, usa `npx firebase login --no-localhost` e segui le istruzioni.
 
@@ -143,6 +143,8 @@ npm run dev:emu
 Apri <http://localhost:5173>: la finestra di login è finta, clicca **Add new account** e inventa un'email `@studenti.ittsrimini.edu.it` o `@ittsrimini.edu.it`. Usa più finestre in navigazione privata per avere più utenti insieme. I dati spariscono quando chiudi (Ctrl+C). Su <http://localhost:4000> c'è il pannello dell'emulatore, per guardare cosa c'è nel database.
 
 Serve Java (è già installato su questo computer).
+
+> Il **primo** accesso dopo aver avviato l'emulatore a volte resta fermo dopo "Sign in with Google.com" (la finestra finta scarica uno script da Google che la prima volta può bloccarsi). Chiudi la finestra e clicca di nuovo **Accedi con Google**: dalla seconda volta funziona.
 
 ## Dopo il deploy su Netlify
 

@@ -9,6 +9,9 @@ import Classi from './pages/Classi'
 import Unisciti from './pages/Unisciti'
 import Classe from './pages/Classe'
 import AdminClasse from './pages/AdminClasse'
+import Configura from './pages/Configura'
+import Materia from './pages/Materia'
+import Interrogazione from './pages/Interrogazione'
 
 export default function App() {
   const { pronto, utente, esito } = useAuth()
@@ -32,6 +35,9 @@ export default function App() {
         <Route path="/unisciti/:codice" element={<Unisciti />} />
         <Route path="/classe/:classId" element={<Classe />} />
         <Route path="/classe/:classId/gestione" element={<AdminClasse />} />
+        <Route path="/classe/:classId/configura" element={<Configura />} />
+        <Route path="/classe/:classId/materia/:subjectId" element={<Materia />} />
+        <Route path="/classe/:classId/materia/:subjectId/interrogazione/:interrogazioneId" element={<Interrogazione />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
