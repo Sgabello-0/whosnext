@@ -1,3 +1,4 @@
+import { Copy, MessageCircle, Share2 } from 'lucide-react'
 import { copiaTesto } from '../lib/diagnostica'
 import { linkWhatsApp } from '../lib/messaggi'
 import { useAvvisi } from './Avvisi'
@@ -21,22 +22,23 @@ export function Condividi(props: { testo: string; titolo: string; etichetta?: st
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {props.etichetta && <p className="text-sm font-medium">{props.etichetta}</p>}
       <div className="flex flex-wrap gap-2">
         <a
           href={linkWhatsApp(props.testo)}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 active:scale-[0.98]"
         >
+          <MessageCircle aria-hidden className="size-4" />
           WhatsApp
         </a>
-        <Bottone variante="piccolo" onClick={copia}>
+        <Bottone variante="tenue" icona={Copy} onClick={copia}>
           Copia messaggio
         </Bottone>
         {'share' in navigator && (
-          <Bottone variante="piccolo" onClick={condividi}>
+          <Bottone variante="tenue" icona={Share2} onClick={condividi}>
             Condividi
           </Bottone>
         )}

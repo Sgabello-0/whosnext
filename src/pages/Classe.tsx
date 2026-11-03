@@ -16,7 +16,8 @@ import { useConferma } from '../components/Conferma'
 import { Invito } from '../components/Invito'
 import { InterrogazioniClasse } from '../components/InterrogazioniClasse'
 import { StatoClasse } from '../components/StatoClasse'
-import { Bottone, LinkBottone, Riquadro, Scheda } from '../components/ui'
+import { Avatar, Bottone, IntestazionePagina, LinkBottone, Riquadro, Soffietto } from '../components/ui'
+import { BadgeCheck, Eye, GraduationCap, LogOut, Settings, Sparkles, Users } from 'lucide-react'
 
 export default function Classe() {
   const { classId = '' } = useParams()
@@ -29,21 +30,28 @@ export default function Classe() {
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold break-words">{classe.nome}</h1>
-          <p className="text-sm text-slate-500">
+      <IntestazionePagina
+        indietro={{ to: '/', testo: 'Le tue classi' }}
+        titolo={classe.nome}
+        sottotitolo={
+          <>
             {studenti.length} {studenti.length === 1 ? 'studente' : 'studenti'}
             {docenti.length > 0 && ` · ${docenti.length} ${docenti.length === 1 ? 'docente' : 'docenti'}`} · tu sei{' '}
             {ETICHETTA_RUOLO[io.ruolo].toLowerCase()}
-          </p>
-        </div>
-        {staff && <LinkBottone to={`/classe/${classId}/gestione`}>Gestisci classe</LinkBottone>}
-      </div>
+          </>
+        }
+        azioni={
+          staff && (
+            <LinkBottone to={`/classe/${classId}/gestione`} icona={Settings}>
+              Gestisci classe
+            </LinkBottone>
+          )
+        }
+      />
 
       {io.ruolo === 'docente' && <PermessoDocente classId={classId} io={io} />}
       {!staff && dsa.has(io.uid) && (
-        <Riquadro tono="info">
+        <Riquadro tono="info" icona={Sparkles}>
           Hai il badge <strong>DSA/BES</strong>: per ogni interrogazione potrai scegliere la posizione esatta nella
           lista. Il badge lo vedono solo il capoclasse e il vice.
         </Riquadro>
@@ -61,20 +69,36 @@ export default function Classe() {
 
       <InterrogazioniClasse classId={classId} staff={staff} mioUid={io.uid} />
 
-      <Invito codice={classe.codiceInvito} nomeClasse={classe.nome} />
-
-      <Scheda titolo={`Studenti (${studenti.length})`}>
+      <Soffietto
+        titolo={`Studenti (${studenti.length})`}
+        icona={Users}
+        aperto={studenti.length <= 6}
+        destra={<PilaAvatar membri={studenti} />}
+      >
         <ListaMembri membri={studenti} mioUid={io.uid} dsa={staff ? dsa : new Set()} />
-      </Scheda>
+      </Soffietto>
 
       {docenti.length > 0 && (
-        <Scheda titolo={`Docenti (${docenti.length})`}>
+        <Soffietto titolo={`Docenti (${docenti.length})`} icona={GraduationCap} aperto={docenti.length <= 3}>
           <ListaMembri membri={docenti} mioUid={io.uid} dsa={new Set()} />
-        </Scheda>
+        </Soffietto>
       )}
+
+      <Invito codice={classe.codiceInvito} nomeClasse={classe.nome} />
 
       {io.ruolo !== 'capo' && <EsciDallaClasse classId={classId} uid={io.uid} nomeClasse={classe.nome} />}
     </>
+  )
+}
+
+/** Le prime facce della classe, sovrapposte (accanto al titolo chiuso). */
+function PilaAvatar({ membri }: { membri: Membro[] }) {
+  return (
+    <span className="flex -space-x-2 group-open:hidden" aria-hidden>
+      {membri.slice(0, 5).map((m) => (
+        <Avatar key={m.uid} nome={m.nome} foto={m.foto} piccolo />
+      ))}
+    </span>
   )
 }
 
@@ -99,13 +123,13 @@ function PermessoDocente({ classId, io }: { classId: string; io: Membro }) {
 
   if (io.permessoModifica) {
     return (
-      <Riquadro tono="ok" titolo="Puoi modificare le liste">
+      <Riquadro tono="ok" titolo="Puoi modificare le liste" icona={BadgeCheck}>
         Il capoclasse ti ha dato il permesso: puoi riordinare le liste e segnare chi è stato interrogato.
       </Riquadro>
     )
   }
   return (
-    <Riquadro tono="info" titolo="Accesso in sola lettura">
+    <Riquadro tono="info" titolo="Accesso in sola lettura" icona={Eye}>
       <p>Come docente vedi le liste ma non puoi modificarle. Puoi chiedere il permesso al capoclasse.</p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {io.richiestaPermesso ? (
@@ -151,8 +175,8 @@ function EsciDallaClasse({ classId, uid, nomeClasse }: { classId: string; uid: s
   }
 
   return (
-    <div className="pt-2">
-      <Bottone variante="pericolo" onClick={esci}>
+    <div className="flex flex-col items-center pt-2">
+      <Bottone variante="pericolo" icona={LogOut} onClick={esci}>
         Esci dalla classe
       </Bottone>
       {errore && <p className="mt-2 text-sm text-rose-700 dark:text-rose-300">{errore}</p>}

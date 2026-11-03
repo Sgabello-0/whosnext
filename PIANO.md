@@ -1,4 +1,4 @@
-# Interrogazioni di Classe
+# WhosNext
 
 Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 

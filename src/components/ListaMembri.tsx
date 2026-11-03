@@ -13,7 +13,7 @@ export function ListaMembri(props: {
 }) {
   if (props.membri.length === 0) return <p className="text-sm text-slate-500">Nessuno.</p>
   return (
-    <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
       {props.membri.map((m) => (
         <li key={m.uid} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
           <Avatar nome={m.nome} foto={m.foto} />

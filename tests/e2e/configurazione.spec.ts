@@ -47,10 +47,12 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   let anno = oggi.getFullYear()
   if (Number(mm) < oggi.getMonth() + 1) anno++ // es. oggi dicembre, lezione a gennaio
   await anna.goBack()
+  await anna.getByRole('tab', { name: 'Calendario' }).click()
   await anna.getByLabel('Giorno', { exact: true }).fill(`${anno}-${mm}-${gg}`)
   await anna.getByLabel('Cosa succede').selectOption('lezione-annullata')
   await anna.getByRole('button', { name: 'Aggiungi', exact: true }).click()
   await expect(anna.getByText(`${gg}/${mm}/${anno} · Matematica: lezione annullata`)).toBeVisible()
+  await anna.getByRole('tab', { name: 'Materie' }).click()
   await anna.getByRole('link', { name: 'Matematica' }).click()
   await expect.poll(() => prossimeLezioni(anna)).not.toContain(prima)
 
@@ -80,7 +82,7 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   await expect(carla.getByText('non indicato')).toBeVisible()
 
   // Anna aggiunge una vacanza
-  await anna.goto(anna.url().split('/materia/')[0] + '/configura')
+  await anna.goto(anna.url().split('/materia/')[0] + '/configura?sezione=calendario')
   await anna.getByLabel('Dal', { exact: true }).fill(`${anno + 1}-01-02`)
   await anna.getByLabel('Al (incluso)').fill(`${anno + 1}-01-06`)
   await anna.getByLabel('Descrizione', { exact: true }).fill('Vacanze di Natale')
@@ -100,6 +102,7 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   await expect(anna.getByText('Vacanze di Pasqua: 25/03/2027 – 30/03/2027')).toBeVisible()
 
   // Anna elimina l'interrogazione
+  await anna.getByRole('tab', { name: 'Materie' }).click()
   await anna.getByRole('link', { name: 'Matematica' }).click()
   await anna.getByRole('link', { name: /Orale capitolo 3/ }).click()
   await anna.getByRole('button', { name: 'Elimina', exact: true }).click()

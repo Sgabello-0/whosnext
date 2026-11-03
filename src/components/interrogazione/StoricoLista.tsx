@@ -5,6 +5,8 @@ import { rifStorico } from '../../lib/configurazione'
 import { formattaScadenza } from '../../lib/formatoDate'
 import { useQuery } from '../../lib/hooks'
 import type { DocStorico, Membro } from '../../lib/tipi'
+import { History } from 'lucide-react'
+import { Soffietto } from '../ui'
 
 /** Chi ha cambiato la lista e quando: visibile a tutti, per trasparenza. */
 export function StoricoLista(p: { classId: string; subjectId: string; interrogazioneId: string; membri: Map<string, Membro> }) {
@@ -35,9 +37,8 @@ export function StoricoLista(p: { classId: string; subjectId: string; interrogaz
   }
 
   return (
-    <details className="rounded-2xl border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-900">
-      <summary className="cursor-pointer font-semibold">Storico delle modifiche ({voci.dati.length})</summary>
-      <ol className="mt-3 space-y-2" aria-label="Storico delle modifiche">
+    <Soffietto titolo={`Storico delle modifiche (${voci.dati.length})`} icona={History}>
+      <ol className="space-y-3 border-l-2 border-slate-100 pl-4 text-sm dark:border-slate-800" aria-label="Storico delle modifiche">
         {voci.dati.map((v) => (
           <li key={v.id}>
             <span className="block">{descrivi(v)}</span>
@@ -45,6 +46,6 @@ export function StoricoLista(p: { classId: string; subjectId: string; interrogaz
           </li>
         ))}
       </ol>
-    </details>
+    </Soffietto>
   )
 }

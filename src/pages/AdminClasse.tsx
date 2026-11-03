@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
+import { Crown, GraduationCap, KeyRound, Pencil, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react'
 import { db } from '../lib/firebase'
 import {
   cambiaCodiceInvito,
@@ -20,7 +21,7 @@ import { CediRuolo } from '../components/CediRuolo'
 import type { Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
 import { StatoClasse } from '../components/StatoClasse'
-import { Avatar, Bottone, Campo, LinkBottone, Riquadro, Scheda } from '../components/ui'
+import { Avatar, Bottone, Campo, IntestazionePagina, LinkBottone, Riquadro, Scheda } from '../components/ui'
 
 /** Gestione della classe: capoclasse (tutto) e vice (solo badge DSA/BES). */
 export default function AdminClasse() {
@@ -50,7 +51,12 @@ export default function AdminClasse() {
    * Esegue un'azione mostrando l'errore se fallisce; `chiave` disabilita i pulsanti di quel membro.
    * Se riesce mostra `avviso`, con "Annulla" quando c'è `annulla`.
    */
-  async function esegui(chiave: string, azione: () => Promise<unknown>, avviso?: string, annulla?: () => Promise<void>) {
+  async function esegui(
+    chiave: string,
+    azione: () => Promise<unknown>,
+    avviso?: string,
+    annulla?: () => Promise<void>,
+  ) {
     setErrore(null)
     setOccupato(chiave)
     try {
@@ -150,18 +156,16 @@ export default function AdminClasse() {
 
   return (
     <>
-      <div>
-        <Link to={`/classe/${classId}`} className="text-sm text-accento hover:underline dark:text-blue-300">
-          ← {classe.nome}
-        </Link>
-        <h1 className="text-2xl font-semibold">Gestisci classe</h1>
-        {!capo && <p className="text-sm text-slate-500">Come vice puoi dare e togliere il badge DSA/BES.</p>}
-      </div>
+      <IntestazionePagina
+        indietro={{ to: `/classe/${classId}`, testo: classe.nome }}
+        titolo="Gestisci classe"
+        sottotitolo={!capo ? 'Come vice puoi dare e togliere il badge DSA/BES.' : undefined}
+      />
 
       {errore && <Riquadro tono="errore">{errore}</Riquadro>}
 
       {capo && richieste.length > 0 && (
-        <Scheda titolo="Richieste di permesso dei docenti">
+        <Scheda titolo="Richieste di permesso dei docenti" icona={UserCheck} tono="avviso">
           <ul className="space-y-3">
             {richieste.map((m) => (
               <li key={m.uid} className="flex flex-wrap items-center gap-3">
@@ -171,19 +175,25 @@ export default function AdminClasse() {
                 </span>
                 <span className="flex gap-1.5">
                   <Bottone
-                    variante="piccolo"
+                    variante="primario"
                     disabled={occupato === m.uid}
                     onClick={() =>
-                      db && esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, true), `Permesso dato a ${m.nome}`)
+                      db &&
+                      esegui(
+                        m.uid,
+                        () => impostaPermessoDocente(db!, classId, m.uid, true),
+                        `Permesso dato a ${m.nome}`,
+                      )
                     }
                   >
                     Accetta
                   </Bottone>
                   <Bottone
-                    variante="piccolo"
+                    variante="secondario"
                     disabled={occupato === m.uid}
                     onClick={() =>
-                      db && esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, false), 'Richiesta rifiutata')
+                      db &&
+                      esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, false), 'Richiesta rifiutata')
                     }
                   >
                     Rifiuta
@@ -195,18 +205,19 @@ export default function AdminClasse() {
         </Scheda>
       )}
 
-      <Scheda titolo={`Studenti (${studenti.length})`}>
-        <p className="mb-2 text-sm text-slate-500">
-          Il badge DSA/BES permette di scegliere la posizione esatta nelle liste. Lo vedono solo capoclasse, vice e il
-          diretto interessato.
-        </p>
+      <Scheda
+        titolo={`Studenti (${studenti.length})`}
+        icona={Users}
+        sottotitolo="Il badge DSA/BES permette di scegliere la posizione esatta nelle liste. Lo vedono solo capoclasse, vice e il diretto interessato."
+      >
         <ListaMembri membri={studenti} mioUid={io.uid} dsa={dsa} mostraEmail azioni={azioniStudente} />
       </Scheda>
 
-      <Scheda titolo={`Docenti (${docenti.length})`}>
-        <p className="mb-2 text-sm text-slate-500">
-          I docenti vedono le liste. Con il permesso possono anche riordinarle e segnare chi è stato interrogato.
-        </p>
+      <Scheda
+        titolo={`Docenti (${docenti.length})`}
+        icona={GraduationCap}
+        sottotitolo="I docenti vedono le liste. Con il permesso possono anche riordinarle e segnare chi è stato interrogato."
+      >
         <ListaMembri membri={docenti} mioUid={io.uid} dsa={new Set()} mostraEmail azioni={azioniDocente} />
       </Scheda>
 
@@ -222,7 +233,17 @@ export default function AdminClasse() {
   )
 }
 
-function ImpostazioniClasse({ classId, nome, codice, cedi }: { classId: string; nome: string; codice: string; cedi: ReactNode }) {
+function ImpostazioniClasse({
+  classId,
+  nome,
+  codice,
+  cedi,
+}: {
+  classId: string
+  nome: string
+  codice: string
+  cedi: ReactNode
+}) {
   const [nuovoNome, setNuovoNome] = useState(nome)
   const [inCorso, setInCorso] = useState(false)
   const avvisi = useAvvisi()
@@ -261,29 +282,42 @@ function ImpostazioniClasse({ classId, nome, codice, cedi }: { classId: string; 
   }
 
   return (
-    <Scheda titolo="Impostazioni della classe">
-      <div className="space-y-5">
-        <form onSubmit={rinomina} className="space-y-3">
-          <Campo etichetta="Nome della classe" valore={nuovoNome} onChange={setNuovoNome} maxLength={60} />
-          <Bottone type="submit" variante="secondario" disabled={inCorso || !nuovoNome.trim() || nuovoNome.trim() === nome}>
+    <>
+      <Scheda titolo="Nome della classe" icona={Pencil}>
+        <form onSubmit={rinomina} className="flex flex-wrap items-end gap-2">
+          <div className="min-w-48 flex-1">
+            <Campo etichetta="Nome della classe" valore={nuovoNome} onChange={setNuovoNome} maxLength={60} />
+          </div>
+          <Bottone
+            type="submit"
+            variante="secondario"
+            disabled={inCorso || !nuovoNome.trim() || nuovoNome.trim() === nome}
+          >
             Rinomina
           </Bottone>
         </form>
-        <div className="space-y-2">
-          <p className="text-sm font-medium">
-            Codice d'invito: <span className="font-mono">{formattaCodice(codice)}</span>
-          </p>
-          <p className="text-sm text-slate-500">
-            Se il codice è finito nelle mani sbagliate, o dopo aver rimosso qualcuno, cambialo.
-          </p>
-          <Bottone variante="secondario" onClick={cambiaCodice} disabled={inCorso}>
+      </Scheda>
+      <Scheda
+        titolo="Codice d'invito"
+        icona={KeyRound}
+        sottotitolo="Se il codice è finito nelle mani sbagliate, o dopo aver rimosso qualcuno, cambialo."
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="font-mono text-xl font-bold tracking-[0.2em]">{formattaCodice(codice)}</span>
+          <Bottone variante="secondario" icona={RefreshCw} onClick={cambiaCodice} disabled={inCorso}>
             Cambia codice d'invito
           </Bottone>
         </div>
+      </Scheda>
+      <Scheda
+        titolo="Passa il ruolo di capoclasse"
+        icona={Crown}
+        sottotitolo="Per esempio a fine anno o se cambi classe."
+      >
         {cedi}
-        <EliminaClasse classId={classId} nome={nome} codice={codice} />
-      </div>
-    </Scheda>
+      </Scheda>
+      <EliminaClasse classId={classId} nome={nome} codice={codice} />
+    </>
   )
 }
 
@@ -315,8 +349,11 @@ function EliminaClasse({ classId, nome, codice }: { classId: string; nome: strin
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-rose-200 p-3 dark:border-rose-900">
-      <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">Elimina la classe</p>
+    <div className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 sm:p-5 dark:border-rose-900 dark:bg-rose-950/20">
+      <p className="flex items-center gap-2 font-semibold text-rose-700 dark:text-rose-300">
+        <Trash2 aria-hidden className="size-4.5" />
+        Elimina la classe
+      </p>
       <p className="text-sm text-slate-600 dark:text-slate-400">
         Spariscono per tutti membri, materie, interrogazioni e calendario. Non si può annullare.
       </p>

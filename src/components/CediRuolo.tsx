@@ -1,3 +1,4 @@
+import { Crown } from 'lucide-react'
 import { useState } from 'react'
 import { db } from '../lib/firebase'
 import { cediRuolo } from '../lib/classi'
@@ -37,7 +38,6 @@ export function CediRuolo({ classId, mioUid, studenti }: { classId: string; mioU
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-medium">Passa il ruolo di capoclasse</p>
       {candidati.length === 0 ? (
         <p className="text-sm text-slate-500">Nella classe non ci sono ancora altri studenti.</p>
       ) : (
@@ -54,10 +54,15 @@ export function CediRuolo({ classId, mioUid, studenti }: { classId: string; mioU
             </select>
           </Etichetta>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={restaVice} onChange={(e) => setRestaVice(e.target.checked)} className="size-4 accent-accento" />
+            <input
+              type="checkbox"
+              checked={restaVice}
+              onChange={(e) => setRestaVice(e.target.checked)}
+              className="size-4 accent-accento"
+            />
             Resto vice
           </label>
-          <Bottone variante="secondario" onClick={cedi} disabled={!nuovo || inCorso}>
+          <Bottone variante="secondario" icona={Crown} onClick={cedi} disabled={!nuovo || inCorso}>
             Passa il ruolo
           </Bottone>
         </>

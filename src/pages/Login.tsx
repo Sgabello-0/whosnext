@@ -6,6 +6,8 @@ import { messaggioErroreAuth, type MessaggioErrore } from '../lib/authErrors'
 import { copiaTesto, datiDiagnostica } from '../lib/diagnostica'
 import { Bottone, Riquadro } from '../components/ui'
 import { TestoDaCopiare } from '../components/TestoDaCopiare'
+import { Logo } from '../components/Logo'
+import { RefreshCw, Hand, ListOrdered } from 'lucide-react'
 
 type Errore = MessaggioErrore & { codice?: string }
 
@@ -52,13 +54,32 @@ export default function Login() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-4 py-10">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold">Interrogazioni di Classe</h1>
-        <p className="text-slate-600 dark:text-slate-400">
-          L'ordine delle interrogazioni della tua classe: scegli quando vuoi essere interrogato, guarda la lista e
-          chiedi scambi ai compagni.
-        </p>
+      <header className="space-y-4 text-center">
+        <div className="flex justify-center">
+          <Logo grande />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight">
+            Whos<span className="text-accento dark:text-blue-300">Next</span>
+          </h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400">L'ordine delle interrogazioni della tua classe.</p>
+        </div>
       </header>
+
+      <ul className="space-y-3 rounded-2xl border border-slate-200/80 bg-white p-4 text-sm shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        {[
+          { icona: Hand, testo: 'Scegli se essere interrogato all\'inizio, a metà o alla fine' },
+          { icona: ListOrdered, testo: 'Guarda la lista e il giorno in cui tocca a te' },
+          { icona: RefreshCw, testo: 'Tutto in tempo reale, per tutta la classe' },
+        ].map(({ icona: Icona, testo }) => (
+          <li key={testo} className="flex items-center gap-3">
+            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-accento-chiaro text-accento dark:bg-blue-950 dark:text-blue-300">
+              <Icona aria-hidden className="size-4.5" />
+            </span>
+            {testo}
+          </li>
+        ))}
+      </ul>
 
       {USA_EMULATORI && (
         <Riquadro tono="avviso" titolo="Modalità prova">
@@ -71,7 +92,7 @@ export default function Login() {
         <Bottone onClick={() => accedi('popup')} disabled={inCorso} larga>
           {inCorso ? 'Accesso in corso…' : 'Accedi con Google'}
         </Bottone>
-        <p className="text-sm text-slate-500">
+        <p className="text-center text-sm text-slate-500">
           Usa l'account della scuola: <strong>@{DOMINI.studenti}</strong> per gli studenti,{' '}
           <strong>@{DOMINI.docenti}</strong> per i professori.
         </p>

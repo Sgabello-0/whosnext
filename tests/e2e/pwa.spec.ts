@@ -10,7 +10,7 @@ test('installabile: manifest, icone e service worker', async ({ page, request })
   const href = await page.locator('link[rel="manifest"]').getAttribute('href')
   expect(href).toBeTruthy()
   const manifest = await (await request.get(href!)).json()
-  expect(manifest).toMatchObject({ name: 'Interrogazioni di Classe', display: 'standalone', lang: 'it', start_url: '/' })
+  expect(manifest).toMatchObject({ name: 'WhosNext', display: 'standalone', lang: 'it', start_url: '/' })
   for (const icona of manifest.icons as { src: string }[]) {
     const r = await request.get(`/${icona.src}`)
     expect(r.status(), icona.src).toBe(200)

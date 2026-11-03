@@ -8,6 +8,7 @@ import { generaEPubblicaLista } from '../../lib/preferenze'
 import { ETICHETTA_SCELTA } from '../../lib/testiPreferenze'
 import type { DocPreferenza, Membro } from '../../lib/tipi'
 import { Bottone, Caricamento, Riquadro, Scheda } from '../ui'
+import { Inbox, Shuffle } from 'lucide-react'
 import { Condividi } from '../Condividi'
 import { linkAssoluto, messaggioPromemoria, percorsoInterrogazione } from '../../lib/messaggi'
 import { useAvvisi } from '../Avvisi'
@@ -65,7 +66,11 @@ export function PannelloPreferenze(p: {
   }
 
   return (
-    <Scheda titolo={`Preferenze ricevute (${risposte.length}/${p.studenti.length})`}>
+    <Scheda
+      titolo={`Preferenze ricevute (${risposte.length}/${p.studenti.length})`}
+      icona={Inbox}
+      tono={p.scaduta ? 'avviso' : 'normale'}
+    >
       <div className="space-y-4 text-sm">
         <ul className="space-y-1.5">
           {ORDINE_SCELTE.map((s) => {
@@ -92,7 +97,7 @@ export function PannelloPreferenze(p: {
         {p.scaduta ? (
           <div className="space-y-2">
             <p>Le preferenze sono chiuse: puoi generare la lista.</p>
-            <Bottone onClick={genera} disabled={inCorso}>
+            <Bottone onClick={genera} disabled={inCorso} icona={Shuffle}>
               {inCorso ? 'Generazione…' : 'Genera lista'}
             </Bottone>
           </div>

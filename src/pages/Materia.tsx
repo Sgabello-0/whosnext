@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
+import { CalendarDays, CheckCheck, ClipboardList, Hourglass, ListOrdered, Plus } from 'lucide-react'
 import { orderBy, query } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { creaInterrogazione, rifInterrogazioni, rifMateria } from '../lib/configurazione'
@@ -10,13 +11,12 @@ import { puoGestireDSA } from '../lib/membri'
 import { useCalendario } from '../lib/useCalendario'
 import { useClasse } from '../lib/useClasse'
 import type { Interrogazione, Materia as TipoMateria } from '../lib/tipi'
-import { BadgeStato } from '../components/BadgeStato'
 import { FormInterrogazione } from '../components/FormInterrogazione'
-import { GiorniMateria } from '../components/GiorniMateria'
+import { NOMI_GIORNI_BREVI } from '../lib/calendar'
 import { ProssimeLezioni } from '../components/ProssimeLezioni'
 import { StatoClasse } from '../components/StatoClasse'
 import { useAvvisi } from '../components/Avvisi'
-import { Bottone, Caricamento, LinkBottone, Riquadro, Scheda } from '../components/ui'
+import { Bottone, Caricamento, IntestazionePagina, LinkBottone, Modulo, Pallino, Riquadro, RigaLink, Scheda, Vuoto } from '../components/ui'
 
 export default function Materia() {
   const { classId = '', subjectId = '' } = useParams()
@@ -48,31 +48,21 @@ export default function Materia() {
 
   return (
     <>
-      <div>
-        <Link to={`/classe/${classId}`} className="text-sm text-accento hover:underline dark:text-blue-300">
-          ← {dati.classe.nome}
-        </Link>
-        <h1 className="text-2xl font-semibold">{m.nome}</h1>
-        <GiorniMateria giorni={m.orario} />
-      </div>
+      <IntestazionePagina
+        indietro={{ to: `/classe/${classId}`, testo: dati.classe.nome }}
+        titolo={m.nome}
+        sottotitolo={m.orario.length ? `Lezioni: ${m.orario.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ')}` : 'Nessun giorno di lezione fisso'}
+      />
 
-      <Scheda titolo="Prossime lezioni">
-        {cal ? <ProssimeLezioni giorni={m.orario} subjectId={subjectId} cal={cal} /> : <Caricamento />}
-      </Scheda>
-
-      <Scheda
-        titolo="Interrogazioni"
-        azioni={
-          staff && !nuova ? (
-            <Bottone variante="piccolo" onClick={() => setNuova(true)}>
+      <Scheda titolo="Interrogazioni" icona={ClipboardList}>
+        <div className="space-y-4">
+          {staff && !nuova && (
+            <Bottone icona={Plus} onClick={() => setNuova(true)}>
               Nuova interrogazione
             </Bottone>
-          ) : undefined
-        }
-      >
-        <div className="space-y-4">
+          )}
           {nuova && db && (
-            <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/50">
+            <Modulo>
               <FormInterrogazione
                 giorniMateria={m.orario}
                 testoSalva="Crea interrogazione"
@@ -83,39 +73,49 @@ export default function Materia() {
                   navigate(`/classe/${classId}/materia/${subjectId}/interrogazione/${id}`)
                 }}
               />
-            </div>
+            </Modulo>
           )}
           {interrogazioni.errore ? (
             <Riquadro tono="errore">{messaggioErrore(interrogazioni.errore)}</Riquadro>
           ) : !interrogazioni.dati ? (
             <Caricamento />
           ) : interrogazioni.dati.length === 0 ? (
-            <p className="text-sm text-slate-500">
+            <Vuoto icona={ClipboardList}>
               Nessuna interrogazione.{staff ? '' : ' Il capoclasse la aggiungerà quando il prof la annuncia.'}
-            </p>
+            </Vuoto>
           ) : (
-            <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
               {interrogazioni.dati.map((i) => (
-                <li key={i.id}>
-                  <Link
-                    to={`/classe/${classId}/materia/${subjectId}/interrogazione/${i.id}`}
-                    className="-mx-2 flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60"
-                  >
-                    <span className="min-w-0">
-                      <span className="block font-medium">{i.nome}</span>
-                      {i.stato === 'raccolta' && (
-                        <span className="block text-xs text-slate-500">
-                          Preferenze entro {formattaScadenza(i.scadenzaPreferenze.toDate())}
-                        </span>
-                      )}
-                    </span>
-                    <BadgeStato stato={i.stato} />
-                  </Link>
-                </li>
+                <RigaLink
+                  key={i.id}
+                  to={`/classe/${classId}/materia/${subjectId}/interrogazione/${i.id}`}
+                  sinistra={
+                    i.stato === 'raccolta' ? (
+                      <Pallino icona={Hourglass} colore="ambra" />
+                    ) : i.stato === 'lista' ? (
+                      <Pallino icona={ListOrdered} colore="verde" />
+                    ) : (
+                      <Pallino icona={CheckCheck} colore="grigio" />
+                    )
+                  }
+                >
+                  <span className="block font-medium">{i.nome}</span>
+                  <span className="block text-xs text-slate-500">
+                    {i.stato === 'raccolta'
+                      ? `Preferenze entro ${formattaScadenza(i.scadenzaPreferenze.toDate())}`
+                      : i.stato === 'lista'
+                        ? 'Lista pronta'
+                        : 'Conclusa'}
+                  </span>
+                </RigaLink>
               ))}
             </ul>
           )}
         </div>
+      </Scheda>
+
+      <Scheda titolo="Prossime lezioni" icona={CalendarDays}>
+        {cal ? <ProssimeLezioni giorni={m.orario} subjectId={subjectId} cal={cal} /> : <Caricamento />}
       </Scheda>
     </>
   )

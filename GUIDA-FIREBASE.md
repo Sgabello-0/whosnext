@@ -49,7 +49,7 @@ Firebase crea in automatico una schermata di consenso in modalità **Test**: in 
 2. Menu → **API e servizi → Schermata consenso OAuth** (nelle versioni nuove: **Google Auth Platform → Pubblico**).
 3. Tipo di utente: **Esterno**.
 4. Prima compila la pagina **Branding**:
-   - Nome dell'app: `Interrogazioni di Classe`
+   - Nome dell'app: `WhosNext`
    - Email di assistenza utenti: il tuo Gmail
    - **Logo: lascialo vuoto** (caricare un logo obbliga a far verificare l'app da Google, con attese di settimane)
    - Home page dell'applicazione: `https://github.com/Sgabello-0/whosnext`

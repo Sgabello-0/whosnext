@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react'
-import { Link } from 'react-router'
+import { BellRing, CalendarCheck, CheckCheck, Hourglass, ListChecks, Megaphone, Shuffle, Sparkles, type LucideIcon } from 'lucide-react'
 import { formattaGiorno } from '../../lib/calendar'
 import { confrontaDaFare, confrontaMie, voceMia, vociDaFare, type InterrogazioneOsservata, type VoceDaFare, type VoceMia } from '../../lib/daFare'
 import { formattaScadenza, tempoMancante } from '../../lib/formatoDate'
@@ -7,7 +6,7 @@ import { percorsoInterrogazione } from '../../lib/messaggi'
 import { useInterrogazioniOsservate } from '../../lib/raccolta'
 import { ETICHETTA_SCELTA } from '../../lib/testiPreferenze'
 import { useAdesso } from '../../lib/useAdesso'
-import { Badge, Scheda } from '../ui'
+import { Pallino, RigaLink, Scheda, Vuoto } from '../ui'
 
 function percorso(d: InterrogazioneOsservata): string {
   return percorsoInterrogazione(d.classId, d.subjectId, d.interrogazioneId)
@@ -15,24 +14,10 @@ function percorso(d: InterrogazioneOsservata): string {
 
 function Titolo({ d, mostraClasse }: { d: InterrogazioneOsservata; mostraClasse: boolean }) {
   return (
-    <span className="block font-medium">
+    <span className="block font-semibold">
       {d.nomeMateria} – {d.nome}
       {mostraClasse && <span className="font-normal text-slate-500"> · {d.nomeClasse}</span>}
     </span>
-  )
-}
-
-function Riga(props: { to: string; children: ReactNode; destra?: ReactNode }) {
-  return (
-    <li>
-      <Link
-        to={props.to}
-        className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60"
-      >
-        <span className="min-w-0 text-sm">{props.children}</span>
-        {props.destra}
-      </Link>
-    </li>
   )
 }
 
@@ -51,6 +36,13 @@ function testoDaFare(v: VoceDaFare): string {
   }
 }
 
+const ICONA_DA_FARE: Record<VoceDaFare['tipo'], { icona: LucideIcon; colore: 'ambra' | 'blu' | 'viola' }> = {
+  genera: { icona: Shuffle, colore: 'ambra' },
+  segnalazioni: { icona: BellRing, colore: 'viola' },
+  segna: { icona: ListChecks, colore: 'blu' },
+  risposte: { icona: Megaphone, colore: 'blu' },
+}
+
 /** Le cose da fare per chi gestisce la classe (capo, vice, docenti con permesso). */
 export function PannelloDaFare({ classId }: { classId?: string }) {
   const adesso = useAdesso()
@@ -60,17 +52,17 @@ export function PannelloDaFare({ classId }: { classId?: string }) {
   const piuClassi = new Set(tutte.map((d) => d.classId)).size > 1
 
   return (
-    <Scheda titolo={`Da fare (${voci.length})`}>
-      <ul className="divide-y divide-slate-200 dark:divide-slate-800" aria-label="Da fare">
+    <Scheda titolo={`Da fare (${voci.length})`} icona={Sparkles} tono="avviso">
+      <ul className="divide-y divide-slate-100 dark:divide-slate-800" aria-label="Da fare">
         {voci.map(({ voce, d }) => (
-          <Riga
+          <RigaLink
             key={`${d.chiave}/${voce.tipo}`}
             to={percorso(d)}
-            destra={voce.tipo === 'risposte' ? undefined : <Badge colore={voce.tipo === 'genera' ? 'ambra' : 'blu'}>da fare</Badge>}
+            sinistra={<Pallino icona={ICONA_DA_FARE[voce.tipo].icona} colore={ICONA_DA_FARE[voce.tipo].colore} />}
           >
             <Titolo d={d} mostraClasse={piuClassi} />
             <span className="block text-slate-600 dark:text-slate-400">{testoDaFare(voce)}</span>
-          </Riga>
+          </RigaLink>
         ))}
       </ul>
     </Scheda>
@@ -115,6 +107,22 @@ function DescrizioneMia({ v, adesso }: { v: VoceMia; adesso: Date }) {
   }
 }
 
+/** A sinistra della riga: la mia posizione in lista, oppure un'icona dello stato. */
+function SimboloMia({ v }: { v: VoceMia }) {
+  switch (v.tipo) {
+    case 'in-lista':
+      return <Pallino colore="pieno">{v.posizione}°</Pallino>
+    case 'da-scegliere':
+      return <Pallino icona={Hourglass} colore="ambra" />
+    case 'scelta':
+      return <Pallino icona={CheckCheck} colore="verde" />
+    case 'attesa-lista':
+      return <Pallino icona={Shuffle} colore="grigio" />
+    case 'docente-lista':
+      return <Pallino icona={ListChecks} colore="viola" />
+  }
+}
+
 /** Tutte le interrogazioni dell'utente in tutte le classi, in un colpo d'occhio. */
 export function PannelloMie({ caricamento }: { caricamento: boolean }) {
   const adesso = useAdesso()
@@ -128,24 +136,24 @@ export function PannelloMie({ caricamento }: { caricamento: boolean }) {
   const piuClassi = new Set(tutte.map((d) => d.classId)).size > 1
 
   return (
-    <Scheda titolo="Le mie interrogazioni">
+    <Scheda titolo="Le mie interrogazioni" icona={CalendarCheck}>
       {voci.length === 0 ? (
-        <p className="text-sm text-slate-500">
+        <Vuoto icona={CheckCheck}>
           {caricamento ? 'Caricamento…' : 'Nessuna interrogazione in corso. Quando il capoclasse ne aggiunge una, la trovi qui.'}
-        </p>
+        </Vuoto>
       ) : (
-        <ul className="divide-y divide-slate-200 dark:divide-slate-800" aria-label="Le mie interrogazioni">
+        <ul className="divide-y divide-slate-100 dark:divide-slate-800" aria-label="Le mie interrogazioni">
           {voci.map(({ voce, d }) => (
-            <Riga
+            <RigaLink
               key={d.chiave}
               to={percorso(d)}
-              destra={voce.tipo === 'da-scegliere' ? <Badge colore="ambra">da scegliere</Badge> : undefined}
+              sinistra={<SimboloMia v={voce} />}
             >
               <Titolo d={d} mostraClasse={piuClassi} />
               <span className="block text-slate-600 dark:text-slate-400">
                 <DescrizioneMia v={voce} adesso={adesso} />
               </span>
-            </Riga>
+            </RigaLink>
           ))}
         </ul>
       )}

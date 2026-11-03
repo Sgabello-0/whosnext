@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Interrogazioni di Classe',
-        short_name: 'Interrogazioni',
+        name: 'WhosNext',
+        short_name: 'WhosNext',
         description: "L'ordine delle interrogazioni della tua classe",
         lang: 'it',
         start_url: '/',

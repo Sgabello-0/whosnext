@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
+import { CalendarDays, Clock, Eye, Pencil, Trash2, Users } from 'lucide-react'
 import { db } from '../lib/firebase'
 import { NOMI_GIORNI_BREVI } from '../lib/calendar'
 import { aggiornaInterrogazione, eliminaInterrogazione, rifInterrogazione, rifMateria } from '../lib/configurazione'
@@ -20,7 +21,7 @@ import { useConferma } from '../components/Conferma'
 import { SceltaPreferenza } from '../components/interrogazione/SceltaPreferenza'
 import { PannelloPreferenze } from '../components/interrogazione/PannelloPreferenze'
 import { ListaInterrogazione } from '../components/interrogazione/ListaInterrogazione'
-import { Bottone, Caricamento, LinkBottone, Riquadro, Scheda } from '../components/ui'
+import { Bottone, Caricamento, Info, IntestazionePagina, LinkBottone, Riquadro, Scheda, Soffietto } from '../components/ui'
 
 export default function Interrogazione() {
   const { classId = '', subjectId = '', interrogazioneId = '' } = useParams()
@@ -75,21 +76,30 @@ export default function Interrogazione() {
 
   return (
     <>
-      <div>
-        <Link to={`/classe/${classId}/materia/${subjectId}`} className="text-sm text-accento hover:underline dark:text-blue-300">
-          ← {materia.dati.nome}
-        </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold break-words">{i.nome}</h1>
-          <BadgeStato stato={i.stato} />
-        </div>
-        {i.descrizione && <p className="mt-1 whitespace-pre-line text-slate-600 dark:text-slate-400">{i.descrizione}</p>}
-      </div>
+      <IntestazionePagina
+        indietro={{ to: `/classe/${classId}/materia/${subjectId}`, testo: materia.dati.nome }}
+        titolo={i.nome}
+        badge={<BadgeStato stato={i.stato} />}
+        sottotitolo={i.descrizione ? <p className="whitespace-pre-line">{i.descrizione}</p> : undefined}
+        azioni={
+          staff &&
+          !modifica && (
+            <>
+              <Bottone variante="piccolo" icona={Pencil} onClick={() => setModifica(true)}>
+                Modifica
+              </Bottone>
+              <Bottone variante="piccolo" icona={Trash2} onClick={elimina}>
+                Elimina
+              </Bottone>
+            </>
+          )
+        }
+      />
 
       {errore && <Riquadro tono="errore">{errore}</Riquadro>}
 
       {modifica && db ? (
-        <Scheda titolo="Modifica interrogazione">
+        <Scheda titolo="Modifica interrogazione" icona={Pencil}>
           <FormInterrogazione
             iniziale={{ ...i, scadenzaPreferenze: scadenza }}
             giorniMateria={materia.dati.orario}
@@ -103,37 +113,20 @@ export default function Interrogazione() {
           />
         </Scheda>
       ) : (
-        <Scheda
-          titolo="Dettagli"
-          azioni={
-            staff ? (
-              <div className="flex gap-1.5">
-                <Bottone variante="piccolo" onClick={() => setModifica(true)}>
-                  Modifica
-                </Bottone>
-                <Bottone variante="piccolo" onClick={elimina}>
-                  Elimina
-                </Bottone>
-              </div>
-            ) : undefined
-          }
-        >
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-            <dt className="text-slate-500">Preferenze entro</dt>
-            <dd>
-              {formattaScadenza(scadenza)} <span className="text-slate-500">({tempoMancante(scadenza, adesso)})</span>
-            </dd>
-            <dt className="text-slate-500">Giorni</dt>
-            <dd>{i.giorni.length ? i.giorni.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}</dd>
-            <dt className="text-slate-500">Per lezione</dt>
-            <dd>{i.perLezione ? `${i.perLezione} ${i.perLezione === 1 ? 'studente' : 'studenti'}` : 'non indicato'}</dd>
-          </dl>
-        </Scheda>
+        <div className="flex flex-wrap gap-2">
+          {i.stato === 'raccolta' && (
+            <Info icona={Clock}>
+              Preferenze entro {formattaScadenza(scadenza)} <span className="text-slate-500">({tempoMancante(scadenza, adesso)})</span>
+            </Info>
+          )}
+          <Info icona={CalendarDays}>
+            {i.giorni.length ? i.giorni.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}
+          </Info>
+          <Info icona={Users}>
+            {i.perLezione ? `${i.perLezione} ${i.perLezione === 1 ? 'studente' : 'studenti'} per lezione` : 'per lezione: non indicato'}
+          </Info>
+        </div>
       )}
-
-      <Scheda titolo="Prossime lezioni">
-        {cal ? <ProssimeLezioni giorni={i.giorni} subjectId={subjectId} cal={cal} /> : <Caricamento />}
-      </Scheda>
 
       {i.stato === 'raccolta' && io.ruolo !== 'docente' && (
         <SceltaPreferenza
@@ -147,7 +140,9 @@ export default function Interrogazione() {
         />
       )}
       {i.stato === 'raccolta' && io.ruolo === 'docente' && (
-        <Riquadro tono="info">Gli studenti stanno scegliendo le preferenze. La lista comparirà qui dopo la scadenza.</Riquadro>
+        <Riquadro tono="info" icona={Eye}>
+          Gli studenti stanno scegliendo le preferenze. La lista comparirà qui dopo la scadenza.
+        </Riquadro>
       )}
       {i.stato === 'raccolta' && staff && (
         <PannelloPreferenze
@@ -176,6 +171,10 @@ export default function Interrogazione() {
           nomeMateria={materia.dati.nome}
         />
       )}
+
+      <Soffietto titolo="Prossime lezioni" icona={CalendarDays}>
+        {cal ? <ProssimeLezioni giorni={i.giorni} subjectId={subjectId} cal={cal} /> : <Caricamento />}
+      </Soffietto>
     </>
   )
 }

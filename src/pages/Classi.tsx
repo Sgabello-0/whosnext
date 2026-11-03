@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
+import { KeyRound, Plus, School, Users } from 'lucide-react'
 import { useProfilo } from '../lib/auth'
 import { db } from '../lib/firebase'
 import { creaClasse, queryMieIscrizioni, rifClasse } from '../lib/classi'
@@ -8,7 +9,7 @@ import { messaggioErrore } from '../lib/errori'
 import { useDocumento, useQuery } from '../lib/hooks'
 import { ETICHETTA_RUOLO } from '../lib/membri'
 import type { Classe, Membro } from '../lib/tipi'
-import { Badge, Bottone, Caricamento, Campo, Riquadro, Scheda } from '../components/ui'
+import { Badge, Bottone, Caricamento, Campo, Modulo, Pallino, Riquadro, RigaLink, Scheda } from '../components/ui'
 import { ProviderRaccolta } from '../lib/raccolta'
 import { OsservaClasse } from '../components/osservatori/Osservatori'
 import { PannelloDaFare, PannelloMie } from '../components/osservatori/Pannelli'
@@ -19,9 +20,16 @@ function classIdDa(percorso: string): string {
   return percorso.split('/')[1] ?? ''
 }
 
+/** Sigla della classe per il quadratino (es. "4ªB Informatica" → "4ªB"), se è corta. */
+function siglaClasse(nome: string): string | null {
+  const prima = nome.trim().split(/\s+/)[0] ?? ''
+  return prima.length > 0 && prima.length <= 4 ? prima : null
+}
+
 export default function Classi() {
   const profilo = useProfilo()
   const iscrizioni = useQuery<Membro>(db && queryMieIscrizioni(db, profilo.uid), `iscrizioni/${profilo.uid}`)
+  const nessuna = iscrizioni.dati?.length === 0
 
   return (
     <ProviderRaccolta>
@@ -29,40 +37,38 @@ export default function Classi() {
         <OsservaClasse key={m.percorso} classId={classIdDa(m.percorso)} membro={m} />
       ))}
       <div>
-        <h1 className="text-2xl font-semibold">Ciao {profilo.nome.split(' ')[0]}</h1>
-        <p className="text-slate-600 dark:text-slate-400">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Ciao {profilo.nome.split(' ')[0]}</h1>
+        <p className="mt-0.5 text-slate-600 dark:text-slate-400">
           {profilo.tipo === 'docente'
-            ? 'Account docente: vedi le liste delle classi in cui entri.'
-            : 'Le tue classi e le loro interrogazioni.'}
+            ? nessuna
+              ? 'Account docente: entra nella classe con il codice del capoclasse.'
+              : 'Account docente: le liste delle classi in cui sei entrato.'
+            : nessuna
+              ? 'Per iniziare entra nella tua classe.'
+              : 'Ecco a che punto sono le tue interrogazioni.'}
         </p>
       </div>
 
       <PannelloDaFare />
       {iscrizioni.dati && iscrizioni.dati.length > 0 && <PannelloMie caricamento={!iscrizioni.dati} />}
 
-      <Scheda titolo="Le tue classi">
-        {iscrizioni.errore ? (
-          <Riquadro tono="errore">{messaggioErrore(iscrizioni.errore)}</Riquadro>
-        ) : !iscrizioni.dati ? (
-          <Caricamento />
-        ) : iscrizioni.dati.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            Non sei ancora in nessuna classe.{' '}
-            {profilo.tipo === 'studente'
-              ? 'Unisciti con il codice del capoclasse oppure creane una.'
-              : 'Chiedi al capoclasse il codice d\'invito.'}
-          </p>
-        ) : (
-          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
+      {iscrizioni.errore ? (
+        <Riquadro tono="errore">{messaggioErrore(iscrizioni.errore)}</Riquadro>
+      ) : !iscrizioni.dati ? (
+        <Caricamento />
+      ) : nessuna ? (
+        <PrimoAccesso />
+      ) : (
+        <Scheda titolo="Le tue classi" icona={School}>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {iscrizioni.dati.map((m) => (
               <RigaClasse key={m.percorso} classId={classIdDa(m.percorso)} membro={m} />
             ))}
           </ul>
-        )}
-      </Scheda>
+          <AltraClasse />
+        </Scheda>
+      )}
 
-      <Unisciti />
-      {profilo.tipo === 'studente' && <CreaClasse />}
       <InstallaApp />
     </ProviderRaccolta>
   )
@@ -70,23 +76,76 @@ export default function Classi() {
 
 function RigaClasse({ classId, membro }: { classId: string; membro: Membro }) {
   const classe = useDocumento<Classe>(db && rifClasse(db, classId))
+  const nome = classe.dati?.nome ?? '…'
+  const sigla = siglaClasse(nome)
   return (
-    <li>
-      <Link
-        to={`/classe/${classId}`}
-        className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60"
-      >
-        <span className="truncate font-medium">{classe.dati?.nome ?? '…'}</span>
-        <Badge colore={membro.ruolo === 'capo' ? 'blu' : membro.ruolo === 'docente' ? 'viola' : 'grigio'}>
-          {ETICHETTA_RUOLO[membro.ruolo]}
-        </Badge>
-      </Link>
-    </li>
+    <RigaLink
+      to={`/classe/${classId}`}
+      sinistra={<Pallino icona={sigla ? undefined : Users}>{sigla}</Pallino>}
+      destra={
+        membro.ruolo !== 'studente' && (
+          <Badge colore={membro.ruolo === 'docente' ? 'viola' : 'blu'}>{ETICHETTA_RUOLO[membro.ruolo]}</Badge>
+        )
+      }
+    >
+      <span className="block truncate text-base font-semibold">{nome}</span>
+    </RigaLink>
   )
 }
 
-function Unisciti() {
+/** Nessuna classe: le due strade (entrare con il codice o crearne una) bene in vista. */
+function PrimoAccesso() {
+  const profilo = useProfilo()
+  return (
+    <>
+      <Scheda titolo="Entra nella tua classe" icona={KeyRound} sottotitolo="Non sei ancora in nessuna classe.">
+        <FormUnisciti />
+      </Scheda>
+      {profilo.tipo === 'studente' && (
+        <Scheda titolo="Sei il capoclasse?" icona={Plus} sottotitolo="Crea la classe e poi invita i compagni.">
+          <FormCreaClasse />
+        </Scheda>
+      )}
+    </>
+  )
+}
+
+/** Sotto l'elenco delle classi: entrare o crearne un'altra, aprendo il modulo solo quando serve. */
+function AltraClasse() {
+  const profilo = useProfilo()
+  const [aperto, setAperto] = useState<'unisciti' | 'crea' | null>(null)
+  return (
+    <div className="mt-3 space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <div className="flex flex-wrap gap-2">
+        <Bottone
+          variante={aperto === 'unisciti' ? 'primario' : 'tenue'}
+          icona={KeyRound}
+          onClick={() => setAperto(aperto === 'unisciti' ? null : 'unisciti')}
+        >
+          Entra con un codice
+        </Bottone>
+        {profilo.tipo === 'studente' && (
+          <Bottone
+            variante={aperto === 'crea' ? 'primario' : 'tenue'}
+            icona={Plus}
+            onClick={() => setAperto(aperto === 'crea' ? null : 'crea')}
+          >
+            Crea una classe
+          </Bottone>
+        )}
+      </div>
+      {aperto && (
+        <Modulo>
+          {aperto === 'unisciti' ? <FormUnisciti autoFocus /> : <FormCreaClasse autoFocus />}
+        </Modulo>
+      )}
+    </div>
+  )
+}
+
+function FormUnisciti({ autoFocus }: { autoFocus?: boolean }) {
   const navigate = useNavigate()
+  const profilo = useProfilo()
   const [testo, setTesto] = useState('')
   const [errore, setErrore] = useState<string | null>(null)
 
@@ -101,28 +160,28 @@ function Unisciti() {
   }
 
   return (
-    <Scheda titolo="Unisciti a una classe">
-      <form onSubmit={invia} className="space-y-3">
-        <Campo
-          etichetta="Codice o link d'invito"
-          valore={testo}
-          onChange={(v) => {
-            setTesto(v)
-            setErrore(null)
-          }}
-          placeholder="ABC-DEF"
-          maxLength={200}
-        />
-        {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
-        <Bottone type="submit" disabled={!testo.trim()}>
-          Continua
-        </Bottone>
-      </form>
-    </Scheda>
+    <form onSubmit={invia} className="space-y-3">
+      <Campo
+        etichetta="Codice o link d'invito"
+        valore={testo}
+        onChange={(v) => {
+          setTesto(v)
+          setErrore(null)
+        }}
+        placeholder="ABC-DEF"
+        maxLength={200}
+        autoFocus={autoFocus}
+        aiuto={profilo.tipo === 'docente' ? "Chiedi il codice d'invito al capoclasse." : 'Te lo dà il capoclasse (di solito su WhatsApp).'}
+      />
+      {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
+      <Bottone type="submit" disabled={!testo.trim()}>
+        Continua
+      </Bottone>
+    </form>
   )
 }
 
-function CreaClasse() {
+function FormCreaClasse({ autoFocus }: { autoFocus?: boolean }) {
   const profilo = useProfilo()
   const navigate = useNavigate()
   const [nome, setNome] = useState('')
@@ -144,18 +203,20 @@ function CreaClasse() {
   }
 
   return (
-    <Scheda titolo="Crea una classe">
-      <form onSubmit={invia} className="space-y-3">
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Chi crea la classe ne diventa il <strong>capoclasse</strong>: configura materie e interrogazioni e gestisce
-          i compagni.
-        </p>
-        <Campo etichetta="Nome della classe" valore={nome} onChange={setNome} placeholder="Es. 4ªB Informatica" maxLength={60} />
-        {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
-        <Bottone type="submit" disabled={inCorso || !nome.trim()}>
-          {inCorso ? 'Creazione…' : 'Crea classe'}
-        </Bottone>
-      </form>
-    </Scheda>
+    <form onSubmit={invia} className="space-y-3">
+      <Campo
+        etichetta="Nome della classe"
+        valore={nome}
+        onChange={setNome}
+        placeholder="Es. 4ªB Informatica"
+        maxLength={60}
+        autoFocus={autoFocus}
+        aiuto="Chi crea la classe ne diventa il capoclasse: aggiunge materie e interrogazioni."
+      />
+      {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
+      <Bottone type="submit" disabled={inCorso || !nome.trim()}>
+        {inCorso ? 'Creazione…' : 'Crea classe'}
+      </Bottone>
+    </form>
   )
 }

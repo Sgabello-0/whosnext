@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
+import { BookOpen, CalendarDays, CalendarOff, CalendarPlus, Grid3x3, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { db } from '../lib/firebase'
 import {
   conEccezione,
@@ -25,7 +26,22 @@ import { useAvvisi } from '../components/Avvisi'
 import { useConferma } from '../components/Conferma'
 import { GiorniMateria } from '../components/GiorniMateria'
 import { OrarioSettimanale } from '../components/OrarioSettimanale'
-import { Bottone, Caricamento, Campo, CLASSE_INPUT, Etichetta, LinkBottone, Riquadro, Scheda, SelettoreGiorni } from '../components/ui'
+import {
+  Bottone,
+  BottoneIcona,
+  Caricamento,
+  Campo,
+  CLASSE_INPUT,
+  Etichetta,
+  IntestazionePagina,
+  LinkBottone,
+  Modulo,
+  Riquadro,
+  Scheda,
+  Schede,
+  SelettoreGiorni,
+  Soffietto,
+} from '../components/ui'
 
 /** Materie e calendario della classe: li configurano capoclasse e vice. */
 export default function Configura() {
@@ -33,6 +49,9 @@ export default function Configura() {
   const dati = useClasse(classId)
   const { cal } = useCalendario(classId)
   const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
+  const [parametri, setParametri] = useSearchParams()
+  const sezione =
+    (['materie', 'orario', 'calendario'] as const).find((x) => x === parametri.get('sezione')) ?? 'materie'
 
   if (dati.stato !== 'pronto') return <StatoClasse dati={dati} />
   if (!puoGestireDSA(dati.io)) {
@@ -47,36 +66,50 @@ export default function Configura() {
 
   return (
     <>
-      <div>
-        <Link to={`/classe/${classId}`} className="text-sm text-accento hover:underline dark:text-blue-300">
-          ← {dati.classe.nome}
-        </Link>
-        <h1 className="text-2xl font-semibold">Materie e calendario</h1>
-      </div>
+      <IntestazionePagina
+        indietro={{ to: `/classe/${classId}`, testo: dati.classe.nome }}
+        titolo="Materie e calendario"
+      />
 
-      <Scheda titolo="Materie">
-        {materie.errore ? (
-          <Riquadro tono="errore">{messaggioErrore(materie.errore)}</Riquadro>
-        ) : !materie.dati ? (
-          <Caricamento />
-        ) : (
-          <div className="space-y-4">
-            {elencoMaterie.length === 0 && (
-              <p className="text-sm text-slate-500">Nessuna materia. Aggiungi quelle con interrogazioni da organizzare.</p>
-            )}
-            <ul className="divide-y divide-slate-200 dark:divide-slate-800">
-              {elencoMaterie.map((m) => (
-                <RigaMateria key={m.id} classId={classId} materia={m} />
-              ))}
-            </ul>
-            <NuovaMateria classId={classId} />
-          </div>
-        )}
-      </Scheda>
+      <Schede
+        etichetta="Sezioni"
+        attiva={sezione}
+        onCambia={(id) => setParametri(id === 'materie' ? {} : { sezione: id }, { replace: true })}
+        schede={[
+          { id: 'materie', etichetta: 'Materie', icona: BookOpen },
+          { id: 'orario', etichetta: 'Orario', icona: Grid3x3 },
+          { id: 'calendario', etichetta: 'Calendario', icona: CalendarDays },
+        ]}
+      />
 
-      {cal && <OrarioSettimanale classId={classId} materie={elencoMaterie} cal={cal} />}
+      {sezione === 'materie' && (
+        <Scheda
+          titolo="Materie"
+          icona={BookOpen}
+          sottotitolo="Quelle con interrogazioni da organizzare, con i giorni di lezione."
+        >
+          {materie.errore ? (
+            <Riquadro tono="errore">{messaggioErrore(materie.errore)}</Riquadro>
+          ) : !materie.dati ? (
+            <Caricamento />
+          ) : (
+            <div className="space-y-4">
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {elencoMaterie.map((m) => (
+                  <RigaMateria key={m.id} classId={classId} materia={m} />
+                ))}
+              </ul>
+              <NuovaMateria classId={classId} />
+            </div>
+          )}
+        </Scheda>
+      )}
 
-      {cal ? <ConfiguraCalendario classId={classId} cal={cal} materie={elencoMaterie} /> : <Caricamento />}
+      {sezione === 'orario' &&
+        (cal ? <OrarioSettimanale classId={classId} materie={elencoMaterie} cal={cal} /> : <Caricamento />)}
+
+      {sezione === 'calendario' &&
+        (cal ? <ConfiguraCalendario classId={classId} cal={cal} materie={elencoMaterie} /> : <Caricamento />)}
     </>
   )
 }
@@ -112,14 +145,16 @@ function NuovaMateria({ classId }: { classId: string }) {
   }
 
   return (
-    <form onSubmit={invia} className="space-y-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-950/50">
-      <p className="text-sm font-semibold">Aggiungi una materia</p>
-      <Campo etichetta="Nome" valore={nome} onChange={setNome} placeholder="Es. Matematica" maxLength={40} />
-      <SelettoreGiorni etichetta="Giorni di lezione" valore={orario} onChange={setOrario} />
-      {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
-      <Bottone type="submit" disabled={inCorso || !nome.trim()}>
-        Aggiungi materia
-      </Bottone>
+    <form onSubmit={invia}>
+      <Modulo>
+        <p className="font-semibold">Aggiungi una materia</p>
+        <Campo etichetta="Nome" valore={nome} onChange={setNome} placeholder="Es. Matematica" maxLength={40} />
+        <SelettoreGiorni etichetta="Giorni di lezione" valore={orario} onChange={setOrario} />
+        {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
+        <Bottone type="submit" icona={Plus} disabled={inCorso || !nome.trim()}>
+          Aggiungi materia
+        </Bottone>
+      </Modulo>
     </form>
   )
 }
@@ -192,18 +227,14 @@ function RigaMateria({ classId, materia }: { classId: string; materia: ConId<Mat
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
       <div className="min-w-0 flex-1">
-        <Link to={`/classe/${classId}/materia/${materia.id}`} className="font-medium hover:underline">
+        <Link to={`/classe/${classId}/materia/${materia.id}`} className="font-semibold hover:underline">
           {materia.nome}
         </Link>
         <GiorniMateria giorni={materia.orario} />
       </div>
-      <div className="flex gap-1.5">
-        <Bottone variante="piccolo" onClick={() => setModifica(true)}>
-          Modifica
-        </Bottone>
-        <Bottone variante="piccolo" onClick={elimina}>
-          Elimina
-        </Bottone>
+      <div className="flex gap-0.5">
+        <BottoneIcona icona={Pencil} etichetta={`Modifica ${materia.nome}`} onClick={() => setModifica(true)} />
+        <BottoneIcona icona={Trash2} etichetta={`Elimina ${materia.nome}`} onClick={elimina} />
       </div>
       {errore && <p className="basis-full text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
     </li>
@@ -212,7 +243,15 @@ function RigaMateria({ classId, materia }: { classId: string; materia: ConId<Mat
 
 // ───────────── Calendario ─────────────
 
-function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: Calendario; materie: ConId<Materia>[] }) {
+function ConfiguraCalendario({
+  classId,
+  cal,
+  materie,
+}: {
+  classId: string
+  cal: Calendario
+  materie: ConId<Materia>[]
+}) {
   const [errore, setErrore] = useState<string | null>(null)
   const [salvataggio, setSalvataggio] = useState(false)
   const avvisi = useAvvisi()
@@ -244,51 +283,54 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
   const feste = festeTra(oggi < '2026-09-01' ? '2026-09-01' : oggi, cal.fineAnno)
 
   return (
-    <Scheda titolo="Calendario" azioni={salvataggio ? <span className="text-xs text-slate-500">Salvataggio…</span> : undefined}>
-      <div className="space-y-6">
-        {errore && <Riquadro tono="errore">{errore}</Riquadro>}
+    <>
+      {errore && <Riquadro tono="errore">{errore}</Riquadro>}
+      <Scheda
+        titolo="Settimana e fine anno"
+        icona={CalendarDays}
+        azioni={salvataggio ? <span className="text-xs text-slate-500">Salvataggio…</span> : undefined}
+      >
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <SelettoreGiorni
+              etichetta="Giorni di scuola"
+              valore={giorniAttivi}
+              onChange={(g) =>
+                salva(
+                  { ...cal, giorniScolastici: [0, 1, 2, 3, 4, 5, 6].map((i) => g.includes(i)) },
+                  'Giorni di scuola salvati',
+                  cal,
+                )
+              }
+            />
+            <p className="text-xs text-slate-500">Le lezioni di una materia contano solo nei giorni di scuola.</p>
+          </div>
 
-        <div className="space-y-2">
-          <SelettoreGiorni
-            etichetta="Giorni di scuola"
-            valore={giorniAttivi}
-            onChange={(g) =>
-              salva({ ...cal, giorniScolastici: [0, 1, 2, 3, 4, 5, 6].map((i) => g.includes(i)) }, 'Giorni di scuola salvati', cal)
-            }
-          />
-          <p className="text-xs text-slate-500">Le lezioni di una materia contano solo nei giorni di scuola.</p>
+          <FineAnno cal={cal} salva={salva} />
         </div>
+      </Scheda>
 
-        <FineAnno cal={cal} salva={salva} />
-
-        <details className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800">
-          <summary className="cursor-pointer font-medium">Feste nazionali già incluse ({feste.length})</summary>
-          <ul className="mt-2 space-y-1 text-slate-600 dark:text-slate-400">
-            {feste.map((f) => (
-              <li key={f.data}>
-                {formattaData(f.data)} · {f.nome}
-              </li>
-            ))}
-          </ul>
-        </details>
-
-        <div className="space-y-3">
-          <h3 className="font-semibold">Vacanze e chiusure</h3>
-          <p className="text-sm text-slate-500">
-            Le vacanze dell'Emilia-Romagna 2026-27 sono già inserite (calendario regionale). Aggiungi quelle
-            d'istituto: ponti, festa del patrono, chiusure per elezioni…
-          </p>
+      <Scheda
+        titolo="Vacanze e chiusure"
+        icona={CalendarOff}
+        sottotitolo="Quelle dell'Emilia-Romagna 2026-27 ci sono già. Aggiungi ponti, festa del patrono, chiusure per elezioni…"
+      >
+        <div className="space-y-4">
           {mancanti.length > 0 && (
             <Riquadro tono="info" titolo="Vacanze regionali mancanti">
               <ul className="list-disc pl-5">
                 {mancanti.map((v) => (
                   <li key={v.da}>
-                    {v.descrizione}: {v.da === v.a ? formattaData(v.da) : `${formattaData(v.da)} – ${formattaData(v.a)}`}
+                    {v.descrizione}:{' '}
+                    {v.da === v.a ? formattaData(v.da) : `${formattaData(v.da)} – ${formattaData(v.a)}`}
                   </li>
                 ))}
               </ul>
               <div className="mt-2">
-                <Bottone variante="piccolo" onClick={() => salva(mancanti.reduce(conEccezione, cal), 'Vacanze regionali aggiunte', cal)}>
+                <Bottone
+                  variante="piccolo"
+                  onClick={() => salva(mancanti.reduce(conEccezione, cal), 'Vacanze regionali aggiunte', cal)}
+                >
                   Aggiungi le vacanze regionali
                 </Bottone>
               </div>
@@ -305,9 +347,14 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
           />
           <NuovaVacanza onAggiungi={(e) => salva(conEccezione(cal, e), 'Vacanza aggiunta', cal)} />
         </div>
+      </Scheda>
 
-        <div className="space-y-3">
-          <h3 className="font-semibold">Lezioni extra o annullate</h3>
+      <Scheda
+        titolo="Lezioni extra o annullate"
+        icona={CalendarPlus}
+        sottotitolo="Una lezione in più o saltata (gita, assemblea, sciopero…)."
+      >
+        <div className="space-y-4">
           <ElencoEccezioni
             eccezioni={lezioni}
             descrivi={(e) =>
@@ -320,15 +367,34 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
           {materie.length === 0 ? (
             <p className="text-sm text-slate-500">Aggiungi prima una materia.</p>
           ) : (
-            <NuovaLezione materie={materie} onAggiungi={(e) => salva(conEccezione(cal, e), 'Aggiunta al calendario', cal)} />
+            <NuovaLezione
+              materie={materie}
+              onAggiungi={(e) => salva(conEccezione(cal, e), 'Aggiunta al calendario', cal)}
+            />
           )}
         </div>
-      </div>
-    </Scheda>
+      </Scheda>
+
+      <Soffietto titolo={`Feste nazionali già incluse (${feste.length})`} icona={CalendarDays}>
+        <ul className="space-y-1 text-sm text-slate-600 dark:text-slate-400">
+          {feste.map((f) => (
+            <li key={f.data}>
+              {formattaData(f.data)} · {f.nome}
+            </li>
+          ))}
+        </ul>
+      </Soffietto>
+    </>
   )
 }
 
-function FineAnno({ cal, salva }: { cal: Calendario; salva: (c: Calendario, avviso?: string, annulla?: Calendario) => Promise<boolean> }) {
+function FineAnno({
+  cal,
+  salva,
+}: {
+  cal: Calendario
+  salva: (c: Calendario, avviso?: string, annulla?: Calendario) => Promise<boolean>
+}) {
   const [valore, setValore] = useState(cal.fineAnno)
   return (
     <div className="flex flex-wrap items-end gap-2">
@@ -337,23 +403,31 @@ function FineAnno({ cal, salva }: { cal: Calendario; salva: (c: Calendario, avvi
           <input type="date" value={valore} onChange={(e) => setValore(e.target.value)} className={CLASSE_INPUT} />
         </Etichetta>
       </div>
-      <Bottone variante="secondario" disabled={!valore || valore === cal.fineAnno} onClick={() => salva({ ...cal, fineAnno: valore }, 'Fine anno salvata', cal)}>
+      <Bottone
+        variante="secondario"
+        disabled={!valore || valore === cal.fineAnno}
+        onClick={() => salva({ ...cal, fineAnno: valore }, 'Fine anno salvata', cal)}
+      >
         Salva
       </Bottone>
     </div>
   )
 }
 
-function ElencoEccezioni(props: { eccezioni: Eccezione[]; descrivi: (e: Eccezione) => string; onTogli: (e: Eccezione) => void }) {
+function ElencoEccezioni(props: {
+  eccezioni: Eccezione[]
+  descrivi: (e: Eccezione) => string
+  onTogli: (e: Eccezione) => void
+}) {
   if (props.eccezioni.length === 0) return <p className="text-sm text-slate-500">Nessuna.</p>
   return (
-    <ul className="divide-y divide-slate-200 text-sm dark:divide-slate-800">
+    <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
       {props.eccezioni.map((e) => {
         const testo = props.descrivi(e)
         return (
           <li key={JSON.stringify(e)} className="flex items-center justify-between gap-3 py-2">
             <span>{testo}</span>
-            <Bottone variante="piccolo" aria-label={`Togli ${testo}`} onClick={() => props.onTogli(e)}>
+            <Bottone variante="piccolo" icona={X} aria-label={`Togli ${testo}`} onClick={() => props.onTogli(e)}>
               Togli
             </Bottone>
           </li>
@@ -382,7 +456,8 @@ function NuovaVacanza({ onAggiungi }: { onAggiungi: (e: Eccezione) => Promise<bo
   }
 
   return (
-    <form onSubmit={invia} className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-2 dark:bg-slate-950/50">
+    <form onSubmit={invia} className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-2 sm:p-4 dark:bg-slate-950/50">
+      <p className="font-semibold sm:col-span-2">Aggiungi una vacanza</p>
       <Etichetta testo="Dal">
         <input type="date" required value={da} onChange={(e) => setDa(e.target.value)} className={CLASSE_INPUT} />
       </Etichetta>
@@ -390,10 +465,16 @@ function NuovaVacanza({ onAggiungi }: { onAggiungi: (e: Eccezione) => Promise<bo
         <input type="date" value={a} min={da} onChange={(e) => setA(e.target.value)} className={CLASSE_INPUT} />
       </Etichetta>
       <div className="sm:col-span-2">
-        <Campo etichetta="Descrizione" valore={descrizione} onChange={setDescrizione} placeholder="Es. Vacanze di Natale" maxLength={60} />
+        <Campo
+          etichetta="Descrizione"
+          valore={descrizione}
+          onChange={setDescrizione}
+          placeholder="Es. Vacanze di Natale"
+          maxLength={60}
+        />
       </div>
       <div className="sm:col-span-2">
-        <Bottone type="submit" variante="secondario" disabled={!da}>
+        <Bottone type="submit" icona={Plus} disabled={!da}>
           Aggiungi vacanza
         </Bottone>
       </div>
@@ -401,7 +482,13 @@ function NuovaVacanza({ onAggiungi }: { onAggiungi: (e: Eccezione) => Promise<bo
   )
 }
 
-function NuovaLezione({ materie, onAggiungi }: { materie: ConId<Materia>[]; onAggiungi: (e: Eccezione) => Promise<boolean> }) {
+function NuovaLezione({
+  materie,
+  onAggiungi,
+}: {
+  materie: ConId<Materia>[]
+  onAggiungi: (e: Eccezione) => Promise<boolean>
+}) {
   const [data, setData] = useState('')
   const [subjectId, setSubjectId] = useState(materie[0]?.id ?? '')
   const [tipo, setTipo] = useState<'lezione-extra' | 'lezione-annullata'>('lezione-extra')
@@ -414,7 +501,8 @@ function NuovaLezione({ materie, onAggiungi }: { materie: ConId<Materia>[]; onAg
   }
 
   return (
-    <form onSubmit={invia} className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-3 dark:bg-slate-950/50">
+    <form onSubmit={invia} className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-3 sm:p-4 dark:bg-slate-950/50">
+      <p className="font-semibold sm:col-span-3">Aggiungi un cambio</p>
       <Etichetta testo="Giorno">
         <input type="date" required value={data} onChange={(e) => setData(e.target.value)} className={CLASSE_INPUT} />
       </Etichetta>
@@ -434,11 +522,15 @@ function NuovaLezione({ materie, onAggiungi }: { materie: ConId<Materia>[]; onAg
         </select>
       </Etichetta>
       <div className="sm:col-span-3">
-        <Bottone type="submit" variante="secondario" disabled={!data || !subjectId}>
+        <Bottone type="submit" icona={Plus} disabled={!data || !subjectId}>
           Aggiungi
         </Bottone>
       </div>
-      {dataValida(data) && <p className="text-xs text-slate-500 sm:col-span-3">{formattaGiorno(data)}/{data.slice(0, 4)}</p>}
+      {dataValida(data) && (
+        <p className="text-xs text-slate-500 sm:col-span-3">
+          {formattaGiorno(data)}/{data.slice(0, 4)}
+        </p>
+      )}
     </form>
   )
 }

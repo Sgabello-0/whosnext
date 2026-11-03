@@ -8,6 +8,14 @@ import { salvaPreferenza, togliPreferenza } from '../../lib/preferenze'
 import { ETICHETTA_SCELTA, SPIEGAZIONE_SCELTA } from '../../lib/testiPreferenze'
 import type { DocPreferenza } from '../../lib/tipi'
 import { Bottone, CLASSE_INPUT, Caricamento, Riquadro, Scheda } from '../ui'
+import { ArrowDownToLine, ArrowUpToLine, CircleCheck, Hand, Lock, MoveVertical, Shuffle, type LucideIcon } from 'lucide-react'
+
+const ICONA_SCELTA: Record<'inizio' | 'meta' | 'fine' | 'indifferente', LucideIcon> = {
+  inizio: ArrowUpToLine,
+  meta: MoveVertical,
+  fine: ArrowDownToLine,
+  indifferente: Shuffle,
+}
 import { useAvvisi } from '../Avvisi'
 
 type Props = {
@@ -71,7 +79,7 @@ export function SceltaPreferenza(p: Props) {
 
   if (!p.aperta) {
     return (
-      <Scheda titolo="La tua preferenza">
+      <Scheda titolo="La tua preferenza" icona={Lock}>
         <p className="text-sm">
           {descrizioneAttuale ? (
             <>
@@ -89,11 +97,12 @@ export function SceltaPreferenza(p: Props) {
   const posizioneScelta = posizione ?? attuale?.posizioneDSA ?? 1
 
   return (
-    <Scheda titolo="Quando vuoi essere interrogato?">
+    <Scheda titolo="Quando vuoi essere interrogato?" icona={Hand} tono={attuale ? 'normale' : 'evidenza'}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="La tua preferenza">
           {(['inizio', 'meta', 'fine', 'indifferente'] as const).map((s) => {
             const scelta = attuale?.scelta === s
+            const Icona = ICONA_SCELTA[s]
             return (
               <button
                 key={s}
@@ -102,12 +111,14 @@ export function SceltaPreferenza(p: Props) {
                 aria-checked={scelta}
                 disabled={inCorso}
                 onClick={() => scegli(s)}
-                className={`rounded-xl border px-3 py-3 text-left transition focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-accento disabled:opacity-60 ${
+                className={`relative rounded-2xl border-2 px-3 py-3 text-left transition focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-accento active:scale-[0.98] disabled:opacity-60 ${
                   scelta
-                    ? 'border-accento bg-accento text-white'
-                    : 'border-slate-300 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
+                    ? 'border-accento bg-accento text-white shadow-md'
+                    : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
                 }`}
               >
+                <Icona aria-hidden className={`mb-1.5 size-5 ${scelta ? 'text-white' : 'text-accento dark:text-blue-300'}`} />
+                {scelta && <CircleCheck aria-hidden className="absolute top-2.5 right-2.5 size-5" />}
                 <span className="block font-semibold">{ETICHETTA_SCELTA[s]}</span>
                 <span className={`block text-xs ${scelta ? 'text-blue-100' : 'text-slate-500'}`}>{SPIEGAZIONE_SCELTA[s]}</span>
               </button>
@@ -116,7 +127,7 @@ export function SceltaPreferenza(p: Props) {
         </div>
 
         {p.dsa && (
-          <div className="space-y-2 rounded-xl bg-amber-50 p-3 dark:bg-amber-950/40">
+          <div className="space-y-2 rounded-2xl bg-amber-50 p-3 dark:bg-amber-950/40">
             <p className="text-sm">
               Con il badge <strong>DSA/BES</strong> puoi chiedere una posizione precisa. Se qualcun altro chiede la
               stessa, la ottiene chi l'ha chiesta prima.
@@ -147,7 +158,7 @@ export function SceltaPreferenza(p: Props) {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
           <span role="status">
             {descrizioneAttuale ? (
               <>

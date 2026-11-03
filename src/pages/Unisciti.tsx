@@ -7,6 +7,7 @@ import { formattaCodice, normalizzaCodice } from '../lib/codici'
 import { messaggioErrore } from '../lib/errori'
 import type { Invito } from '../lib/tipi'
 import { Bottone, Caricamento, LinkBottone, Riquadro, Scheda } from '../components/ui'
+import { DoorOpen, Eye, SearchX } from 'lucide-react'
 import { useAvvisi } from '../components/Avvisi'
 
 type Stato =
@@ -66,7 +67,7 @@ export default function Unisciti() {
 
   if (!codice || stato.fase === 'inesistente') {
     return (
-      <Scheda titolo="Codice non valido">
+      <Scheda titolo="Codice non valido" icona={SearchX}>
         <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
           Il codice <strong className="font-mono">{grezzo}</strong> non esiste o è stato cambiato dal capoclasse.
           Chiedigli quello nuovo.
@@ -80,7 +81,7 @@ export default function Unisciti() {
   if (stato.fase === 'errore') return <Riquadro tono="errore">{stato.messaggio}</Riquadro>
 
   return (
-    <Scheda titolo="Entra nella classe">
+    <Scheda titolo="Entra nella classe" icona={DoorOpen} tono="evidenza">
       <div className="space-y-4">
         <p>
           Stai per entrare in <strong>{stato.invito.nomeClasse}</strong> come{' '}
@@ -88,14 +89,14 @@ export default function Unisciti() {
         </p>
         <p className="font-mono text-sm text-slate-500">Codice {formattaCodice(codice)}</p>
         {profilo.tipo === 'docente' && (
-          <Riquadro tono="info">
+          <Riquadro tono="info" icona={Eye}>
             Come docente vedrai le liste delle interrogazioni. Per modificarle potrai chiedere il permesso al
             capoclasse.
           </Riquadro>
         )}
         {erroreEntrata && <Riquadro tono="errore">{erroreEntrata}</Riquadro>}
         <div className="flex flex-wrap gap-2">
-          <Bottone onClick={entra} disabled={inCorso}>
+          <Bottone onClick={entra} disabled={inCorso} icona={DoorOpen}>
             {inCorso ? 'Entro…' : 'Entra'}
           </Bottone>
           <LinkBottone to="/">Annulla</LinkBottone>

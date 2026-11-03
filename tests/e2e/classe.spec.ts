@@ -16,8 +16,9 @@ test('account esterni alla scuola non entrano', async ({ browser }) => {
 test('i docenti non vedono "Crea una classe"', async ({ browser }) => {
   const page = await accedi(browser, 'mario.rossi@ittsrimini.edu.it', 'Prof Rossi')
   await expect(page.getByText('Account docente')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Unisciti a una classe' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Crea una classe' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Entra nella tua classe' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Sei il capoclasse?' })).toHaveCount(0)
+  await expect(page.getByLabel('Nome della classe')).toHaveCount(0)
 })
 
 test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ browser }, info) => {

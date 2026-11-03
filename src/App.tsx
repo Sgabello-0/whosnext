@@ -52,7 +52,7 @@ export default function App() {
 function ConfigMancante() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-4 py-10">
-      <h1 className="text-2xl font-semibold">Interrogazioni di Classe</h1>
+      <h1 className="text-2xl font-semibold">WhosNext</h1>
       <Riquadro tono="avviso" titolo="Firebase non è ancora configurato">
         <p>
           Copia <code>.env.example</code> in <code>.env</code> e compila questi valori dalla console Firebase (vedi{' '}

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Interrogazioni di Classe",
+  "description": "WhosNext",
   "engines": {
     "node": ">=20"
   },
@@ -24,6 +24,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "firebase": "^13.2.0",
+    "lucide-react": "^1.67.0",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

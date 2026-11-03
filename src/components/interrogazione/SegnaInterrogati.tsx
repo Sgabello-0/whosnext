@@ -6,6 +6,7 @@ import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { nonInterrogati, propostaLezione, ultimaLezione } from '../../lib/lista'
 import type { Interrogazione, Membro } from '../../lib/tipi'
 import { Bottone, CLASSE_INPUT, Etichetta, Riquadro, Scheda } from '../ui'
+import { ListChecks } from 'lucide-react'
 import { useAvvisi } from '../Avvisi'
 
 type Props = {
@@ -70,7 +71,7 @@ export function SegnaInterrogati(p: Props) {
   const quanti = elenco.filter((u) => scelti.has(u)).length
 
   return (
-    <Scheda titolo="Segna chi è stato interrogato">
+    <Scheda titolo="Segna chi è stato interrogato" icona={ListChecks} tono="evidenza">
       <div className="space-y-4 text-sm">
         <Etichetta testo="Lezione del">
           <input type="date" value={data} max={oggiISO()} onChange={(e) => setData(e.target.value)} className={`${CLASSE_INPUT} max-w-48`} />
@@ -80,12 +81,12 @@ export function SegnaInterrogati(p: Props) {
           <ul className="space-y-1">
             {elenco.map((u) => (
               <li key={u}>
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60">
                   <input
                     type="checkbox"
                     checked={scelti.has(u)}
                     onChange={(e) => cambia(u, e.target.checked)}
-                    className="size-4 accent-accento"
+                    className="size-5 accent-accento"
                   />
                   {nome(u)}
                 </label>

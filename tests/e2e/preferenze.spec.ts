@@ -91,7 +91,7 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await expect(ordine.getByRole('listitem').nth(1)).toContainText('Anna Verdi')
   await expect(ordine.getByRole('listitem').nth(2)).toContainText('Bruno Neri')
   await expect(anna.getByText('Sei il n° 2 di 3')).toBeVisible()
-  await expect(anna.getByText('Rapporto (visibile a capoclasse e vice)')).toBeVisible()
+  await anna.getByText('Rapporto (visibile a capoclasse e vice)').click() // sezione a scomparsa
   await expect(anna.getByText('DSA/BES alla posizione esatta: 1 su 1')).toBeVisible()
   await expect(anna.getByText('Inizio ottenuto: 1 su 1')).toBeVisible()
   await expect(anna.getByText('Fine ottenuta: 1 su 1')).toBeVisible()

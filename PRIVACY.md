@@ -1,8 +1,8 @@
-# Informativa sulla privacy: Interrogazioni di Classe
+# Informativa sulla privacy: WhosNext
 
 Ultimo aggiornamento: 3 novembre 2026
 
-"Interrogazioni di Classe" è un sito gratuito, senza pubblicità, creato da uno studente per organizzare l'ordine delle interrogazioni all'interno della propria classe. Non è un servizio ufficiale della scuola.
+"WhosNext" è un sito gratuito, senza pubblicità, creato da uno studente per organizzare l'ordine delle interrogazioni all'interno della propria classe. Non è un servizio ufficiale della scuola.
 
 ## Quali dati raccogliamo
 

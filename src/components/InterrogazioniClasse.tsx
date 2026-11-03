@@ -8,8 +8,9 @@ import { messaggioErrore } from '../lib/errori'
 import { formattaScadenza } from '../lib/formatoDate'
 import { useQuery, type ConId } from '../lib/hooks'
 import type { Interrogazione, Materia } from '../lib/tipi'
-import { BadgeStato } from './BadgeStato'
-import { Bottone, Caricamento, CLASSE_INPUT, Etichetta, LinkBottone, Riquadro, Scheda } from './ui'
+import { Bottone, Caricamento, CLASSE_INPUT, Etichetta, LinkBottone, Modulo, Pallino, Riquadro, RigaLink, Scheda, Vuoto } from './ui'
+import { BookOpen, CalendarCog, ClipboardList, Hourglass, ListOrdered, Plus } from 'lucide-react'
+import { NOMI_GIORNI_BREVI } from '../lib/calendar'
 import { FormInterrogazione } from './FormInterrogazione'
 import { useAvvisi } from './Avvisi'
 
@@ -20,21 +21,19 @@ export function InterrogazioniClasse({ classId, staff, mioUid }: { classId: stri
   const [nuova, setNuova] = useState(false)
 
   return (
-    <Scheda
-      titolo="Interrogazioni"
-      azioni={
-        staff ? (
-          <div className="flex flex-wrap gap-2">
-            {elenco.length > 0 && !nuova && (
-              <Bottone variante="piccolo" onClick={() => setNuova(true)}>
-                Nuova interrogazione
-              </Bottone>
-            )}
-            <LinkBottone to={`/classe/${classId}/configura`}>Materie e calendario</LinkBottone>
-          </div>
-        ) : undefined
-      }
-    >
+    <Scheda titolo="Interrogazioni" icona={ClipboardList}>
+      {staff && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {elenco.length > 0 && !nuova && (
+            <Bottone icona={Plus} onClick={() => setNuova(true)}>
+              Nuova interrogazione
+            </Bottone>
+          )}
+          <LinkBottone to={`/classe/${classId}/configura`} icona={CalendarCog} variante="tenue">
+            Materie e calendario
+          </LinkBottone>
+        </div>
+      )}
       {nuova && (
         <div className="mb-4">
           <NuovaInterrogazione classId={classId} materie={elenco} mioUid={mioUid} onAnnulla={() => setNuova(false)} />
@@ -45,13 +44,13 @@ export function InterrogazioniClasse({ classId, staff, mioUid }: { classId: stri
       ) : !materie.dati ? (
         <Caricamento />
       ) : elenco.length === 0 ? (
-        <p className="text-sm text-slate-500">
+        <Vuoto icona={BookOpen} titolo="Nessuna materia">
           {staff
-            ? 'Nessuna materia. Inizia da "Materie e calendario": aggiungi le materie e i giorni di lezione.'
+            ? 'Inizia da "Materie e calendario": aggiungi le materie e i giorni di lezione.'
             : 'Il capoclasse non ha ancora aggiunto materie.'}
-        </p>
+        </Vuoto>
       ) : (
-        <ul className="space-y-4">
+        <ul className="space-y-5">
           {elenco.map((m) => (
             <MateriaConInterrogazioni key={m.id} classId={classId} materia={m} />
           ))}
@@ -70,29 +69,39 @@ function MateriaConInterrogazioni({ classId, materia }: { classId: string; mater
 
   return (
     <li>
-      <Link to={`/classe/${classId}/materia/${materia.id}`} className="font-semibold hover:underline">
-        {materia.nome}
+      <Link
+        to={`/classe/${classId}/materia/${materia.id}`}
+        className="group flex items-baseline justify-between gap-2 rounded-lg py-1"
+      >
+        <span className="font-bold group-hover:underline">{materia.nome}</span>
+        <span className="text-xs text-slate-500">
+          {materia.orario.length ? materia.orario.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}
+        </span>
       </Link>
-      {interrogazioni.dati && attive.length === 0 && <p className="text-sm text-slate-500">Nessuna interrogazione in corso.</p>}
+      {interrogazioni.dati && attive.length === 0 && (
+        <p className="py-1 text-sm text-slate-500">Nessuna interrogazione in corso.</p>
+      )}
       {attive.length > 0 && (
-        <ul className="mt-1 divide-y divide-slate-200 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
           {attive.map((i) => (
-            <li key={i.id}>
-              <Link
-                to={`/classe/${classId}/materia/${materia.id}/interrogazione/${i.id}`}
-                className="-mx-2 flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60"
-              >
-                <span className="min-w-0">
-                  <span className="block">{i.nome}</span>
-                  {i.stato === 'raccolta' && (
-                    <span className="block text-xs text-slate-500">
-                      Preferenze entro {formattaScadenza(i.scadenzaPreferenze.toDate())}
-                    </span>
-                  )}
-                </span>
-                <BadgeStato stato={i.stato} />
-              </Link>
-            </li>
+            <RigaLink
+              key={i.id}
+              to={`/classe/${classId}/materia/${materia.id}/interrogazione/${i.id}`}
+              sinistra={
+                i.stato === 'raccolta' ? (
+                  <Pallino icona={Hourglass} colore="ambra" />
+                ) : (
+                  <Pallino icona={ListOrdered} colore="verde" />
+                )
+              }
+            >
+              <span className="block font-medium">{i.nome}</span>
+              <span className="block text-xs text-slate-500">
+                {i.stato === 'raccolta'
+                  ? `Preferenze entro ${formattaScadenza(i.scadenzaPreferenze.toDate())}`
+                  : 'Lista pronta'}
+              </span>
+            </RigaLink>
           ))}
         </ul>
       )}
@@ -108,7 +117,8 @@ function NuovaInterrogazione(p: { classId: string; materie: ConId<Materia>[]; mi
   const materia = p.materie.find((m) => m.id === subjectId)
 
   return (
-    <div className="space-y-4 rounded-xl bg-slate-50 p-3 dark:bg-slate-950/50">
+    <Modulo>
+      <p className="font-semibold">Nuova interrogazione</p>
       <Etichetta testo="Materia">
         <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className={`${CLASSE_INPUT} max-w-72`}>
           {p.materie.map((m) => (
@@ -131,6 +141,6 @@ function NuovaInterrogazione(p: { classId: string; materie: ConId<Materia>[]; mi
           }}
         />
       )}
-    </div>
+    </Modulo>
   )
 }

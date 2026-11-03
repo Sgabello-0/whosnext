@@ -16,7 +16,7 @@ export function percorsoInterrogazione(classId: string, subjectId: string, inter
 
 export function messaggioInvito(o: { nomeClasse: string; link: string; codice: string }): string {
   return [
-    `Entra nella classe *${o.nomeClasse}* su Interrogazioni di Classe: lì scegliamo quando essere interrogati e vediamo la lista.`,
+    `Entra nella classe *${o.nomeClasse}* su WhosNext: lì scegliamo quando essere interrogati e vediamo la lista.`,
     o.link,
     `Oppure inserisci il codice ${formattaCodice(o.codice)}. Serve l'account della scuola.`,
   ].join('\n\n')

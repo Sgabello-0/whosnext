@@ -21,17 +21,21 @@ test('guida della classe nuova e orario a griglia', async ({ browser }, info) =>
     await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
     await expect(anna.getByRole('link', { name: nome })).toBeVisible()
   }
+  await anna.getByRole('tab', { name: 'Orario' }).click()
   await anna.getByRole('checkbox', { name: 'Storia martedì' }).check()
   await anna.getByRole('checkbox', { name: 'Matematica lunedì' }).check()
   await anna.getByRole('checkbox', { name: 'Matematica giovedì' }).check()
   await anna.getByRole('button', { name: 'Salva orario' }).click()
+  await anna.getByRole('tab', { name: 'Materie' }).click()
   await expect(anna.getByText('lun · gio')).toBeVisible()
   await expect(anna.getByRole('listitem').filter({ hasText: 'Storia' }).getByText('mar', { exact: true })).toBeVisible()
   // "Annulla" riporta l'orario com'era, poi lo risalviamo
   await anna.getByRole('button', { name: 'Annulla: Orario salvato' }).click()
   await expect(anna.getByText('lun · gio')).toHaveCount(0)
+  await anna.getByRole('tab', { name: 'Orario' }).click()
   await anna.getByRole('checkbox', { name: 'Storia martedì' }).check()
   await anna.getByRole('button', { name: 'Salva orario' }).click()
+  await anna.getByRole('tab', { name: 'Materie' }).click()
   await expect(anna.getByRole('listitem').filter({ hasText: 'Storia' }).getByText('mar', { exact: true })).toBeVisible()
   await anna.screenshot({ path: info.outputPath('orario.png'), fullPage: true })
 
@@ -53,7 +57,7 @@ test('guida della classe nuova e orario a griglia', async ({ browser }, info) =>
   await anna.getByLabel('Nome', { exact: true }).fill('Orale')
   await anna.getByRole('button', { name: 'Crea interrogazione' }).click()
   await expect(anna.getByRole('heading', { name: 'Orale' })).toBeVisible()
-  await anna.getByRole('link', { name: /^← / }).click() // torna alla materia
+  await anna.getByRole('link', { name: 'Matematica', exact: true }).click() // torna alla materia
   await anna.getByRole('link', { name: /3ªA/ }).click()
   await expect(anna.getByRole('heading', { name: 'Interrogazioni' })).toBeVisible()
   await expect(anna.getByRole('heading', { name: /Prepara la classe/ })).toHaveCount(0)

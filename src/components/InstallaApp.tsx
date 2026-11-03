@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Bottone, Scheda } from './ui'
+import { Download, Smartphone } from 'lucide-react'
 
 /** Evento di Chrome/Android per proporre l'installazione (non è nei tipi standard). */
 type EventoInstallazione = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
@@ -60,16 +61,19 @@ export function InstallaApp() {
   return (
     <Scheda
       titolo="Installa l'app"
+      icona={Smartphone}
       azioni={
-        <button type="button" onClick={nascondi} className="text-sm text-slate-500 underline">
+        <button type="button" onClick={nascondi} className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
           No, grazie
         </button>
       }
     >
       {evento ? (
         <div className="space-y-3 text-sm">
-          <p>Aggiungi Interrogazioni di Classe alla schermata Home: si apre come un'app, più in fretta.</p>
-          <Bottone onClick={installa}>Installa</Bottone>
+          <p>Aggiungi WhosNext alla schermata Home: si apre come un'app, più in fretta.</p>
+          <Bottone onClick={installa} icona={Download}>
+            Installa
+          </Bottone>
         </div>
       ) : (
         <p className="text-sm">

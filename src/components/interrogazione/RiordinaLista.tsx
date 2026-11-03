@@ -18,6 +18,7 @@ import { riordinaLista } from '../../lib/gestioneLista'
 import { sposta } from '../../lib/lista'
 import type { Membro } from '../../lib/tipi'
 import { Avatar, Bottone, Riquadro, Scheda } from '../ui'
+import { ArrowDown, ArrowUp, ArrowUpDown, GripVertical } from 'lucide-react'
 import { useAvvisi } from '../Avvisi'
 
 type Props = {
@@ -77,7 +78,7 @@ export function RiordinaLista(p: Props) {
   const cambiato = ordine.some((u, i) => u !== p.ordine[i])
 
   return (
-    <Scheda titolo="Riordina la lista">
+    <Scheda titolo="Riordina la lista" icona={ArrowUpDown} tono="evidenza">
       <p className="mb-3 text-sm text-slate-500">
         Trascina i nomi tenendo premuto ⠿, oppure usa le frecce. Le modifiche si salvano solo con "Salva ordine".
       </p>
@@ -144,7 +145,7 @@ function Riga(p: {
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center gap-2 rounded-lg border bg-white px-2 py-1.5 dark:bg-slate-900 ${
+      className={`flex items-center gap-2 rounded-xl border bg-white px-2 py-2 dark:bg-slate-900 ${
         isDragging ? 'relative z-10 border-accento shadow-lg' : 'border-slate-200 dark:border-slate-800'
       }`}
     >
@@ -154,9 +155,9 @@ function Riga(p: {
         {...attributes}
         {...listeners}
         aria-label={`Trascina ${nome}`}
-        className="cursor-grab touch-none rounded px-1.5 py-1 text-lg text-slate-400 hover:bg-slate-100 active:cursor-grabbing dark:hover:bg-slate-800"
+        className="cursor-grab touch-none rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 active:cursor-grabbing dark:hover:bg-slate-800"
       >
-        ⠿
+        <GripVertical aria-hidden className="size-5" />
       </button>
       <span className="w-6 text-right font-mono text-sm text-slate-500">{p.indice + 1}</span>
       <Avatar nome={nome} foto={p.membro?.foto ?? null} />
@@ -170,18 +171,18 @@ function Riga(p: {
           aria-label={`Sposta su ${nome}`}
           disabled={p.indice === 0}
           onClick={() => p.onSposta(p.indice - 1)}
-          className="rounded border border-slate-300 px-2 py-1 text-sm disabled:opacity-30 dark:border-slate-700"
+          className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50 disabled:opacity-30 dark:border-slate-700 dark:hover:bg-slate-800"
         >
-          ↑
+          <ArrowUp aria-hidden className="size-4" />
         </button>
         <button
           type="button"
           aria-label={`Sposta giù ${nome}`}
           disabled={p.indice === p.totale - 1}
           onClick={() => p.onSposta(p.indice + 1)}
-          className="rounded border border-slate-300 px-2 py-1 text-sm disabled:opacity-30 dark:border-slate-700"
+          className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50 disabled:opacity-30 dark:border-slate-700 dark:hover:bg-slate-800"
         >
-          ↓
+          <ArrowDown aria-hidden className="size-4" />
         </button>
       </span>
     </li>

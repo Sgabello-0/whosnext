@@ -32,14 +32,14 @@ test('"Le mie interrogazioni" e "Da fare" nella pagina iniziale', async ({ brows
   await expect(anna.getByRole('heading', { name: 'Orale' })).toBeVisible()
 
   // Bruno, nella pagina iniziale: da scegliere
-  await bruno.getByRole('link', { name: 'Interrogazioni di Classe' }).click()
+  await bruno.getByRole('link', { name: 'WhosNext' }).click()
   const mieBruno = bruno.getByRole('list', { name: 'Le mie interrogazioni' })
   await expect(mieBruno.getByText('Storia – Orale')).toBeVisible()
   await expect(mieBruno.getByText(/Scegli quando essere interrogato entro/)).toBeVisible()
   await expect(bruno.getByRole('list', { name: 'Da fare' })).toHaveCount(0) // non è capo
 
   // Anna, nella pagina iniziale: "0 su 2 hanno scelto"
-  await anna.getByRole('link', { name: 'Interrogazioni di Classe' }).click()
+  await anna.getByRole('link', { name: 'WhosNext' }).click()
   const daFare = anna.getByRole('list', { name: 'Da fare' })
   await expect(daFare.getByText(/0 su 2 hanno scelto/)).toBeVisible()
 
@@ -47,7 +47,7 @@ test('"Le mie interrogazioni" e "Da fare" nella pagina iniziale', async ({ brows
   await mieBruno.getByRole('link', { name: /Storia – Orale/ }).click()
   await bruno.getByRole('radio', { name: /Fine/ }).click()
   await expect(bruno.getByText('La tua scelta: fine')).toBeVisible()
-  await bruno.getByRole('link', { name: 'Interrogazioni di Classe' }).click()
+  await bruno.getByRole('link', { name: 'WhosNext' }).click()
   await expect(mieBruno.getByText(/Hai scelto: fine/)).toBeVisible()
   await expect(daFare.getByText(/1 su 2 hanno scelto/)).toBeVisible() // Anna, in tempo reale
 
@@ -57,7 +57,7 @@ test('"Le mie interrogazioni" e "Da fare" nella pagina iniziale', async ({ brows
   await anna.getByLabel('Scadenza per le preferenze').fill(dataOraLocale(new Date(Date.now() - 60_000)))
   await anna.getByRole('button', { name: 'Salva modifiche' }).click()
   await expect(mieBruno.getByText(/Preferenze chiuse: la lista arriva a breve/)).toBeVisible()
-  await anna.getByRole('link', { name: 'Interrogazioni di Classe' }).click()
+  await anna.getByRole('link', { name: 'WhosNext' }).click()
   await expect(daFare.getByText('Le preferenze sono chiuse: genera la lista')).toBeVisible()
   await anna.screenshot({ path: info.outputPath('home-capo.png'), fullPage: true })
 

@@ -7,6 +7,7 @@ import { segnaInterrogati, segnalaInterrogato, togliSegnalazione } from '../../l
 import { useDocumento, useQuery } from '../../lib/hooks'
 import type { DocSegnalazione, Membro } from '../../lib/tipi'
 import { Bottone, CLASSE_INPUT, Riquadro, Scheda } from '../ui'
+import { BellRing } from 'lucide-react'
 import { useAvvisi } from '../Avvisi'
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
@@ -32,7 +33,7 @@ export function Segnalazioni(p: { r: Rif; membri: Map<string, Membro>; mioUid: s
   }
 
   return (
-    <Scheda titolo="Da confermare">
+    <Scheda titolo="Da confermare" icona={BellRing} tono="avviso">
       <ul className="space-y-2 text-sm">
         {segnalazioni.dati.map((s) => (
           <li key={s.id} className="flex flex-wrap items-center gap-2">

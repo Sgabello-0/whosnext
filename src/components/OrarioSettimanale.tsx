@@ -7,6 +7,7 @@ import type { ConId } from '../lib/hooks'
 import type { Materia } from '../lib/tipi'
 import { useAvvisi } from './Avvisi'
 import { Bottone, Scheda } from './ui'
+import { Grid3x3 } from 'lucide-react'
 
 /** Orario settimanale a griglia: materie × giorni di scuola, salvato tutto insieme. */
 export function OrarioSettimanale({ classId, materie, cal }: { classId: string; materie: ConId<Materia>[]; cal: Calendario }) {
@@ -47,7 +48,7 @@ export function OrarioSettimanale({ classId, materie, cal }: { classId: string; 
   if (materie.length === 0) return null
 
   return (
-    <Scheda titolo="Orario settimanale">
+    <Scheda titolo="Orario settimanale" icona={Grid3x3} sottotitolo="Spunta i giorni di lezione di ogni materia.">
       <p className="mb-3 text-sm text-slate-500">Spunta i giorni di lezione di ogni materia, poi salva.</p>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">

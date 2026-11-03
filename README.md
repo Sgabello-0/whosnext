@@ -1,4 +1,4 @@
-# Interrogazioni di Classe
+# WhosNext
 
 Sito per organizzare l'ordine delle interrogazioni della classe: preferenze (inizio / metà / fine), generazione della lista, scambi tra compagni e stima della data.
 

@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Regole di sicurezza di "Interrogazioni di Classe".
+// Regole di sicurezza di "WhosNext".
 // Tutto ciò che non è esplicitamente permesso è vietato.
 // I domini della scuola sono gli stessi di src/lib/domain.ts (DOMINI_DEFAULT).
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Check, Copy, Link2, QrCode, UserPlus } from 'lucide-react'
 import { formattaCodice } from '../lib/codici'
 import { copiaTesto } from '../lib/diagnostica'
-import { Bottone, Scheda } from './ui'
+import { Scheda } from './ui'
 import { Condividi } from './Condividi'
 import { linkAssoluto, messaggioInvito } from '../lib/messaggi'
 
@@ -9,7 +10,21 @@ export function linkInvito(codice: string): string {
   return linkAssoluto(`/unisciti/${codice}`)
 }
 
-/** Codice d'invito con link, QR code e condivisione. */
+function PulsanteTesto(props: { onClick: () => void; icona: typeof Copy; children: string }) {
+  const Icona = props.icona
+  return (
+    <button
+      type="button"
+      onClick={props.onClick}
+      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-accento hover:bg-accento-chiaro dark:text-blue-300 dark:hover:bg-blue-950"
+    >
+      <Icona aria-hidden className="size-4" />
+      {props.children}
+    </button>
+  )
+}
+
+/** Codice d'invito con messaggio pronto, link e QR code. */
 export function Invito({ codice, nomeClasse }: { codice: string; nomeClasse: string }) {
   const link = linkInvito(codice)
   const [qr, setQr] = useState<string | null>(null)
@@ -31,37 +46,39 @@ export function Invito({ codice, nomeClasse }: { codice: string; nomeClasse: str
     }
   }
 
-
   return (
-    <Scheda titolo="Invita i compagni">
-      <div className="space-y-3">
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Fai entrare compagni e professori con questo codice, il link o il QR code.
-        </p>
-        <p className="font-mono text-3xl font-semibold tracking-widest" aria-label={`Codice ${codice.split('').join(' ')}`}>
-          {formattaCodice(codice)}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Bottone variante="piccolo" onClick={() => copia('codice')}>
+    <Scheda titolo="Invita i compagni" icona={UserPlus} sottotitolo="Anche i professori entrano con lo stesso codice.">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
+          <div>
+            <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">Codice della classe</p>
+            <p className="font-mono text-2xl font-bold tracking-[0.2em]" aria-label={`Codice ${codice.split('').join(' ')}`}>
+              {formattaCodice(codice)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => copia('codice')}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+          >
+            {copiato === 'codice' ? <Check aria-hidden className="size-4 text-emerald-600" /> : <Copy aria-hidden className="size-4" />}
             {copiato === 'codice' ? 'Copiato' : 'Copia codice'}
-          </Bottone>
-          <Bottone variante="piccolo" onClick={() => copia('link')}>
-            {copiato === 'link' ? 'Copiato' : 'Copia link'}
-          </Bottone>
-          <Bottone variante="piccolo" onClick={() => setMostraQr((v) => !v)}>
-            {mostraQr ? 'Nascondi QR' : 'Mostra QR'}
-          </Bottone>
+          </button>
         </div>
-        <Condividi
-          etichetta="Messaggio d'invito pronto"
-          titolo={`Unisciti a ${nomeClasse}`}
-          testo={messaggioInvito({ nomeClasse, link, codice })}
-        />
+        <Condividi titolo={`Unisciti a ${nomeClasse}`} testo={messaggioInvito({ nomeClasse, link, codice })} />
+        <div className="flex flex-wrap gap-1 border-t border-slate-100 pt-2 dark:border-slate-800">
+          <PulsanteTesto icona={copiato === 'link' ? Check : Link2} onClick={() => copia('link')}>
+            {copiato === 'link' ? 'Copiato' : 'Copia link'}
+          </PulsanteTesto>
+          <PulsanteTesto icona={QrCode} onClick={() => setMostraQr((v) => !v)}>
+            {mostraQr ? 'Nascondi QR' : 'Mostra QR'}
+          </PulsanteTesto>
+        </div>
         {mostraQr && qr && (
           <img
             src={qr}
             alt={`QR code per entrare in ${nomeClasse}`}
-            className="mx-auto w-full max-w-64 rounded-lg bg-white p-2"
+            className="mx-auto w-full max-w-64 rounded-xl bg-white p-2 shadow-sm"
           />
         )}
       </div>

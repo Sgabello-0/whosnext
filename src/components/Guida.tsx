@@ -11,6 +11,7 @@ import { useAvvisi } from './Avvisi'
 import { Condividi } from './Condividi'
 import { linkInvito } from './Invito'
 import { Bottone, LinkBottone, Scheda } from './ui'
+import { BookOpen, CalendarDays, Check, Rocket } from 'lucide-react'
 
 function leggiNascosta(classId: string): boolean {
   try {
@@ -61,32 +62,58 @@ export function Guida(p: { classId: string; nomeClasse: string; codice: string; 
   return (
     <Scheda
       titolo={`Prepara la classe (${fatti} di ${passi.length})`}
+      icona={Rocket}
+      tono="evidenza"
       azioni={
-        <button type="button" onClick={nascondi} className="text-sm text-slate-500 underline">
+        <button
+          type="button"
+          onClick={nascondi}
+          className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
           Nascondi
         </button>
       }
     >
+      <div aria-hidden className="mb-4 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div
+          className="h-full rounded-full bg-accento transition-all"
+          style={{ width: `${(fatti / passi.length) * 100}%` }}
+        />
+      </div>
       <ol className="space-y-3" aria-label="Passi per preparare la classe">
         {passi.map((passo, i) => (
           <li key={passo.titolo} className="flex gap-3">
             <span
               aria-hidden
               className={`flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
-                passo.fatto ? 'bg-emerald-600 text-white' : i === prossimo ? 'bg-accento text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                passo.fatto
+                  ? 'bg-emerald-600 text-white'
+                  : i === prossimo
+                    ? 'bg-accento text-white'
+                    : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
               }`}
             >
-              {passo.fatto ? '✓' : i + 1}
+              {passo.fatto ? <Check className="size-4" /> : i + 1}
             </span>
             <div className="min-w-0 flex-1 space-y-2">
               <p className={passo.fatto ? 'text-slate-500 line-through' : 'font-medium'}>
                 {passo.titolo}
                 <span className="sr-only">{passo.fatto ? ' (fatto)' : ' (da fare)'}</span>
               </p>
-              {i === prossimo && i === 0 && <LinkBottone to={`/classe/${p.classId}/configura`}>Aggiungi le materie</LinkBottone>}
+              {i === prossimo && i === 0 && (
+                <LinkBottone to={`/classe/${p.classId}/configura`} variante="primario" icona={BookOpen}>
+                  Aggiungi le materie
+                </LinkBottone>
+              )}
               {i === prossimo && i === 1 && (
                 <div className="flex flex-wrap gap-2">
-                  <LinkBottone to={`/classe/${p.classId}/configura`}>Apri il calendario</LinkBottone>
+                  <LinkBottone
+                    to={`/classe/${p.classId}/configura?sezione=calendario`}
+                    variante="primario"
+                    icona={CalendarDays}
+                  >
+                    Apri il calendario
+                  </LinkBottone>
                   <Bottone variante="secondario" onClick={vaBene}>
                     Va bene così
                   </Bottone>
@@ -99,7 +126,7 @@ export function Guida(p: { classId: string; nomeClasse: string; codice: string; 
                 />
               )}
               {i === prossimo && i === 3 && (
-                <p className="text-sm text-slate-500">Usa "Nuova interrogazione" qui sotto, nella scheda Interrogazioni.</p>
+                <p className="text-sm text-slate-500">Tocca "Nuova interrogazione" qui sotto.</p>
               )}
             </div>
           </li>

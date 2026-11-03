@@ -8,7 +8,8 @@ import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { useDocumento } from '../../lib/hooks'
 import { nonInterrogati } from '../../lib/lista'
 import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/tipi'
-import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda } from '../ui'
+import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda, Soffietto } from '../ui'
+import { ArrowUpDown, ChartPie, Check, ListOrdered, PartyPopper, Undo2 } from 'lucide-react'
 import { useAvvisi } from '../Avvisi'
 import { RiordinaLista } from './RiordinaLista'
 import { StoricoLista } from './StoricoLista'
@@ -82,24 +83,39 @@ export function ListaInterrogazione(p: Props) {
   return (
     <>
       {miaPosizione >= 0 && (
-        <Riquadro
-          tono={interrogati[p.mioUid] ? 'ok' : 'info'}
-          titolo={`Sei il n° ${miaPosizione + 1} di ${ordine.length}`}
+        <section
+          role="status"
+          className={`flex gap-4 rounded-2xl p-4 shadow-sm sm:p-5 ${
+            interrogati[p.mioUid]
+              ? 'bg-emerald-600 text-white'
+              : 'bg-gradient-to-br from-accento to-blue-700 text-white'
+          }`}
         >
-          {interrogati[p.mioUid] ? (
-            `Sei stato interrogato ${formattaGiorno(interrogati[p.mioUid]!).toLowerCase()}.`
-          ) : (
-            <div className="space-y-3">
-              <p>{stima(p.mioUid)}</p>
-              {/* chi modifica le liste si segna da solo nella scheda qui sotto */}
-              {!p.puoModificare && <SonoStatoInterrogato r={r} uid={p.mioUid} />}
-            </div>
-          )}
-        </Riquadro>
+          <span
+            aria-hidden
+            className="flex size-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-white/15 text-3xl leading-none font-bold"
+          >
+            {interrogati[p.mioUid] ? <Check className="size-8" /> : miaPosizione + 1}
+          </span>
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-lg font-bold">{`Sei il n° ${miaPosizione + 1} di ${ordine.length}`}</p>
+            {interrogati[p.mioUid] ? (
+              <p className="text-emerald-50">
+                Sei stato interrogato {formattaGiorno(interrogati[p.mioUid]!).toLowerCase()}.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-blue-50">{stima(p.mioUid)}</p>
+                {/* chi modifica le liste si segna da solo nella scheda qui sotto */}
+                {!p.puoModificare && <SonoStatoInterrogato r={r} uid={p.mioUid} />}
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {p.interrogazione.stato === 'conclusa' && (
-        <Riquadro tono="ok" titolo="Interrogazione conclusa">
+        <Riquadro tono="ok" titolo="Interrogazione conclusa" icona={PartyPopper}>
           Sono stati interrogati tutti.
         </Riquadro>
       )}
@@ -132,9 +148,11 @@ export function ListaInterrogazione(p: Props) {
       ) : (
         <Scheda
           titolo="Lista"
+          icona={ListOrdered}
+          sottotitolo={`${ordine.length - mancanti.length} su ${ordine.length} interrogati`}
           azioni={
             p.puoModificare ? (
-              <Bottone variante="piccolo" onClick={() => setRiordino(true)}>
+              <Bottone variante="piccolo" icona={ArrowUpDown} onClick={() => setRiordino(true)}>
                 Riordina
               </Bottone>
             ) : undefined
@@ -145,7 +163,7 @@ export function ListaInterrogazione(p: Props) {
               <Riquadro tono="errore">{errore}</Riquadro>
             </div>
           )}
-          <ol className="divide-y divide-slate-200 dark:divide-slate-800" aria-label="Ordine delle interrogazioni">
+          <ol className="divide-y divide-slate-100 dark:divide-slate-800" aria-label="Ordine delle interrogazioni">
             {ordine.map((uid, i) => {
               const m = perUid.get(uid)
               const io = uid === p.mioUid
@@ -153,9 +171,17 @@ export function ListaInterrogazione(p: Props) {
               return (
                 <li
                   key={uid}
-                  className={`flex items-center gap-3 py-2.5 ${io ? '-mx-2 rounded-lg bg-accento-chiaro px-2 dark:bg-blue-950/60' : ''}`}
+                  className={`flex items-center gap-3 py-2.5 ${io ? '-mx-2 rounded-xl bg-accento-chiaro px-2 dark:bg-blue-950/60' : ''}`}
                 >
-                  <span className="w-7 shrink-0 text-right font-mono text-sm text-slate-500">{i + 1}</span>
+                  <span
+                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                      quando
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                    }`}
+                  >
+                    {quando ? <Check aria-label="interrogato" className="size-4" /> : i + 1}
+                  </span>
                   <Avatar nome={m?.nome ?? '?'} foto={m?.foto ?? null} />
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-1.5">
@@ -168,7 +194,12 @@ export function ListaInterrogazione(p: Props) {
                     <p className="text-xs text-slate-500">{quando ? formattaGiorno(quando) : stima(uid)}</p>
                   </div>
                   {quando && p.puoModificare && (
-                    <Bottone variante="piccolo" aria-label={`Annulla interrogato ${m?.nome ?? ''}`} onClick={() => annullaInterrogato(uid)}>
+                    <Bottone
+                      variante="piccolo"
+                      icona={Undo2}
+                      aria-label={`Annulla interrogato ${m?.nome ?? ''}`}
+                      onClick={() => annullaInterrogato(uid)}
+                    >
                       Annulla
                     </Bottone>
                   )}
@@ -176,7 +207,7 @@ export function ListaInterrogazione(p: Props) {
               )
             })}
           </ol>
-          <div className="mt-4 border-t border-slate-200 pt-3 dark:border-slate-800">
+          <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
             <Condividi
               etichetta="Condividi la lista"
               titolo={`${p.nomeMateria} – ${p.interrogazione.nome}`}
@@ -212,7 +243,7 @@ function RapportoSoddisfazione(p: Props) {
       </li>
     )
   return (
-    <Scheda titolo="Rapporto (visibile a capoclasse e vice)">
+    <Soffietto titolo="Rapporto (visibile a capoclasse e vice)" icona={ChartPie}>
       <ul className="space-y-1 text-sm">
         <li>
           Hanno risposto <strong>{r.risposte}</strong> su {r.totale}
@@ -227,6 +258,6 @@ function RapportoSoddisfazione(p: Props) {
           riordini.
         </li>
       </ul>
-    </Scheda>
+    </Soffietto>
   )
 }
