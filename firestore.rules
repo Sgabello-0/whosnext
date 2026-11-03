@@ -43,6 +43,12 @@ service cloud.firestore {
     function invitoPath(codice) {
       return /databases/$(database)/documents/invites/$(codice);
     }
+    function interrogazionePath(c, s, i) {
+      return /databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i);
+    }
+    function dsaPath(c, u) {
+      return /databases/$(database)/documents/classes/$(c)/dsa/$(u);
+    }
 
     function isMembro(c) {
       return isScuola() && exists(membroPath(c, request.auth.uid));
@@ -293,11 +299,76 @@ service cloud.firestore {
             && request.resource.data.stato == 'raccolta'
             && request.resource.data.creato == request.time
             && request.resource.data.creatoDa == request.auth.uid;
-          // Lo stato (raccolta → lista → conclusa) lo cambia solo il server.
           allow update: if isCapoOVice(c)
             && interrogazioneValida(request.resource.data)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'aggiornato']);
+            && (
+              // Modifica dei dati
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'aggiornato'])
+              ||
+              // Generazione della lista: solo dopo la scadenza, e nello stesso batch va scritta la lista
+              (
+                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'aggiornato'])
+                && resource.data.stato == 'raccolta'
+                && request.resource.data.stato == 'lista'
+                && request.time >= resource.data.scadenzaPreferenze
+                && existsAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current)
+              )
+            );
           allow delete: if isCapoOVice(c);
+
+          // ───── Preferenze ─────
+          // preferences/{uid} → { scelta, posizioneDSA, aggiornato }
+          // Ognuno vede la propria; capo e vice le vedono tutte (servono per generare la lista).
+
+          match /preferences/{u} {
+            function aperta() {
+              return get(interrogazionePath(c, s, i)).data.stato == 'raccolta'
+                && request.time < get(interrogazionePath(c, s, i)).data.scadenzaPreferenze;
+            }
+
+            allow get: if isMembro(c) && (u == request.auth.uid || isCapoOVice(c));
+            allow list: if isCapoOVice(c);
+            allow create, update: if isMembro(c) && u == request.auth.uid
+              && mioRuolo(c) in ['capo', 'vice', 'studente']
+              && aperta()
+              && request.resource.data.keys().hasOnly(['scelta', 'posizioneDSA', 'aggiornato'])
+              && request.resource.data.aggiornato == request.time
+              && (
+                (request.resource.data.scelta in ['inizio', 'meta', 'fine', 'indifferente'] && request.resource.data.posizioneDSA == null)
+                || (
+                  request.resource.data.scelta == 'posizione'
+                  && request.resource.data.posizioneDSA is int
+                  && request.resource.data.posizioneDSA >= 1 && request.resource.data.posizioneDSA <= 200
+                  && exists(dsaPath(c, u))
+                )
+              );
+            allow delete: if (isMembro(c) && u == request.auth.uid && aperta())
+              || (isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i)));
+          }
+
+          // ───── Lista ─────
+          // list/current → { ordine[uid], interrogati{uid: data}, generata, generataDa } (la vedono tutti)
+          // list/rapporto → rapporto di soddisfazione (solo capo e vice)
+
+          match /list/{documento} {
+            allow read: if isMembro(c) && (documento == 'current' || isCapoOVice(c));
+            allow create: if isCapoOVice(c)
+              && getAfter(interrogazionePath(c, s, i)).data.stato == 'lista'
+              && get(interrogazionePath(c, s, i)).data.stato == 'raccolta'
+              && (
+                (
+                  documento == 'current'
+                  && request.resource.data.keys().hasOnly(['ordine', 'interrogati', 'generata', 'generataDa'])
+                  && request.resource.data.ordine is list && request.resource.data.ordine.size() <= 200
+                  && request.resource.data.interrogati is map && request.resource.data.interrogati.size() == 0
+                  && request.resource.data.generata == request.time
+                  && request.resource.data.generataDa == request.auth.uid
+                )
+                || (documento == 'rapporto' && request.resource.data.generata == request.time)
+              );
+            allow update: if false;
+            allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
+          }
         }
       }
     }

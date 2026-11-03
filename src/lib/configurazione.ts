@@ -5,7 +5,6 @@
 import {
   addDoc,
   collection,
-  deleteDoc,
   doc,
   getDocs,
   serverTimestamp,
@@ -13,6 +12,7 @@ import {
   Timestamp,
   updateDoc,
   writeBatch,
+  type DocumentReference,
   type Firestore,
 } from 'firebase/firestore'
 import { erroreCalendario, GIORNI_LEZIONE, type Calendario } from './calendar'
@@ -26,6 +26,50 @@ export const rifInterrogazioni = (db: Firestore, classId: string, subjectId: str
   collection(db, 'classes', classId, 'subjects', subjectId, 'interrogations')
 export const rifInterrogazione = (db: Firestore, classId: string, subjectId: string, interrogazioneId: string) =>
   doc(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId)
+
+export const rifPreferenze = (db: Firestore, classId: string, subjectId: string, interrogazioneId: string) =>
+  collection(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId, 'preferences')
+export const rifPreferenza = (db: Firestore, classId: string, subjectId: string, interrogazioneId: string, uid: string) =>
+  doc(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId, 'preferences', uid)
+export const rifLista = (db: Firestore, classId: string, subjectId: string, interrogazioneId: string) =>
+  doc(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId, 'list', 'current')
+export const rifRapporto = (db: Firestore, classId: string, subjectId: string, interrogazioneId: string) =>
+  doc(db, 'classes', classId, 'subjects', subjectId, 'interrogations', interrogazioneId, 'list', 'rapporto')
+
+/**
+ * Tutti i documenti di un'interrogazione (lei compresa), da cancellare insieme.
+ * Lo usano capoclasse e vice, che possono leggere tutte le preferenze.
+ */
+export async function documentiInterrogazione(
+  db: Firestore,
+  classId: string,
+  subjectId: string,
+  interrogazioneId: string,
+): Promise<DocumentReference[]> {
+  const preferenze = await getDocs(rifPreferenze(db, classId, subjectId, interrogazioneId))
+  return [
+    ...preferenze.docs.map((d) => d.ref),
+    rifLista(db, classId, subjectId, interrogazioneId),
+    rifRapporto(db, classId, subjectId, interrogazioneId),
+    rifInterrogazione(db, classId, subjectId, interrogazioneId),
+  ]
+}
+
+/** Tutti i documenti di una materia (interrogazioni e loro contenuto compresi). */
+export async function documentiMateria(db: Firestore, classId: string, subjectId: string): Promise<DocumentReference[]> {
+  const interrogazioni = await getDocs(rifInterrogazioni(db, classId, subjectId))
+  const perInterrogazione = await Promise.all(
+    interrogazioni.docs.map((d) => documentiInterrogazione(db, classId, subjectId, d.id)),
+  )
+  return [...perInterrogazione.flat(), rifMateria(db, classId, subjectId)]
+}
+
+async function cancellaTutti(db: Firestore, riferimenti: DocumentReference[]): Promise<void> {
+  if (riferimenti.length > 480) datiNonValidi('Troppi dati da eliminare in una volta.')
+  const batch = writeBatch(db)
+  for (const r of riferimenti) batch.delete(r)
+  await batch.commit()
+}
 
 function datiNonValidi(messaggio: string): never {
   throw new ErroreApp('dati-non-validi', messaggio)
@@ -68,13 +112,9 @@ export async function aggiornaMateria(db: Firestore, classId: string, subjectId:
   await updateDoc(rifMateria(db, classId, subjectId), pulisciMateria(d))
 }
 
-/** Elimina la materia e le sue interrogazioni. */
+/** Elimina la materia con le sue interrogazioni, preferenze e liste. */
 export async function eliminaMateria(db: Firestore, classId: string, subjectId: string): Promise<void> {
-  const interrogazioni = await getDocs(rifInterrogazioni(db, classId, subjectId))
-  const batch = writeBatch(db)
-  interrogazioni.forEach((d) => batch.delete(d.ref))
-  batch.delete(rifMateria(db, classId, subjectId))
-  await batch.commit()
+  await cancellaTutti(db, await documentiMateria(db, classId, subjectId))
 }
 
 // ───────────── Interrogazioni ─────────────
@@ -138,15 +178,12 @@ export async function aggiornaInterrogazione(
   })
 }
 
-/**
- * Elimina l'interrogazione. Quando ci saranno preferenze, lista e scambi
- * (sottocollezioni) andranno cancellati anche quelli, lato server.
- */
+/** Elimina l'interrogazione con preferenze e lista. */
 export async function eliminaInterrogazione(
   db: Firestore,
   classId: string,
   subjectId: string,
   interrogazioneId: string,
 ): Promise<void> {
-  await deleteDoc(rifInterrogazione(db, classId, subjectId, interrogazioneId))
+  await cancellaTutti(db, await documentiInterrogazione(db, classId, subjectId, interrogazioneId))
 }

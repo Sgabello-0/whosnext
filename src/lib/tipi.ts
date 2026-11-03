@@ -73,3 +73,20 @@ export type Interrogazione = {
   creatoDa: string
   aggiornato?: Timestamp
 }
+
+export type DocPreferenza = {
+  scelta: import('./generateList').Scelta
+  posizioneDSA: number | null
+  aggiornato?: Timestamp
+}
+
+export type DocLista = {
+  /** uid in ordine di interrogazione */
+  ordine: string[]
+  /** uid → data (AAAA-MM-GG) in cui è stato interrogato */
+  interrogati: Record<string, string>
+  generata?: Timestamp
+  generataDa: string
+}
+
+export type DocRapporto = import('./generateList').Rapporto & { generata?: Timestamp }
