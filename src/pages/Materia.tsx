@@ -15,6 +15,7 @@ import { FormInterrogazione } from '../components/FormInterrogazione'
 import { GiorniMateria } from '../components/GiorniMateria'
 import { ProssimeLezioni } from '../components/ProssimeLezioni'
 import { StatoClasse } from '../components/StatoClasse'
+import { useAvvisi } from '../components/Avvisi'
 import { Bottone, Caricamento, LinkBottone, Riquadro, Scheda } from '../components/ui'
 
 export default function Materia() {
@@ -28,6 +29,7 @@ export default function Materia() {
   )
   const [nuova, setNuova] = useState(false)
   const navigate = useNavigate()
+  const avvisi = useAvvisi()
 
   if (dati.stato !== 'pronto') return <StatoClasse dati={dati} />
   if (materia.errore) return <Riquadro tono="errore">{messaggioErrore(materia.errore)}</Riquadro>
@@ -77,6 +79,7 @@ export default function Materia() {
                 onAnnulla={() => setNuova(false)}
                 onSalva={async (d) => {
                   const id = await creaInterrogazione(db!, classId, subjectId, d, dati.io.uid)
+                  avvisi.mostra('Interrogazione creata: ora tutti possono scegliere la preferenza')
                   navigate(`/classe/${classId}/materia/${subjectId}/interrogazione/${id}`)
                 }}
               />

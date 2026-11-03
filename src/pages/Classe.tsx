@@ -7,6 +7,8 @@ import { dividiMembri, ETICHETTA_RUOLO, puoGestireDSA } from '../lib/membri'
 import { useClasse } from '../lib/useClasse'
 import type { Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
+import { useAvvisi } from '../components/Avvisi'
+import { useConferma } from '../components/Conferma'
 import { Invito } from '../components/Invito'
 import { InterrogazioniClasse } from '../components/InterrogazioniClasse'
 import { StatoClasse } from '../components/StatoClasse'
@@ -65,6 +67,7 @@ export default function Classe() {
 function PermessoDocente({ classId, io }: { classId: string; io: Membro }) {
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
 
   async function imposta(richiesta: boolean) {
     if (!db) return
@@ -72,6 +75,7 @@ function PermessoDocente({ classId, io }: { classId: string; io: Membro }) {
     setErrore(null)
     try {
       await richiediPermesso(db, classId, io.uid, richiesta)
+      avvisi.mostra(richiesta ? 'Richiesta inviata al capoclasse' : 'Richiesta ritirata')
     } catch (e) {
       setErrore(messaggioErrore(e))
     } finally {
@@ -111,12 +115,21 @@ function PermessoDocente({ classId, io }: { classId: string; io: Membro }) {
 function EsciDallaClasse({ classId, uid, nomeClasse }: { classId: string; uid: string; nomeClasse: string }) {
   const navigate = useNavigate()
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
+  const conferma = useConferma()
 
   async function esci() {
     if (!db) return
-    if (!confirm(`Sei sicuro di voler uscire da ${nomeClasse}? Per rientrare servirà di nuovo il codice d'invito.`)) return
+    const ok = await conferma({
+      titolo: `Uscire da ${nomeClasse}?`,
+      testo: "Per rientrare servirà di nuovo il codice d'invito.",
+      pulsante: 'Esci dalla classe',
+      pericolo: true,
+    })
+    if (!ok) return
     try {
       await rimuoviMembro(db, classId, uid)
+      avvisi.mostra(`Sei uscito da ${nomeClasse}`)
       navigate('/', { replace: true })
     } catch (e) {
       setErrore(messaggioErrore(e))

@@ -7,6 +7,7 @@ import { segnaInterrogati, segnalaInterrogato, togliSegnalazione } from '../../l
 import { useDocumento, useQuery } from '../../lib/hooks'
 import type { DocSegnalazione, Membro } from '../../lib/tipi'
 import { Bottone, CLASSE_INPUT, Riquadro, Scheda } from '../ui'
+import { useAvvisi } from '../Avvisi'
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
 
@@ -17,12 +18,14 @@ export function Segnalazioni(p: { r: Rif; membri: Map<string, Membro>; mioUid: s
     `segnalazioni/${p.r.classId}/${p.r.subjectId}/${p.r.interrogazioneId}`,
   )
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
   if (!segnalazioni.dati || segnalazioni.dati.length === 0) return null
 
-  async function esegui(azione: () => Promise<void>) {
+  async function esegui(azione: () => Promise<void>, avviso: string) {
     setErrore(null)
     try {
       await azione()
+      avvisi.mostra(avviso)
     } catch (e) {
       setErrore(messaggioErrore(e))
     }
@@ -39,11 +42,13 @@ export function Segnalazioni(p: { r: Rif; membri: Map<string, Membro>; mioUid: s
             </span>
             <Bottone
               variante="piccolo"
-              onClick={() => db && esegui(() => segnaInterrogati(db!, p.r, [s.id], s.data, p.mioUid))}
+              onClick={() =>
+                db && esegui(() => segnaInterrogati(db!, p.r, [s.id], s.data, p.mioUid), 'Interrogazione confermata')
+              }
             >
               Conferma
             </Bottone>
-            <Bottone variante="piccolo" onClick={() => db && esegui(() => togliSegnalazione(db!, p.r, s.id))}>
+            <Bottone variante="piccolo" onClick={() => db && esegui(() => togliSegnalazione(db!, p.r, s.id), 'Segnalazione rifiutata')}>
               Rifiuta
             </Bottone>
           </li>
@@ -60,11 +65,13 @@ export function SonoStatoInterrogato(p: { r: Rif; uid: string }) {
   const [data, setData] = useState(oggiISO())
   const [aperto, setAperto] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
 
-  async function esegui(azione: () => Promise<void>) {
+  async function esegui(azione: () => Promise<void>, avviso: string) {
     setErrore(null)
     try {
       await azione()
+      avvisi.mostra(avviso)
       setAperto(false)
     } catch (e) {
       setErrore(messaggioErrore(e))
@@ -77,7 +84,7 @@ export function SonoStatoInterrogato(p: { r: Rif; uid: string }) {
       <Riquadro tono="info">
         Hai segnalato di essere stato interrogato {formattaGiorno(mia.dati.data).toLowerCase()}: in attesa che il
         capoclasse confermi.{' '}
-        <button type="button" className="underline" onClick={() => db && esegui(() => togliSegnalazione(db!, p.r, p.uid))}>
+        <button type="button" className="underline" onClick={() => db && esegui(() => togliSegnalazione(db!, p.r, p.uid), 'Segnalazione ritirata')}>
           Ritira
         </button>
         {errore && <span className="block text-rose-700 dark:text-rose-300">{errore}</span>}
@@ -96,7 +103,9 @@ export function SonoStatoInterrogato(p: { r: Rif; uid: string }) {
             <span className="block font-medium">Quando?</span>
             <input type="date" value={data} max={oggiISO()} onChange={(e) => setData(e.target.value)} className={`${CLASSE_INPUT} max-w-48`} />
           </label>
-          <Bottone onClick={() => db && esegui(() => segnalaInterrogato(db!, p.r, p.uid, data))}>Segnala</Bottone>
+          <Bottone onClick={() => db && esegui(() => segnalaInterrogato(db!, p.r, p.uid, data), 'Segnalazione inviata al capoclasse')}>
+            Segnala
+          </Bottone>
           <Bottone variante="secondario" onClick={() => setAperto(false)}>
             Annulla
           </Bottone>

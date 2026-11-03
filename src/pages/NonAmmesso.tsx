@@ -3,11 +3,13 @@ import { useAuth } from '../lib/auth'
 import { DOMINI } from '../lib/firebase'
 import { copiaTesto, datiDiagnostica } from '../lib/diagnostica'
 import { Bottone, Riquadro } from '../components/ui'
+import { TestoDaCopiare } from '../components/TestoDaCopiare'
 
 /** L'utente ha fatto login con Google ma l'account non è della scuola (o l'email non è verificata). */
 export default function NonAmmesso() {
   const { utente, esito, esci } = useAuth()
   const [copiato, setCopiato] = useState(false)
+  const [daCopiare, setDaCopiare] = useState<string | null>(null)
   const motivo = esito && !esito.ammesso ? esito.motivo : null
 
   async function copia() {
@@ -15,7 +17,7 @@ export default function NonAmmesso() {
     if (await copiaTesto(testo)) {
       setCopiato(true)
       setTimeout(() => setCopiato(false), 2000)
-    } else alert(testo)
+    } else setDaCopiare(testo)
   }
 
   return (
@@ -37,6 +39,7 @@ export default function NonAmmesso() {
           {copiato ? 'Copiato' : 'Copia diagnostica'}
         </Bottone>
       </div>
+      <TestoDaCopiare testo={daCopiare} />
     </main>
   )
 }

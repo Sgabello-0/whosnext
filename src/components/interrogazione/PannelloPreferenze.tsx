@@ -8,6 +8,8 @@ import { generaEPubblicaLista } from '../../lib/preferenze'
 import { ETICHETTA_SCELTA } from '../../lib/testiPreferenze'
 import type { DocPreferenza, Membro } from '../../lib/tipi'
 import { Bottone, Caricamento, Riquadro, Scheda } from '../ui'
+import { useAvvisi } from '../Avvisi'
+import { useConferma } from '../Conferma'
 
 const ORDINE_SCELTE: Scelta[] = ['inizio', 'meta', 'fine', 'indifferente', 'posizione']
 
@@ -26,6 +28,8 @@ export function PannelloPreferenze(p: {
   )
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
+  const conferma = useConferma()
 
   if (preferenze.errore) return <Riquadro tono="errore">{messaggioErrore(preferenze.errore)}</Riquadro>
   if (!preferenze.dati) return <Caricamento />
@@ -38,11 +42,17 @@ export function PannelloPreferenze(p: {
 
   async function genera() {
     if (!db) return
-    if (!confirm('Generare la lista adesso? Il sorteggio si fa una volta sola.')) return
+    const ok = await conferma({
+      titolo: 'Generare la lista adesso?',
+      testo: 'Il sorteggio si fa una volta sola. Dopo potrai comunque riordinare la lista a mano.',
+      pulsante: 'Genera lista',
+    })
+    if (!ok) return
     setInCorso(true)
     setErrore(null)
     try {
       await generaEPubblicaLista(db, p, p.mioUid)
+      avvisi.mostra('Lista generata: ora la vedono tutti')
     } catch (e) {
       setErrore(messaggioErrore(e))
       setInCorso(false)

@@ -15,6 +15,8 @@ import { BadgeStato } from '../components/BadgeStato'
 import { FormInterrogazione } from '../components/FormInterrogazione'
 import { ProssimeLezioni } from '../components/ProssimeLezioni'
 import { StatoClasse } from '../components/StatoClasse'
+import { useAvvisi } from '../components/Avvisi'
+import { useConferma } from '../components/Conferma'
 import { SceltaPreferenza } from '../components/interrogazione/SceltaPreferenza'
 import { PannelloPreferenze } from '../components/interrogazione/PannelloPreferenze'
 import { ListaInterrogazione } from '../components/interrogazione/ListaInterrogazione'
@@ -27,6 +29,8 @@ export default function Interrogazione() {
   const materia = useDocumento<Materia>(db && rifMateria(db, classId, subjectId))
   const interr = useDocumento<TipoInterrogazione>(db && rifInterrogazione(db, classId, subjectId, interrogazioneId))
   const adesso = useAdesso()
+  const avvisi = useAvvisi()
+  const conferma = useConferma()
   const [modifica, setModifica] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -53,9 +57,16 @@ export default function Interrogazione() {
 
   async function elimina() {
     if (!db) return
-    if (!confirm(`Eliminare l'interrogazione "${i.nome}"?`)) return
+    const ok = await conferma({
+      titolo: `Eliminare "${i.nome}"?`,
+      testo: 'Spariscono anche preferenze e lista. Non si può annullare.',
+      pulsante: 'Elimina',
+      pericolo: true,
+    })
+    if (!ok) return
     try {
       await eliminaInterrogazione(db, classId, subjectId, interrogazioneId)
+      avvisi.mostra('Interrogazione eliminata')
       navigate(`/classe/${classId}/materia/${subjectId}`, { replace: true })
     } catch (e) {
       setErrore(messaggioErrore(e))
@@ -86,6 +97,7 @@ export default function Interrogazione() {
             onAnnulla={() => setModifica(false)}
             onSalva={async (d) => {
               await aggiornaInterrogazione(db!, classId, subjectId, interrogazioneId, d)
+              avvisi.mostra('Modifiche salvate')
               setModifica(false)
             }}
           />

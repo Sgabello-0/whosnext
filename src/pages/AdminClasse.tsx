@@ -14,6 +14,8 @@ import { eliminaClasse } from '../lib/eliminaClasse'
 import { messaggioErrore } from '../lib/errori'
 import { dividiMembri, puoGestireDSA } from '../lib/membri'
 import { useClasse } from '../lib/useClasse'
+import { useAvvisi } from '../components/Avvisi'
+import { useConferma } from '../components/Conferma'
 import type { Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
 import { StatoClasse } from '../components/StatoClasse'
@@ -25,6 +27,8 @@ export default function AdminClasse() {
   const dati = useClasse(classId)
   const [errore, setErrore] = useState<string | null>(null)
   const [occupato, setOccupato] = useState<string | null>(null)
+  const avvisi = useAvvisi()
+  const conferma = useConferma()
 
   if (dati.stato !== 'pronto') return <StatoClasse dati={dati} />
   const { classe, io, membri, dsa } = dati
@@ -41,12 +45,16 @@ export default function AdminClasse() {
   const { studenti, docenti } = dividiMembri(membri)
   const richieste = docenti.filter((d) => d.richiestaPermesso && !d.permessoModifica)
 
-  /** Esegue un'azione mostrando l'errore se fallisce; `chiave` disabilita i pulsanti di quel membro. */
-  async function esegui(chiave: string, azione: () => Promise<unknown>) {
+  /**
+   * Esegue un'azione mostrando l'errore se fallisce; `chiave` disabilita i pulsanti di quel membro.
+   * Se riesce mostra `avviso`, con "Annulla" quando c'è `annulla`.
+   */
+  async function esegui(chiave: string, azione: () => Promise<unknown>, avviso?: string, annulla?: () => Promise<void>) {
     setErrore(null)
     setOccupato(chiave)
     try {
       await azione()
+      if (avviso) avvisi.mostra(avviso, { annulla })
     } catch (e) {
       setErrore(messaggioErrore(e))
     } finally {
@@ -61,14 +69,32 @@ export default function AdminClasse() {
     const occ = occupato === m.uid
     return (
       <>
-        <Bottone variante="piccolo" disabled={occ} onClick={() => esegui(m.uid, () => impostaDSA(d, classId, m.uid, !haDSA, io.uid))}>
+        <Bottone
+          variante="piccolo"
+          disabled={occ}
+          onClick={() =>
+            esegui(
+              m.uid,
+              () => impostaDSA(d, classId, m.uid, !haDSA, io.uid),
+              haDSA ? `Badge DSA/BES tolto a ${m.nome}` : `Badge DSA/BES dato a ${m.nome}`,
+              () => impostaDSA(d, classId, m.uid, haDSA, io.uid),
+            )
+          }
+        >
           {haDSA ? 'Togli DSA/BES' : 'Dai DSA/BES'}
         </Bottone>
         {capo && m.ruolo !== 'capo' && (
           <Bottone
             variante="piccolo"
             disabled={occ}
-            onClick={() => esegui(m.uid, () => impostaVice(d, classId, m.uid, m.ruolo !== 'vice'))}
+            onClick={() =>
+              esegui(
+                m.uid,
+                () => impostaVice(d, classId, m.uid, m.ruolo !== 'vice'),
+                m.ruolo === 'vice' ? `${m.nome} non è più vice` : `${m.nome} è il nuovo vice`,
+                () => impostaVice(d, classId, m.uid, m.ruolo === 'vice'),
+              )
+            }
           >
             {m.ruolo === 'vice' ? 'Togli vice' : 'Nomina vice'}
           </Bottone>
@@ -91,7 +117,14 @@ export default function AdminClasse() {
         <Bottone
           variante="piccolo"
           disabled={occ}
-          onClick={() => esegui(m.uid, () => impostaPermessoDocente(d, classId, m.uid, !m.permessoModifica))}
+          onClick={() =>
+            esegui(
+              m.uid,
+              () => impostaPermessoDocente(d, classId, m.uid, !m.permessoModifica),
+              m.permessoModifica ? `Permesso tolto a ${m.nome}` : `Permesso dato a ${m.nome}`,
+              () => impostaPermessoDocente(d, classId, m.uid, m.permessoModifica),
+            )
+          }
         >
           {m.permessoModifica ? 'Togli permesso' : 'Dai permesso'}
         </Bottone>
@@ -102,11 +135,16 @@ export default function AdminClasse() {
     )
   }
 
-  function rimuovi(m: Membro) {
+  async function rimuovi(m: Membro) {
     if (!db) return
     const d = db
-    if (!confirm(`Sei sicuro di voler rimuovere ${m.nome} dalla classe?\n\nPotrà rientrare solo con il codice d'invito: se serve, cambialo.`)) return
-    esegui(m.uid, () => rimuoviMembro(d, classId, m.uid))
+    const ok = await conferma({
+      titolo: `Rimuovere ${m.nome}?`,
+      testo: "Potrà rientrare solo con il codice d'invito: se serve, cambialo dalle impostazioni della classe.",
+      pulsante: 'Rimuovi',
+      pericolo: true,
+    })
+    if (ok) esegui(m.uid, () => rimuoviMembro(d, classId, m.uid), `${m.nome} rimosso dalla classe`)
   }
 
   return (
@@ -134,14 +172,18 @@ export default function AdminClasse() {
                   <Bottone
                     variante="piccolo"
                     disabled={occupato === m.uid}
-                    onClick={() => db && esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, true))}
+                    onClick={() =>
+                      db && esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, true), `Permesso dato a ${m.nome}`)
+                    }
                   >
                     Accetta
                   </Bottone>
                   <Bottone
                     variante="piccolo"
                     disabled={occupato === m.uid}
-                    onClick={() => db && esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, false))}
+                    onClick={() =>
+                      db && esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, false), 'Richiesta rifiutata')
+                    }
                   >
                     Rifiuta
                   </Bottone>
@@ -174,16 +216,16 @@ export default function AdminClasse() {
 
 function ImpostazioniClasse({ classId, nome, codice }: { classId: string; nome: string; codice: string }) {
   const [nuovoNome, setNuovoNome] = useState(nome)
-  const [messaggio, setMessaggio] = useState<{ tono: 'ok' | 'errore'; testo: string } | null>(null)
   const [inCorso, setInCorso] = useState(false)
+  const avvisi = useAvvisi()
+  const conferma = useConferma()
 
   async function esegui(azione: () => Promise<string>) {
     setInCorso(true)
-    setMessaggio(null)
     try {
-      setMessaggio({ tono: 'ok', testo: await azione() })
+      avvisi.mostra(await azione())
     } catch (e) {
-      setMessaggio({ tono: 'errore', testo: messaggioErrore(e) })
+      avvisi.errore(messaggioErrore(e))
     } finally {
       setInCorso(false)
     }
@@ -195,15 +237,19 @@ function ImpostazioniClasse({ classId, nome, codice }: { classId: string; nome: 
     const d = db
     esegui(async () => {
       await rinominaClasse(d, classId, codice, nuovoNome)
-      return 'Nome aggiornato.'
+      return 'Nome aggiornato'
     })
   }
 
-  function cambiaCodice() {
+  async function cambiaCodice() {
     if (!db) return
     const d = db
-    if (!confirm(`Il codice ${formattaCodice(codice)} smetterà di funzionare, anche il link e il QR code. Chi è già nella classe resta. Continuare?`)) return
-    esegui(async () => `Nuovo codice: ${formattaCodice(await cambiaCodiceInvito(d, classId, nome, codice))}`)
+    const ok = await conferma({
+      titolo: "Cambiare il codice d'invito?",
+      testo: `Il codice ${formattaCodice(codice)} smetterà di funzionare, anche il link e il QR code. Chi è già nella classe resta.`,
+      pulsante: 'Cambia codice',
+    })
+    if (ok) esegui(async () => `Nuovo codice: ${formattaCodice(await cambiaCodiceInvito(d, classId, nome, codice))}`)
   }
 
   return (
@@ -216,7 +262,9 @@ function ImpostazioniClasse({ classId, nome, codice }: { classId: string; nome: 
           </Bottone>
         </form>
         <div className="space-y-2">
-          <p className="text-sm font-medium">Codice d'invito: <span className="font-mono">{formattaCodice(codice)}</span></p>
+          <p className="text-sm font-medium">
+            Codice d'invito: <span className="font-mono">{formattaCodice(codice)}</span>
+          </p>
           <p className="text-sm text-slate-500">
             Se il codice è finito nelle mani sbagliate, o dopo aver rimosso qualcuno, cambialo.
           </p>
@@ -224,7 +272,6 @@ function ImpostazioniClasse({ classId, nome, codice }: { classId: string; nome: 
             Cambia codice d'invito
           </Bottone>
         </div>
-        {messaggio && <Riquadro tono={messaggio.tono}>{messaggio.testo}</Riquadro>}
         <EliminaClasse classId={classId} nome={nome} codice={codice} />
       </div>
     </Scheda>
@@ -233,21 +280,27 @@ function ImpostazioniClasse({ classId, nome, codice }: { classId: string; nome: 
 
 function EliminaClasse({ classId, nome, codice }: { classId: string; nome: string; codice: string }) {
   const navigate = useNavigate()
-  const [conferma, setConferma] = useState('')
-  const [aperto, setAperto] = useState(false)
+  const avvisi = useAvvisi()
+  const conferma = useConferma()
   const [inCorso, setInCorso] = useState(false)
-  const [errore, setErrore] = useState<string | null>(null)
 
-  async function elimina(e: FormEvent) {
-    e.preventDefault()
-    if (!db || conferma.trim() !== nome) return
+  async function elimina() {
+    if (!db) return
+    const ok = await conferma({
+      titolo: `Eliminare ${nome}?`,
+      testo: 'Spariscono per tutti membri, materie, interrogazioni e calendario. Non si può annullare.',
+      pulsante: 'Elimina definitivamente',
+      pericolo: true,
+      richiediTesto: nome,
+    })
+    if (!ok) return
     setInCorso(true)
-    setErrore(null)
     try {
       await eliminaClasse(db, classId, codice)
+      avvisi.mostra(`Classe ${nome} eliminata`)
       navigate('/', { replace: true })
     } catch (err) {
-      setErrore(messaggioErrore(err))
+      avvisi.errore(messaggioErrore(err))
       setInCorso(false)
     }
   }
@@ -258,35 +311,9 @@ function EliminaClasse({ classId, nome, codice }: { classId: string; nome: strin
       <p className="text-sm text-slate-600 dark:text-slate-400">
         Spariscono per tutti membri, materie, interrogazioni e calendario. Non si può annullare.
       </p>
-      {!aperto ? (
-        <Bottone variante="pericolo" onClick={() => setAperto(true)}>
-          Elimina classe…
-        </Bottone>
-      ) : (
-        <form onSubmit={elimina} className="space-y-3">
-          <Campo
-            etichetta={`Per confermare scrivi il nome della classe: ${nome}`}
-            valore={conferma}
-            onChange={setConferma}
-            maxLength={60}
-          />
-          {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
-          <div className="flex flex-wrap gap-2">
-            <Bottone type="submit" variante="pericolo" disabled={inCorso || conferma.trim() !== nome}>
-              {inCorso ? 'Eliminazione…' : 'Elimina definitivamente'}
-            </Bottone>
-            <Bottone
-              variante="secondario"
-              onClick={() => {
-                setAperto(false)
-                setConferma('')
-              }}
-            >
-              Annulla
-            </Bottone>
-          </div>
-        </form>
-      )}
+      <Bottone variante="pericolo" onClick={elimina} disabled={inCorso}>
+        {inCorso ? 'Eliminazione…' : 'Elimina classe…'}
+      </Bottone>
     </div>
   )
 }

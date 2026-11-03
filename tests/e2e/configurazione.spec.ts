@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { accedi, leggiCodice, svuotaEmulatori } from './aiuti'
+import { accedi, conferma, leggiCodice, svuotaEmulatori } from './aiuti'
 
 test.beforeEach(async () => {
   await svuotaEmulatori()
@@ -102,8 +102,8 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   // Anna elimina l'interrogazione
   await anna.getByRole('link', { name: 'Matematica' }).click()
   await anna.getByRole('link', { name: /Orale capitolo 3/ }).click()
-  anna.once('dialog', (d) => d.accept())
-  await anna.getByRole('button', { name: 'Elimina' }).click()
+  await anna.getByRole('button', { name: 'Elimina', exact: true }).click()
+  await conferma(anna, 'Elimina')
   await expect(anna.getByText('Nessuna interrogazione.')).toBeVisible()
   await expect(carla.getByRole('heading', { name: 'Interrogazione non trovata' })).toBeVisible()
 })

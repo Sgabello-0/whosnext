@@ -7,6 +7,7 @@ import { formattaCodice, normalizzaCodice } from '../lib/codici'
 import { messaggioErrore } from '../lib/errori'
 import type { Invito } from '../lib/tipi'
 import { Bottone, Caricamento, LinkBottone, Riquadro, Scheda } from '../components/ui'
+import { useAvvisi } from '../components/Avvisi'
 
 type Stato =
   | { fase: 'caricamento' }
@@ -24,6 +25,7 @@ export default function Unisciti() {
   const [stato, setStato] = useState<Stato>({ fase: 'caricamento' })
   const [inCorso, setInCorso] = useState(false)
   const [erroreEntrata, setErroreEntrata] = useState<string | null>(null)
+  const avvisi = useAvvisi()
 
   useEffect(() => {
     if (!db || !codice) return
@@ -54,6 +56,7 @@ export default function Unisciti() {
     setErroreEntrata(null)
     try {
       const { classId } = await uniscitiConCodice(db, profilo, codice)
+      if (stato.fase === 'pronto') avvisi.mostra(`Sei entrato in ${stato.invito.nomeClasse}`)
       navigate(`/classe/${classId}`, { replace: true })
     } catch (e) {
       setErroreEntrata(messaggioErrore(e))

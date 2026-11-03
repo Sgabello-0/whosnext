@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { accedi, leggiCodice, svuotaEmulatori } from './aiuti'
+import { accedi, conferma, leggiCodice, svuotaEmulatori } from './aiuti'
 
 test.beforeEach(async () => {
   await svuotaEmulatori()
@@ -79,8 +79,8 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await expect(bruno.getByRole('radio')).toHaveCount(0)
 
   // Anna genera la lista
-  anna.once('dialog', (d) => d.accept())
   await anna.getByRole('button', { name: 'Genera lista' }).click()
+  await conferma(anna, 'Genera lista')
   const ordine = anna.getByRole('list', { name: 'Ordine delle interrogazioni' })
   await expect(ordine.getByRole('listitem')).toHaveCount(3)
   await expect(ordine.getByRole('listitem').nth(0)).toContainText('Carla Blu')
@@ -157,4 +157,9 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await anna.getByRole('button', { name: 'Annulla interrogato Carla Blu' }).click()
   await expect(anna.getByText('Interrogazione conclusa')).toHaveCount(0)
   await expect(carla.getByText('Sei il n° 3 di 3')).toBeVisible()
+
+  // ... e "Annulla" nel messaggio in basso la rimette interrogata
+  await anna.getByRole('button', { name: 'Annulla: Tolto il segno a Carla Blu' }).click()
+  await expect(anna.getByText('Interrogazione conclusa')).toBeVisible()
+  await expect(carla.getByText(/Sei stato interrogato/)).toBeVisible()
 })

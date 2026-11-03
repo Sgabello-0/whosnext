@@ -8,6 +8,7 @@ import { salvaPreferenza, togliPreferenza } from '../../lib/preferenze'
 import { ETICHETTA_SCELTA, SPIEGAZIONE_SCELTA } from '../../lib/testiPreferenze'
 import type { DocPreferenza } from '../../lib/tipi'
 import { Bottone, CLASSE_INPUT, Caricamento, Riquadro, Scheda } from '../ui'
+import { useAvvisi } from '../Avvisi'
 
 type Props = {
   classId: string
@@ -27,6 +28,7 @@ export function SceltaPreferenza(p: Props) {
   const [posizione, setPosizione] = useState<number | null>(null)
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
 
   async function scegli(scelta: Scelta, pos: number | null = null) {
     if (!db) return
@@ -34,6 +36,7 @@ export function SceltaPreferenza(p: Props) {
     setErrore(null)
     try {
       await salvaPreferenza(db, r, p.uid, scelta, pos)
+      avvisi.mostra(scelta === 'posizione' ? `Hai chiesto la posizione n° ${pos}` : `Preferenza salvata: ${ETICHETTA_SCELTA[scelta].toLowerCase()}`)
     } catch (e) {
       setErrore(messaggioErrore(e))
     } finally {
@@ -43,9 +46,14 @@ export function SceltaPreferenza(p: Props) {
 
   async function togli() {
     if (!db) return
+    const d = db
+    const prima = mia.dati
     setErrore(null)
     try {
-      await togliPreferenza(db, r, p.uid)
+      await togliPreferenza(d, r, p.uid)
+      avvisi.mostra('Scelta tolta', {
+        annulla: prima ? () => salvaPreferenza(d, r, p.uid, prima.scelta, prima.posizioneDSA) : undefined,
+      })
     } catch (e) {
       setErrore(messaggioErrore(e))
     }

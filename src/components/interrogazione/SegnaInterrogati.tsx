@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { db } from '../../lib/firebase'
 import { oggiISO, type Calendario } from '../../lib/calendar'
 import { messaggioErrore } from '../../lib/errori'
-import { segnaInterrogati } from '../../lib/gestioneLista'
+import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { nonInterrogati, propostaLezione, ultimaLezione } from '../../lib/lista'
 import type { Interrogazione, Membro } from '../../lib/tipi'
 import { Bottone, CLASSE_INPUT, Etichetta, Riquadro, Scheda } from '../ui'
+import { useAvvisi } from '../Avvisi'
 
 type Props = {
   r: { classId: string; subjectId: string; interrogazioneId: string }
@@ -30,6 +31,7 @@ export function SegnaInterrogati(p: Props) {
   )
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
 
   const mancanti = nonInterrogati(p.ordine, p.interrogati)
   if (mancanti.length === 0) return null
@@ -51,7 +53,14 @@ export function SegnaInterrogati(p: Props) {
     setInCorso(true)
     setErrore(null)
     try {
-      await segnaInterrogati(db, p.r, elenco.filter((u) => scelti.has(u)), data, p.mioUid)
+      const d = db
+      const segnati = elenco.filter((u) => scelti.has(u))
+      await segnaInterrogati(d, p.r, segnati, data, p.mioUid)
+      avvisi.mostra(segnati.length === 1 ? `${nome(segnati[0]!)} segnato come interrogato` : `${segnati.length} segnati come interrogati`, {
+        annulla: async () => {
+          for (const u of segnati) await togliInterrogato(d, p.r, u, p.mioUid)
+        },
+      })
     } catch (e) {
       setErrore(messaggioErrore(e))
       setInCorso(false)

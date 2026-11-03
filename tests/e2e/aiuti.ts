@@ -41,3 +41,11 @@ export async function leggiCodice(page: Page): Promise<string> {
   expect(testo).toBeTruthy()
   return testo!.replace('-', '')
 }
+
+/** Conferma nella finestra del sito (al posto di window.confirm) cliccando il pulsante indicato. */
+export async function conferma(page: Page, pulsante: string) {
+  const finestra = page.getByRole('dialog')
+  await expect(finestra).toBeVisible()
+  await finestra.getByRole('button', { name: pulsante, exact: true }).click()
+  await expect(finestra).toBeHidden()
+}

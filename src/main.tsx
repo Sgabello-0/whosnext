@@ -4,12 +4,18 @@ import { BrowserRouter } from 'react-router'
 import './index.css'
 import App from './App'
 import { ProviderAuth } from './lib/auth'
+import { ProviderAvvisi } from './components/Avvisi'
+import { ProviderConferma } from './components/Conferma'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <ProviderAuth>
-        <App />
+        <ProviderAvvisi>
+          <ProviderConferma>
+            <App />
+          </ProviderConferma>
+        </ProviderAvvisi>
       </ProviderAuth>
     </BrowserRouter>
   </StrictMode>,

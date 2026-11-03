@@ -18,6 +18,7 @@ import { riordinaLista } from '../../lib/gestioneLista'
 import { sposta } from '../../lib/lista'
 import type { Membro } from '../../lib/tipi'
 import { Avatar, Bottone, Riquadro, Scheda } from '../ui'
+import { useAvvisi } from '../Avvisi'
 
 type Props = {
   r: { classId: string; subjectId: string; interrogazioneId: string }
@@ -33,6 +34,7 @@ export function RiordinaLista(p: Props) {
   const [ordine, setOrdine] = useState(p.ordine)
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
   const nome = (uid: string) => p.membri.get(uid)?.nome ?? 'Ex membro'
   const posizione = (uid: unknown) => ordine.indexOf(String(uid)) + 1
 
@@ -61,7 +63,10 @@ export function RiordinaLista(p: Props) {
     setInCorso(true)
     setErrore(null)
     try {
-      await riordinaLista(db, p.r, ordine, p.mioUid)
+      const d = db
+      const prima = p.ordine
+      await riordinaLista(d, p.r, ordine, p.mioUid)
+      avvisi.mostra('Ordine salvato', { annulla: () => riordinaLista(d, p.r, prima, p.mioUid) })
       p.onFine()
     } catch (err) {
       setErrore(messaggioErrore(err))

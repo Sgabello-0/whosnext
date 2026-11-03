@@ -5,6 +5,7 @@ import { auth, DOMINI, providerGoogle, USA_EMULATORI } from '../lib/firebase'
 import { messaggioErroreAuth, type MessaggioErrore } from '../lib/authErrors'
 import { copiaTesto, datiDiagnostica } from '../lib/diagnostica'
 import { Bottone, Riquadro } from '../components/ui'
+import { TestoDaCopiare } from '../components/TestoDaCopiare'
 
 type Errore = MessaggioErrore & { codice?: string }
 
@@ -12,6 +13,7 @@ export default function Login() {
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<Errore | null>(null)
   const [copiato, setCopiato] = useState(false)
+  const [daCopiare, setDaCopiare] = useState<string | null>(null)
 
   useEffect(() => {
     if (auth) getRedirectResult(auth).catch(gestisciErrore)
@@ -44,7 +46,7 @@ export default function Login() {
       setCopiato(true)
       setTimeout(() => setCopiato(false), 2000)
     } else {
-      alert(testo)
+      setDaCopiare(testo)
     }
   }
 
@@ -87,6 +89,9 @@ export default function Login() {
               <button className="underline" onClick={copiaDiagnostica}>
                 {copiato ? 'Copiato' : 'Copia diagnostica'}
               </button>
+            </div>
+            <div className="mt-3">
+              <TestoDaCopiare testo={daCopiare} />
             </div>
           </Riquadro>
         )}

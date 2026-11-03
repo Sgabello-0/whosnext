@@ -21,6 +21,8 @@ import { useCalendario } from '../lib/useCalendario'
 import { useClasse } from '../lib/useClasse'
 import type { Materia } from '../lib/tipi'
 import { StatoClasse } from '../components/StatoClasse'
+import { useAvvisi } from '../components/Avvisi'
+import { useConferma } from '../components/Conferma'
 import { GiorniMateria } from '../components/GiorniMateria'
 import { Bottone, Caricamento, Campo, CLASSE_INPUT, Etichetta, LinkBottone, Riquadro, Scheda, SelettoreGiorni } from '../components/ui'
 
@@ -79,6 +81,7 @@ export default function Configura() {
 // ───────────── Materie ─────────────
 
 function NuovaMateria({ classId }: { classId: string }) {
+  const avvisi = useAvvisi()
   const [nome, setNome] = useState('')
   const [orario, setOrario] = useState<number[]>([])
   const [errore, setErrore] = useState<string | null>(null)
@@ -91,6 +94,7 @@ function NuovaMateria({ classId }: { classId: string }) {
     setErrore(null)
     try {
       await creaMateria(db, classId, { nome, orario })
+      avvisi.mostra(`${nome.trim()} aggiunta`)
       setNome('')
       setOrario([])
     } catch (err) {
@@ -118,6 +122,8 @@ function RigaMateria({ classId, materia }: { classId: string; materia: ConId<Mat
   const [nome, setNome] = useState(materia.nome)
   const [orario, setOrario] = useState<number[]>(materia.orario)
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
+  const conferma = useConferma()
 
   async function salva(e: FormEvent) {
     e.preventDefault()
@@ -125,6 +131,7 @@ function RigaMateria({ classId, materia }: { classId: string; materia: ConId<Mat
     setErrore(null)
     try {
       await aggiornaMateria(db, classId, materia.id, { nome, orario })
+      avvisi.mostra('Materia aggiornata')
       setModifica(false)
     } catch (err) {
       setErrore(messaggioErrore(err))
@@ -133,9 +140,16 @@ function RigaMateria({ classId, materia }: { classId: string; materia: ConId<Mat
 
   async function elimina() {
     if (!db) return
-    if (!confirm(`Eliminare ${materia.nome} e tutte le sue interrogazioni?`)) return
+    const ok = await conferma({
+      titolo: `Eliminare ${materia.nome}?`,
+      testo: 'Spariscono anche tutte le sue interrogazioni, con preferenze e liste.',
+      pulsante: 'Elimina',
+      pericolo: true,
+    })
+    if (!ok) return
     try {
       await eliminaMateria(db, classId, materia.id)
+      avvisi.mostra(`${materia.nome} eliminata`)
     } catch (err) {
       setErrore(messaggioErrore(err))
     }
@@ -194,13 +208,17 @@ function RigaMateria({ classId, materia }: { classId: string; materia: ConId<Mat
 function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: Calendario; materie: ConId<Materia>[] }) {
   const [errore, setErrore] = useState<string | null>(null)
   const [salvataggio, setSalvataggio] = useState(false)
+  const avvisi = useAvvisi()
 
-  async function salva(nuovo: Calendario): Promise<boolean> {
+  /** Salva il calendario; `avviso` e `annulla` per il messaggio in basso. */
+  async function salva(nuovo: Calendario, avviso = 'Calendario salvato', annulla?: Calendario): Promise<boolean> {
     if (!db) return false
+    const d = db
     setErrore(null)
     setSalvataggio(true)
     try {
-      await salvaCalendario(db, classId, nuovo)
+      await salvaCalendario(d, classId, nuovo)
+      avvisi.mostra(avviso, { annulla: annulla ? () => salvaCalendario(d, classId, annulla) : undefined })
       return true
     } catch (err) {
       setErrore(messaggioErrore(err))
@@ -227,7 +245,9 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
           <SelettoreGiorni
             etichetta="Giorni di scuola"
             valore={giorniAttivi}
-            onChange={(g) => salva({ ...cal, giorniScolastici: [0, 1, 2, 3, 4, 5, 6].map((i) => g.includes(i)) })}
+            onChange={(g) =>
+              salva({ ...cal, giorniScolastici: [0, 1, 2, 3, 4, 5, 6].map((i) => g.includes(i)) }, 'Giorni di scuola salvati', cal)
+            }
           />
           <p className="text-xs text-slate-500">Le lezioni di una materia contano solo nei giorni di scuola.</p>
         </div>
@@ -261,7 +281,7 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
                 ))}
               </ul>
               <div className="mt-2">
-                <Bottone variante="piccolo" onClick={() => salva(mancanti.reduce(conEccezione, cal))}>
+                <Bottone variante="piccolo" onClick={() => salva(mancanti.reduce(conEccezione, cal), 'Vacanze regionali aggiunte', cal)}>
                   Aggiungi le vacanze regionali
                 </Bottone>
               </div>
@@ -274,9 +294,9 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
                 ? `${e.descrizione || 'Vacanza'}: ${e.da === e.a ? formattaData(e.da) : `${formattaData(e.da)} – ${formattaData(e.a)}`}`
                 : ''
             }
-            onTogli={(e) => salva(senzaEccezione(cal, e))}
+            onTogli={(e) => salva(senzaEccezione(cal, e), 'Vacanza tolta', cal)}
           />
-          <NuovaVacanza onAggiungi={(e) => salva(conEccezione(cal, e))} />
+          <NuovaVacanza onAggiungi={(e) => salva(conEccezione(cal, e), 'Vacanza aggiunta', cal)} />
         </div>
 
         <div className="space-y-3">
@@ -288,12 +308,12 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
                 ? ''
                 : `${formattaData(e.data)} · ${nomeMateria(e.subjectId)}: ${e.tipo === 'lezione-extra' ? 'lezione extra' : 'lezione annullata'}`
             }
-            onTogli={(e) => salva(senzaEccezione(cal, e))}
+            onTogli={(e) => salva(senzaEccezione(cal, e), 'Tolta dal calendario', cal)}
           />
           {materie.length === 0 ? (
             <p className="text-sm text-slate-500">Aggiungi prima una materia.</p>
           ) : (
-            <NuovaLezione materie={materie} onAggiungi={(e) => salva(conEccezione(cal, e))} />
+            <NuovaLezione materie={materie} onAggiungi={(e) => salva(conEccezione(cal, e), 'Aggiunta al calendario', cal)} />
           )}
         </div>
       </div>
@@ -301,7 +321,7 @@ function ConfiguraCalendario({ classId, cal, materie }: { classId: string; cal: 
   )
 }
 
-function FineAnno({ cal, salva }: { cal: Calendario; salva: (c: Calendario) => Promise<boolean> }) {
+function FineAnno({ cal, salva }: { cal: Calendario; salva: (c: Calendario, avviso?: string, annulla?: Calendario) => Promise<boolean> }) {
   const [valore, setValore] = useState(cal.fineAnno)
   return (
     <div className="flex flex-wrap items-end gap-2">
@@ -310,7 +330,7 @@ function FineAnno({ cal, salva }: { cal: Calendario; salva: (c: Calendario) => P
           <input type="date" value={valore} onChange={(e) => setValore(e.target.value)} className={CLASSE_INPUT} />
         </Etichetta>
       </div>
-      <Bottone variante="secondario" disabled={!valore || valore === cal.fineAnno} onClick={() => salva({ ...cal, fineAnno: valore })}>
+      <Bottone variante="secondario" disabled={!valore || valore === cal.fineAnno} onClick={() => salva({ ...cal, fineAnno: valore }, 'Fine anno salvata', cal)}>
         Salva
       </Bottone>
     </div>

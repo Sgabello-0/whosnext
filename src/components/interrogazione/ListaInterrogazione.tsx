@@ -4,11 +4,12 @@ import { formattaGiorno, oggiISO, type Calendario } from '../../lib/calendar'
 import { rifLista, rifRapporto } from '../../lib/configurazione'
 import { messaggioErrore } from '../../lib/errori'
 import { stimaInterrogazione, testoStima } from '../../lib/estimate'
-import { togliInterrogato } from '../../lib/gestioneLista'
+import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { useDocumento } from '../../lib/hooks'
 import { nonInterrogati } from '../../lib/lista'
 import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/tipi'
 import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda } from '../ui'
+import { useAvvisi } from '../Avvisi'
 import { RiordinaLista } from './RiordinaLista'
 import { SegnaInterrogati } from './SegnaInterrogati'
 import { Segnalazioni, SonoStatoInterrogato } from './Segnalazioni'
@@ -32,6 +33,7 @@ export function ListaInterrogazione(p: Props) {
   const lista = useDocumento<DocLista>(db && rifLista(db, p.classId, p.subjectId, p.interrogazioneId))
   const [riordino, setRiordino] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
+  const avvisi = useAvvisi()
 
   if (lista.errore) return <Riquadro tono="errore">{messaggioErrore(lista.errore)}</Riquadro>
   if (lista.dati === undefined) return <Caricamento />
@@ -60,9 +62,14 @@ export function ListaInterrogazione(p: Props) {
 
   async function annullaInterrogato(uid: string) {
     if (!db) return
+    const d = db
+    const data = interrogati[uid]!
     setErrore(null)
     try {
-      await togliInterrogato(db, r, uid, p.mioUid)
+      await togliInterrogato(d, r, uid, p.mioUid)
+      avvisi.mostra(`Tolto il segno a ${perUid.get(uid)?.nome ?? 'ex membro'}`, {
+        annulla: () => segnaInterrogati(d, r, [uid], data, p.mioUid),
+      })
     } catch (e) {
       setErrore(messaggioErrore(e))
     }

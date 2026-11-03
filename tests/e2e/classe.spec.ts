@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { accedi, leggiCodice, svuotaEmulatori } from './aiuti'
+import { accedi, conferma, leggiCodice, svuotaEmulatori } from './aiuti'
 
 test.beforeEach(async () => {
   await svuotaEmulatori()
@@ -51,7 +51,7 @@ test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ b
   await expect(rossi.getByText('Accesso in sola lettura')).toBeVisible()
   await expect(rossi.getByRole('link', { name: 'Gestisci classe' })).toHaveCount(0)
   await rossi.getByRole('button', { name: 'Chiedi il permesso di modifica' }).click()
-  await expect(rossi.getByText('Richiesta inviata')).toBeVisible()
+  await expect(rossi.getByText('Richiesta inviata, in attesa del capoclasse.')).toBeVisible()
 
   // 5. Anna (in tempo reale) vede il docente, accetta la richiesta, nomina Bruno vice e dà il DSA a Carla
   await expect(anna.getByRole('heading', { name: 'Docenti (1)' })).toBeVisible()
@@ -67,6 +67,12 @@ test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ b
   const rigaCarla = anna.getByRole('listitem').filter({ hasText: 'Carla Blu' })
   await rigaCarla.getByRole('button', { name: 'Dai DSA/BES' }).click()
   await expect(rigaCarla.getByText('DSA/BES', { exact: true })).toBeVisible()
+  await anna.screenshot({ path: info.outputPath('avviso.png') })
+  // "Annulla" nel messaggio in basso toglie di nuovo il badge; poi lo ridiamo
+  await anna.getByRole('button', { name: 'Annulla: Badge DSA/BES dato a Carla Blu' }).click()
+  await expect(rigaCarla.getByText('DSA/BES', { exact: true })).toHaveCount(0)
+  await rigaCarla.getByRole('button', { name: 'Dai DSA/BES' }).click()
+  await expect(rigaCarla.getByText('DSA/BES', { exact: true })).toBeVisible()
 
   // 6. Carla vede il proprio badge, il docente no; Bruno (vice) vede il badge di Carla e la gestione
   await expect(carla.getByText('Hai il badge')).toBeVisible()
@@ -78,14 +84,14 @@ test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ b
   await carla.screenshot({ path: info.outputPath('classe-studente.png'), fullPage: true })
 
   // 7. Carla esce dalla classe
-  carla.once('dialog', (d) => d.accept())
   await carla.getByRole('button', { name: 'Esci dalla classe' }).click()
+  await conferma(carla, 'Esci dalla classe')
   await expect(carla.getByText('Non sei ancora in nessuna classe')).toBeVisible()
   await expect(anna.getByRole('heading', { name: 'Studenti (2)' })).toBeVisible()
 
   // 8. Anna cambia il codice: quello vecchio non funziona più
-  anna.once('dialog', (d) => d.accept())
   await anna.getByRole('button', { name: "Cambia codice d'invito" }).click()
+  await conferma(anna, 'Cambia codice')
   await expect(anna.getByText('Nuovo codice:')).toBeVisible()
   await carla.goto(`/unisciti/${codice}`)
   await expect(carla.getByRole('heading', { name: 'Codice non valido' })).toBeVisible()
@@ -93,12 +99,12 @@ test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ b
   // 9. Anna rimuove Bruno: Bruno lo vede subito
   await anna.getByRole('link', { name: /4ªB Informatica/ }).click()
   await anna.getByRole('link', { name: 'Gestisci classe' }).click()
-  anna.once('dialog', (d) => d.accept())
   await anna.getByRole('listitem').filter({ hasText: 'Bruno Neri' }).getByRole('button', { name: 'Rimuovi' }).click()
+  await conferma(anna, 'Rimuovi')
   await expect(bruno.getByRole('heading', { name: 'Non fai parte di questa classe' })).toBeVisible()
 })
 
-test('il capoclasse elimina la classe', async ({ browser }) => {
+test('il capoclasse elimina la classe', async ({ browser }, info) => {
   const anna = await accedi(browser, 'anna.verdi@studenti.ittsrimini.edu.it', 'Anna Verdi')
   await anna.getByLabel('Nome della classe').fill('Classe di prova')
   await anna.getByRole('button', { name: 'Crea classe' }).click()
@@ -109,11 +115,12 @@ test('il capoclasse elimina la classe', async ({ browser }) => {
 
   await anna.getByRole('link', { name: 'Gestisci classe' }).click()
   await anna.getByRole('button', { name: 'Elimina classe…' }).click()
-  const elimina = anna.getByRole('button', { name: 'Elimina definitivamente' })
+  const elimina = anna.getByRole('dialog').getByRole('button', { name: 'Elimina definitivamente' })
   await expect(elimina).toBeDisabled()
-  await anna.getByLabel(/Per confermare scrivi il nome della classe/).fill('Classe di')
+  await anna.getByLabel(/Per confermare scrivi/).fill('Classe di')
   await expect(elimina).toBeDisabled()
-  await anna.getByLabel(/Per confermare scrivi il nome della classe/).fill('Classe di prova')
+  await anna.getByLabel(/Per confermare scrivi/).fill('Classe di prova')
+  await anna.screenshot({ path: info.outputPath('conferma.png') })
   await elimina.click()
 
   await expect(anna.getByText('Non sei ancora in nessuna classe')).toBeVisible()
