@@ -10,7 +10,7 @@ export function StatoClasse({ dati }: { dati: DatiClasse }) {
     return (
       <Scheda titolo="Non fai parte di questa classe">
         <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-          Forse sei uscito o il capoclasse ti ha rimosso. Per rientrare serve il codice d'invito.
+          Forse sei uscito, il capoclasse ti ha rimosso oppure ha eliminato la classe. Per rientrare serve un codice d'invito.
         </p>
         <LinkBottone to="/">Torna alle tue classi</LinkBottone>
       </Scheda>

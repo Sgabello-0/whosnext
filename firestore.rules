@@ -56,6 +56,10 @@ service cloud.firestore {
     function isCapoOVice(c) {
       return isMembro(c) && mioRuolo(c) in ['capo', 'vice'];
     }
+    // Il capoclasse sta eliminando la classe: nello stesso batch il documento della classe sparisce.
+    function eliminazioneClasse(c) {
+      return isCapo(c) && !existsAfter(classePath(c));
+    }
 
     // ───────────── Validazioni ─────────────
 
@@ -109,9 +113,12 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nomeClasse'])
         && request.resource.data.nomeClasse == getAfter(classePath(resource.data.classId)).data.nome;
 
-      // Solo quando il codice della classe viene sostituito da uno nuovo.
+      // Quando il codice della classe viene sostituito da uno nuovo, o la classe viene eliminata.
       allow delete: if isCapo(resource.data.classId)
-        && getAfter(classePath(resource.data.classId)).data.codiceInvito != codice;
+        && (
+          !existsAfter(classePath(resource.data.classId))
+          || getAfter(classePath(resource.data.classId)).data.codiceInvito != codice
+        );
     }
 
     // ───────────── Classi ─────────────
@@ -144,7 +151,11 @@ service cloud.firestore {
           )
         );
 
-      allow delete: if false;
+      // Solo il capoclasse, e nello stesso batch spariscono anche il codice d'invito e il suo documento membro
+      // (il sito cancella insieme anche gli altri membri, materie, calendario e badge).
+      allow delete: if isCapo(c)
+        && !existsAfter(invitoPath(resource.data.codiceInvito))
+        && !existsAfter(membroPath(c, request.auth.uid));
 
       // ───── Membri ─────
       // members/{uid} → { uid, nome, email, foto, ruolo, permessoModifica, richiestaPermesso, codiceUsato, entrato }
@@ -216,9 +227,10 @@ service cloud.firestore {
           )
         );
 
-        // Si esce da soli, oppure il capoclasse rimuove. Il capoclasse non può uscire.
-        allow delete: if isMembro(c) && resource.data.ruolo != 'capo'
-          && (u == request.auth.uid || isCapo(c));
+        // Si esce da soli, oppure il capoclasse rimuove. Il capoclasse non può uscire,
+        // ma i documenti di tutti (il suo compreso) spariscono quando elimina la classe.
+        allow delete: if (isMembro(c) && resource.data.ruolo != 'capo' && (u == request.auth.uid || isCapo(c)))
+          || eliminazioneClasse(c);
       }
 
       // ───── Badge DSA/BES ─────
@@ -248,7 +260,7 @@ service cloud.firestore {
           && request.resource.data.eccezioni is list && request.resource.data.eccezioni.size() <= 300
           && dataISO(request.resource.data.fineAnno)
           && request.resource.data.aggiornato == request.time;
-        allow delete: if false;
+        allow delete: if eliminazioneClasse(c);
       }
 
       // ───── Materie e interrogazioni ─────

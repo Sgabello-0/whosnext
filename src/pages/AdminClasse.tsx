@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { db } from '../lib/firebase'
 import {
   cambiaCodiceInvito,
@@ -10,6 +10,7 @@ import {
   rinominaClasse,
 } from '../lib/classi'
 import { formattaCodice } from '../lib/codici'
+import { eliminaClasse } from '../lib/eliminaClasse'
 import { messaggioErrore } from '../lib/errori'
 import { dividiMembri, puoGestireDSA } from '../lib/membri'
 import { useClasse } from '../lib/useClasse'
@@ -224,7 +225,68 @@ function ImpostazioniClasse({ classId, nome, codice }: { classId: string; nome: 
           </Bottone>
         </div>
         {messaggio && <Riquadro tono={messaggio.tono}>{messaggio.testo}</Riquadro>}
+        <EliminaClasse classId={classId} nome={nome} codice={codice} />
       </div>
     </Scheda>
+  )
+}
+
+function EliminaClasse({ classId, nome, codice }: { classId: string; nome: string; codice: string }) {
+  const navigate = useNavigate()
+  const [conferma, setConferma] = useState('')
+  const [aperto, setAperto] = useState(false)
+  const [inCorso, setInCorso] = useState(false)
+  const [errore, setErrore] = useState<string | null>(null)
+
+  async function elimina(e: FormEvent) {
+    e.preventDefault()
+    if (!db || conferma.trim() !== nome) return
+    setInCorso(true)
+    setErrore(null)
+    try {
+      await eliminaClasse(db, classId, codice)
+      navigate('/', { replace: true })
+    } catch (err) {
+      setErrore(messaggioErrore(err))
+      setInCorso(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-xl border border-rose-200 p-3 dark:border-rose-900">
+      <p className="text-sm font-semibold text-rose-700 dark:text-rose-300">Elimina la classe</p>
+      <p className="text-sm text-slate-600 dark:text-slate-400">
+        Spariscono per tutti membri, materie, interrogazioni e calendario. Non si può annullare.
+      </p>
+      {!aperto ? (
+        <Bottone variante="pericolo" onClick={() => setAperto(true)}>
+          Elimina classe…
+        </Bottone>
+      ) : (
+        <form onSubmit={elimina} className="space-y-3">
+          <Campo
+            etichetta={`Per confermare scrivi il nome della classe: ${nome}`}
+            valore={conferma}
+            onChange={setConferma}
+            maxLength={60}
+          />
+          {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Bottone type="submit" variante="pericolo" disabled={inCorso || conferma.trim() !== nome}>
+              {inCorso ? 'Eliminazione…' : 'Elimina definitivamente'}
+            </Bottone>
+            <Bottone
+              variante="secondario"
+              onClick={() => {
+                setAperto(false)
+                setConferma('')
+              }}
+            >
+              Annulla
+            </Bottone>
+          </div>
+        </form>
+      )}
+    </div>
   )
 }
