@@ -60,6 +60,10 @@ test('scambio di posto tra due compagni', async ({ browser }, info) => {
   await expect(bruno.getByText(`Hai chiesto il n° ${posCarla} a`)).toBeVisible()
   await expect(bruno.getByRole('link', { name: 'Avvisa su WhatsApp' })).toHaveAttribute('href', /Ciao%20Carla/)
   await expect(bruno.getByRole('listitem').filter({ hasText: 'Carla Blu' }).getByText('richiesta inviata')).toBeVisible()
+  // Una sola richiesta alla volta: chiedendo ad Anna, quella a Carla verrebbe annullata (qui ci ripensa)
+  await bruno.getByRole('button', { name: 'Chiedi scambio a Anna Verdi' }).click()
+  await expect(bruno.getByRole('dialog')).toContainText('La richiesta che hai fatto a Carla Blu viene annullata')
+  await bruno.getByRole('dialog').getByRole('button', { name: 'Annulla' }).click()
   // Anna (non coinvolta) non vede la richiesta di Bruno nella sua lista
   await expect(anna.getByText(/vorrebbe scambiare/)).toHaveCount(0)
 
@@ -89,10 +93,20 @@ test('scambio di posto tra due compagni', async ({ browser }, info) => {
   ).toBeVisible()
   await expect(carla.getByRole('list', { name: 'Da fare' })).toHaveCount(0)
 
-  // Anna rifiuta in automatico: nessuno può più chiederle uno scambio
-  await anna.goto(classe)
+  // Anna, dalle Impostazioni (tocca la sua foto), rifiuta in automatico: nessuno può più chiederle uno scambio
+  await anna.getByRole('link', { name: 'Impostazioni' }).click()
   await anna.getByRole('switch', { name: /Rifiuta in automatico gli scambi/ }).check()
+  await expect(anna.getByText('Nessuno può chiederti di scambiare il posto')).toBeVisible()
   await expect(bruno.getByRole('button', { name: 'Chiedi scambio a Carla Blu' })).toBeVisible()
   await expect(bruno.getByRole('button', { name: 'Chiedi scambio a Anna Verdi' })).toHaveCount(0)
   await bruno.screenshot({ path: info.outputPath('lista-scambi.png'), fullPage: true })
+
+  // Tema scuro, ricordato su questo dispositivo
+  await anna.getByRole('radio', { name: 'Scuro' }).click()
+  await expect(anna.locator('html')).toHaveAttribute('data-tema', 'scuro')
+  await anna.reload()
+  await expect(anna.locator('html')).toHaveAttribute('data-tema', 'scuro')
+  await expect(anna.getByRole('radio', { name: 'Scuro' })).toBeChecked()
+  await anna.screenshot({ path: info.outputPath('impostazioni-scuro.png'), fullPage: true })
+  await anna.getByRole('radio', { name: 'Automatico' }).click()
 })

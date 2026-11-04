@@ -8,6 +8,14 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="description" content="L'ordine delle interrogazioni della tua classe" />
     <title>WhosNext</title>
+    <script>
+      // Tema prima di disegnare la pagina (niente lampo bianco): stessa logica di src/lib/tema.ts
+      try {
+        var t = localStorage.getItem('tema')
+        var scuro = t === 'scuro' || (t !== 'chiaro' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.tema = scuro ? 'scuro' : 'chiaro'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

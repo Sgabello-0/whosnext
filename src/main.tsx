@@ -6,6 +6,12 @@ import App from './App'
 import { ProviderAuth } from './lib/auth'
 import { ProviderAvvisi } from './components/Avvisi'
 import { ProviderConferma } from './components/Conferma'
+import { avviaTema } from './lib/tema'
+import { avviaInstallazione } from './lib/installazione'
+
+avviaTema()
+// Chrome propone l'installazione anche subito dopo l'apertura: lo si ascolta da subito
+avviaInstallazione()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

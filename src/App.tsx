@@ -15,6 +15,7 @@ const AdminClasse = lazy(() => import('./pages/AdminClasse'))
 const Configura = lazy(() => import('./pages/Configura'))
 const Materia = lazy(() => import('./pages/Materia'))
 const Interrogazione = lazy(() => import('./pages/Interrogazione'))
+const Impostazioni = lazy(() => import('./pages/Impostazioni'))
 
 export default function App() {
   const { pronto, utente, esito } = useAuth()
@@ -37,6 +38,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Classi />} />
         <Route path="/unisciti/:codice" element={<Unisciti />} />
+        <Route path="/impostazioni" element={<Impostazioni />} />
         <Route path="/classe/:classId" element={<Classe />} />
         <Route path="/classe/:classId/gestione" element={<AdminClasse />} />
         <Route path="/classe/:classId/configura" element={<Configura />} />

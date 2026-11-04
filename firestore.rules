@@ -193,7 +193,8 @@ service cloud.firestore {
         allow get: if isScuola() && u == request.auth.uid;
 
         allow create: if isScuola() && u == request.auth.uid
-          && request.resource.data.keys().hasOnly(['uid', 'nome', 'email', 'foto', 'ruolo', 'permessoModifica', 'richiestaPermesso', 'codiceUsato', 'entrato'])
+          && request.resource.data.keys().hasOnly(['uid', 'nome', 'email', 'foto', 'ruolo', 'permessoModifica', 'richiestaPermesso', 'codiceUsato', 'entrato', 'rifiutaScambi'])
+          && request.resource.data.get('rifiutaScambi', false) is bool
           && request.resource.data.uid == u
           && testo(request.resource.data.nome, 100)
           && request.resource.data.email == request.auth.token.email
@@ -508,9 +509,9 @@ service cloud.firestore {
           }
 
           // ───── Scambi ─────
-          // scambi/{da}_{0|1|2} → { da, daPos, aPos, stato, creato, aggiornato, a }
+          // scambi/{da}_0 → { da, daPos, aPos, stato, creato, aggiornato, a }
           // "da" (in posizione daPos) chiede la posizione aPos: decide chi la occupa ADESSO
-          // (la richiesta segue la posizione). Al massimo 3 richieste aperte a testa (3 posti fissi).
+          // (la richiesta segue la posizione). Una sola richiesta aperta a testa: il documento è {da}_0.
           // Le vedono solo chi chiede, chi occupa la posizione richiesta, capo e vice.
 
           match /scambi/{id} {
@@ -524,7 +525,7 @@ service cloud.firestore {
               let l = lista();
               return d.keys().hasOnly(['da', 'daPos', 'aPos', 'stato', 'creato', 'aggiornato', 'a'])
                 && d.da == request.auth.uid
-                && id in [d.da + '_0', d.da + '_1', d.da + '_2']
+                && id == d.da + '_0'
                 && d.stato == 'attesa'
                 && d.creato == request.time
                 && d.aggiornato == request.time

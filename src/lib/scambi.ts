@@ -4,7 +4,7 @@
  * che accettando cambino solo quelle due posizioni.
  */
 import { serverTimestamp, setDoc, updateDoc, writeBatch, type Firestore } from 'firebase/firestore'
-import { ErroreApp, rifMembro } from './classi'
+import { ErroreApp, rifMembro, rifUtente } from './classi'
 import { rifLista, rifScambio } from './configurazione'
 import { aggiungiVoceStorico } from './storico'
 import type { DocScambio } from './tipi'
@@ -14,8 +14,8 @@ type Lista = { ordine: string[]; interrogati: Record<string, string> }
 
 export type Scambio = DocScambio & { id: string }
 
-/** Richieste aperte al massimo per persona (sono 3 "posti" fissi: uid_0, uid_1, uid_2). */
-export const MAX_RICHIESTE = 3
+/** Richieste aperte al massimo per persona, in ogni interrogazione ("posti" fissi: uid_0, …). */
+export const MAX_RICHIESTE = 1
 
 export function idScambio(uid: string, posto: number): string {
   return `${uid}_${posto}`
@@ -72,12 +72,25 @@ function rif(db: Firestore, r: Rif, id: string) {
   return rifScambio(db, r.classId, r.subjectId, r.interrogazioneId, id)
 }
 
-export async function chiediScambio(db: Firestore, r: Rif, uid: string, lista: Lista, aPos: number, mie: Scambio[]): Promise<string> {
+/**
+ * Nuova richiesta. Con `sostituisci` la richiesta ancora in attesa viene annullata
+ * (si può averne una sola aperta alla volta).
+ */
+export async function chiediScambio(
+  db: Firestore,
+  r: Rif,
+  uid: string,
+  lista: Lista,
+  aPos: number,
+  mie: Scambio[],
+  sostituisci = false,
+): Promise<string> {
   const daPos = lista.ordine.indexOf(uid)
   if (daPos < 0 || daPos === aPos) throw new ErroreApp('dati-non-validi', 'Non sei in questa lista.')
-  const scelta = postoPerNuovaRichiesta(mie, uid, lista)
+  let scelta = postoPerNuovaRichiesta(mie, uid, lista)
+  if (!scelta && sostituisci) scelta = { posto: 0, daAnnullare: idScambio(uid, 0) }
   if (!scelta) {
-    throw new ErroreApp('troppe-richieste', `Hai già ${MAX_RICHIESTE} richieste in attesa: annullane una per chiederne un'altra.`)
+    throw new ErroreApp('troppe-richieste', 'Hai già una richiesta di scambio in attesa: annullala per chiederne un\'altra.')
   }
   if (scelta.daAnnullare) await annullaScambio(db, r, scelta.daAnnullare)
   const id = idScambio(uid, scelta.posto)
@@ -122,16 +135,21 @@ export async function accettaScambio(db: Firestore, r: Rif, s: Scambio, uid: str
   await batch.commit()
 }
 
-/** "Rifiuta in automatico": l'impostazione e, accendendola, il rifiuto delle richieste già arrivate. */
+/**
+ * "Rifiuta in automatico": l'impostazione dell'utente (vale anche per le classi in cui entrerà),
+ * copiata in ogni sua classe (lì la vedono i compagni e le regole). Accendendola si rifiutano
+ * anche le richieste già arrivate.
+ */
 export async function impostaRifiutaScambi(
   db: Firestore,
-  classId: string,
+  classIds: string[],
   uid: string,
   rifiuta: boolean,
   inArrivo: { r: Rif; id: string }[] = [],
 ): Promise<void> {
   const batch = writeBatch(db)
-  batch.update(rifMembro(db, classId, uid), { rifiutaScambi: rifiuta })
+  batch.update(rifUtente(db, uid), { 'impostazioni.autoRifiutaScambi': rifiuta, aggiornato: serverTimestamp() })
+  for (const classId of classIds) batch.update(rifMembro(db, classId, uid), { rifiutaScambi: rifiuta })
   if (rifiuta) {
     for (const x of inArrivo) {
       batch.update(rif(db, x.r, x.id), { stato: 'rifiutato', a: uid, aggiornato: serverTimestamp() })

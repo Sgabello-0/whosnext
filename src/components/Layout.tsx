@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import { LogOut } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { USA_EMULATORI } from '../lib/firebase'
 import { Avatar } from './ui'
@@ -29,10 +29,25 @@ export default function Layout({ children }: { children: ReactNode }) {
           </Link>
           {profilo && (
             <div className="flex min-w-0 items-center gap-1">
-              <span className="hidden max-w-48 truncate text-sm text-slate-600 sm:inline dark:text-slate-300">
-                {profilo.nome}
-              </span>
-              <Avatar nome={profilo.nome} foto={profilo.foto} />
+              <Link
+                to="/impostazioni"
+                aria-label="Impostazioni"
+                title="Impostazioni"
+                className="flex min-w-0 items-center gap-2 rounded-full py-0.5 pr-0.5 pl-2 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <span className="hidden max-w-48 truncate text-sm text-slate-600 sm:inline dark:text-slate-300">
+                  {profilo.nome}
+                </span>
+                <span className="relative">
+                  <Avatar nome={profilo.nome} foto={profilo.foto} />
+                  <span
+                    aria-hidden
+                    className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-white text-slate-600 shadow ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700"
+                  >
+                    <Settings className="size-2.5" />
+                  </span>
+                </span>
+              </Link>
               <button
                 type="button"
                 onClick={esci}

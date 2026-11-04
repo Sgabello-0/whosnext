@@ -18,6 +18,7 @@ Avanzamento dettagliato in [PIANO.md](PIANO.md#avanzamento).
 - ✅ Comodità: "Le mie interrogazioni" e "Da fare", messaggi per WhatsApp, guida della classe nuova, orario a griglia, conferme con "Annulla", cessione del ruolo, storico della lista
 - ✅ App installabile (PWA) e apertura veloce anche offline (cache dei file e dei dati sul dispositivo), con invito discreto a installarla da cellulare
 - ✅ Scambi di posto tra compagni (accetta chi riceve la richiesta; le regole del database garantiscono che cambino solo le due posizioni)
+- ✅ Impostazioni (tocca la tua foto): account, "Rifiuta in automatico gli scambi", tema chiaro/scuro, installazione dell'app, privacy
 - ✅ Online su Firebase Hosting: **https://whos-next.web.app** (i vecchi indirizzi `whosnext-4b067.*` rimandano qui)
 - ⏳ Prossimo passo: funzioni sul server (Netlify Functions, gratis) per notifiche e generazione automatica
 

@@ -5,10 +5,10 @@
   --color-accento-chiaro: #e7edfc;
 }
 
+/* Tema scelto nelle Impostazioni (automatico = come il telefono): vedi src/lib/tema.ts */
+@custom-variant dark (&:where([data-tema="scuro"], [data-tema="scuro"] *));
 
-@media (prefers-color-scheme: dark) {
-  :root { color-scheme: dark; }
-}
+:root[data-tema="scuro"] { color-scheme: dark; }
 
 @keyframes sali {
   from { transform: translateY(100%); opacity: 0; }

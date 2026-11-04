@@ -67,6 +67,16 @@ export async function salvaProfiloUtente(db: Firestore, p: Profilo): Promise<voi
   }
 }
 
+/** L'impostazione "Rifiuta in automatico gli scambi" dell'utente (copiata nelle classi in cui entra). */
+async function rifiutaScambiUtente(db: Firestore, uid: string): Promise<boolean> {
+  try {
+    const u = await getDoc(rifUtente(db, uid))
+    return u.data()?.impostazioni?.autoRifiutaScambi === true
+  } catch {
+    return false
+  }
+}
+
 // ───────────── Classi ─────────────
 
 function pulisciNomeClasse(nome: string): string {
@@ -108,6 +118,7 @@ export async function creaClasse(
     email: p.email,
     foto: p.foto,
     ruolo: 'capo',
+    rifiutaScambi: await rifiutaScambiUtente(db, p.uid),
     permessoModifica: false,
     richiestaPermesso: false,
     codiceUsato: codice,
@@ -144,6 +155,7 @@ export async function uniscitiConCodice(db: Firestore, p: Profilo, codice: strin
     email: p.email,
     foto: p.foto,
     ruolo: p.tipo,
+    rifiutaScambi: p.tipo === 'studente' && (await rifiutaScambiUtente(db, p.uid)),
     permessoModifica: false,
     richiestaPermesso: false,
     codiceUsato: codice,

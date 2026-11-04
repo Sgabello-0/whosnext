@@ -13,7 +13,7 @@ import {
   writeBatch,
   type Firestore,
 } from 'firebase/firestore'
-import { creaClasse, rifMembro, uniscitiConCodice } from '../../src/lib/classi'
+import { creaClasse, rifMembro, salvaProfiloUtente, uniscitiConCodice } from '../../src/lib/classi'
 import {
   creaInterrogazione,
   creaMateria,
@@ -175,13 +175,13 @@ describe('chiedere e accettare uno scambio', () => {
 })
 
 describe('regole delle richieste', () => {
-  it('al massimo 3 richieste aperte; quelle chiuse liberano il posto', async () => {
+  it('una sola richiesta aperta; chiusa o sostituita libera il posto', async () => {
     const r = await listaPronta()
     const db = dbDi(env, bruno)
-    const nuova = (id: string, aPos: number) =>
+    const nuova = (id: string, aPos: number, daPos = 1) =>
       setDoc(rifScambio(db, r.classId, r.subjectId, r.interrogazioneId, id), {
         da: 'bruno',
-        daPos: 1,
+        daPos,
         aPos,
         stato: 'attesa',
         creato: serverTimestamp(),
@@ -189,21 +189,18 @@ describe('regole delle richieste', () => {
         a: null,
       })
     await assertSucceeds(nuova('bruno_0', 0))
-    await assertSucceeds(nuova('bruno_1', 2))
-    await assertSucceeds(nuova('bruno_2', 3))
-    await assertFails(nuova('bruno_3', 0)) // un quarto posto non c'è
-    await assertFails(nuova('bruno_0', 2)) // il posto 0 è occupato da una richiesta in attesa
-    await expect(chiediScambio(db, r, 'bruno', await lista(r), 0, await mie(r, bruno))).rejects.toThrow(/3 richieste/)
+    await assertFails(nuova('bruno_1', 2)) // un secondo posto non c'è
+    await assertFails(nuova('bruno_0', 2)) // il posto è occupato da una richiesta in attesa
+    await expect(chiediScambio(db, r, 'bruno', await lista(r), 2, await mie(r, bruno))).rejects.toThrow(/in attesa/)
+    // "sostituisci": la vecchia si annulla e al suo posto c'è quella nuova
+    await assertSucceeds(chiediScambio(db, r, 'bruno', await lista(r), 2, await mie(r, bruno), true))
+    expect(await mie(r, bruno)).toMatchObject([{ id: 'bruno_0', aPos: 2, stato: 'attesa' }])
     await annullaScambio(db, r, 'bruno_0')
-    await assertSucceeds(nuova('bruno_0', 2))
+    await assertSucceeds(nuova('bruno_0', 3))
     // non a nome di altri, né dalla posizione sbagliata
-    await assertFails(setDoc(rifScambio(dbDi(env, carla), r.classId, r.subjectId, r.interrogazioneId, 'bruno_1'), {}))
-    await annullaScambio(db, r, 'bruno_1')
-    await assertFails(
-      setDoc(rifScambio(db, r.classId, r.subjectId, r.interrogazioneId, 'bruno_1'), {
-        da: 'bruno', daPos: 2, aPos: 0, stato: 'attesa', creato: serverTimestamp(), aggiornato: serverTimestamp(), a: null,
-      }),
-    )
+    await assertFails(setDoc(rifScambio(dbDi(env, carla), r.classId, r.subjectId, r.interrogazioneId, 'bruno_0'), {}))
+    await annullaScambio(db, r, 'bruno_0')
+    await assertFails(nuova('bruno_0', 0, 2))
   })
 
   it('la richiesta segue la posizione', async () => {
@@ -237,13 +234,18 @@ describe('regole delle richieste', () => {
 
   it('"Rifiuta in automatico": nessuna richiesta nuova, e quelle arrivate vengono rifiutate', async () => {
     const r = await listaPronta()
+    await salvaProfiloUtente(dbDi(env, carla), carla)
     const s = await chiedi(r, bruno, 2)
-    await assertSucceeds(impostaRifiutaScambi(dbDi(env, carla), r.classId, 'carla', true, [{ r, id: s.id }]))
+    await assertSucceeds(impostaRifiutaScambi(dbDi(env, carla), [r.classId], 'carla', true, [{ r, id: s.id }]))
     expect((await mie(r, bruno))[0]).toMatchObject({ stato: 'rifiutato', a: 'carla' })
     await assertFails(chiedi(r, dario, 2))
     // l'impostazione è solo propria
     await assertFails(updateDoc(rifMembro(dbDi(env, bruno), r.classId, 'dario'), { rifiutaScambi: true }))
-    await assertSucceeds(impostaRifiutaScambi(dbDi(env, carla), r.classId, 'carla', false))
+    // vale anche per le classi in cui Carla entra dopo
+    const altra = await creaClasse(dbDi(env, anna), anna, '5ªA', () => 'BBBBBB')
+    await uniscitiConCodice(dbDi(env, carla), carla, altra.codice)
+    expect((await getDoc(rifMembro(dbDi(env, carla), altra.classId, 'carla'))).data()?.rifiutaScambi).toBe(true)
+    await assertSucceeds(impostaRifiutaScambi(dbDi(env, carla), [r.classId, altra.classId], 'carla', false))
     await assertSucceeds(chiedi(r, dario, 2))
   })
 

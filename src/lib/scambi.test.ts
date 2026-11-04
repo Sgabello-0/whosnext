@@ -30,16 +30,13 @@ describe('validita', () => {
 })
 
 describe('posti per le richieste', () => {
-  it('usa il primo posto libero o chiuso', () => {
+  it('una sola richiesta aperta: il posto è libero se non c\'è o è chiusa', () => {
     expect(postoPerNuovaRichiesta([], 'b', lista)).toEqual({ posto: 0, daAnnullare: null })
-    const mie = [richiesta({ id: 'b_0' }), richiesta({ id: 'b_1', stato: 'rifiutato' })]
-    expect(postoPerNuovaRichiesta(mie, 'b', lista)).toEqual({ posto: 1, daAnnullare: null })
+    expect(postoPerNuovaRichiesta([richiesta({ stato: 'rifiutato' })], 'b', lista)).toEqual({ posto: 0, daAnnullare: null })
+    expect(postoPerNuovaRichiesta([richiesta()], 'b', lista)).toBeNull()
   })
-  it('se sono tutti in attesa riusa una richiesta non più valida, altrimenti niente', () => {
-    const tre = [0, 1, 2].map((n) => richiesta({ id: `b_${n}`, aPos: n === 1 ? 2 : n === 2 ? 0 : 3 }))
-    expect(postoPerNuovaRichiesta(tre, 'b', lista)).toBeNull()
-    const conVecchia = tre.map((s, i) => (i === 2 ? { ...s, daPos: 0 } : s))
-    expect(postoPerNuovaRichiesta(conVecchia, 'b', lista)).toEqual({ posto: 2, daAnnullare: 'b_2' })
+  it('una richiesta in attesa non più valida si sostituisce', () => {
+    expect(postoPerNuovaRichiesta([richiesta({ daPos: 0 })], 'b', lista)).toEqual({ posto: 0, daAnnullare: 'b_0' })
   })
   it('richiesta già fatta per quella posizione', () => {
     expect(richiestaInAttesa([richiesta()], 3, lista)?.id).toBe('b_0')

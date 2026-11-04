@@ -1,30 +1,13 @@
 import { useEffect, useState } from 'react'
+import { installa, tipoTelefono, useInstallazione, type Telefono } from '../lib/installazione'
 import { Download, EllipsisVertical, Maximize2, Share, WifiOff, X, Zap } from 'lucide-react'
 import { Logo } from './Logo'
 import { Bottone } from './ui'
-
-/** Evento di Chrome/Android per proporre l'installazione (non è nei tipi standard). */
-type EventoInstallazione = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
 
 const CHIAVE = 'installa-app-rimandato'
 const UNA_SETTIMANA = 7 * 24 * 3_600_000
 /** Dopo quanto compare: non appena si apre la pagina, ma quando si è già visto qualcosa. */
 const RITARDO = 4_000
-
-type Telefono = 'android' | 'iphone' | 'app-social' | null
-
-function tipoTelefono(): Telefono {
-  const ua = navigator.userAgent
-  // dentro Instagram, Facebook, TikTok… non si può installare: va aperto nel browser
-  if (/Instagram|FBAN|FBAV|TikTok|Line\//i.test(ua)) return 'app-social'
-  if (/iPhone|iPad|iPod/.test(ua)) return 'iphone'
-  if (/Android/.test(ua)) return 'android'
-  return null
-}
-
-function giaInstallata(): boolean {
-  return window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
-}
 
 function rimandato(): boolean {
   try {
@@ -45,26 +28,57 @@ const VANTAGGI = [
  * Da cellulare: invito discreto (in basso, dopo qualche secondo) a mettere l'app nella schermata Home.
  * Su Android basta un tocco su "Installa"; su iPhone i browser non lo permettono, quindi spiega i due passaggi.
  */
+/** Il pulsante "Installa" (Android) o i passaggi da fare a mano (iPhone, app social, altri browser). */
+export function IstruzioniInstallazione(props: { telefono: Telefono; onInstallata?: () => void; altro?: React.ReactNode }) {
+  const { proponibile } = useInstallazione()
+  if (proponibile) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Bottone icona={Download} onClick={async () => (await installa()) && props.onInstallata?.()}>
+          Installa
+        </Bottone>
+        {props.altro}
+      </div>
+    )
+  }
+  const testo =
+    props.telefono === 'iphone' ? (
+      <>
+        Tocca <Share aria-label="Condividi" className="inline size-4 align-text-bottom text-accento" /> <strong>Condividi</strong> (o il
+        menu <strong>…</strong>), poi <strong>Aggiungi alla schermata Home</strong>.
+      </>
+    ) : props.telefono === 'app-social' ? (
+      <>
+        Da qui non si può installare: apri il link in <strong>Chrome</strong> o <strong>Safari</strong> (menu in alto, "Apri nel
+        browser").
+      </>
+    ) : props.telefono === 'android' ? (
+      <>
+        Tocca <EllipsisVertical aria-label="il menu" className="inline size-4 align-text-bottom text-accento" /> in alto a destra, poi{' '}
+        <strong>Installa app</strong> (o <strong>Aggiungi a schermata Home</strong>).
+      </>
+    ) : (
+      <>
+        Da computer, con Chrome o Edge: l'icona di installazione è a destra nella barra dell'indirizzo. Sul telefono apri questo sito e
+        segui le istruzioni.
+      </>
+    )
+  return <p className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-950/50">{testo}</p>
+}
+
+/**
+ * Da cellulare: invito discreto (in basso, dopo qualche secondo) a mettere l'app nella schermata Home.
+ * Su Android basta un tocco su "Installa"; su iPhone i browser non lo permettono, quindi spiega i due passaggi.
+ */
 export function InstallaApp() {
   const telefono = tipoTelefono()
-  const [evento, setEvento] = useState<EventoInstallazione | null>(null)
-  const [nascosto, setNascosto] = useState(() => !telefono || giaInstallata() || rimandato())
+  const { installata } = useInstallazione()
+  const [nascosto, setNascosto] = useState(() => !telefono || rimandato())
   const [pronto, setPronto] = useState(false)
 
   useEffect(() => {
-    const proponi = (e: Event) => {
-      e.preventDefault()
-      setEvento(e as EventoInstallazione)
-    }
-    const installata = () => setNascosto(true)
-    window.addEventListener('beforeinstallprompt', proponi)
-    window.addEventListener('appinstalled', installata)
     const t = setTimeout(() => setPronto(true), RITARDO)
-    return () => {
-      window.removeEventListener('beforeinstallprompt', proponi)
-      window.removeEventListener('appinstalled', installata)
-      clearTimeout(t)
-    }
+    return () => clearTimeout(t)
   }, [])
 
   function nonOra() {
@@ -76,15 +90,7 @@ export function InstallaApp() {
     setNascosto(true)
   }
 
-  async function installa() {
-    if (!evento) return
-    await evento.prompt()
-    const scelta = await evento.userChoice
-    if (scelta.outcome === 'accepted') setNascosto(true)
-    setEvento(null)
-  }
-
-  if (nascosto || !pronto) return null
+  if (nascosto || installata || !pronto) return null
 
   return (
     <section
@@ -110,43 +116,33 @@ export function InstallaApp() {
           </button>
         </div>
 
-        <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-600 dark:text-slate-300">
-          {VANTAGGI.map(({ icona: Icona, testo }) => (
-            <li key={testo} className="flex items-center gap-1.5">
-              <Icona aria-hidden className="size-3.5 text-accento dark:text-blue-300" />
-              {testo}
-            </li>
-          ))}
-        </ul>
+        <Vantaggi />
 
-        <div className="mt-4 text-sm">
-          {evento ? (
-            <div className="flex flex-wrap gap-2">
-              <Bottone icona={Download} onClick={installa}>
-                Installa
-              </Bottone>
+        <div className="mt-4">
+          <IstruzioniInstallazione
+            telefono={telefono}
+            onInstallata={() => setNascosto(true)}
+            altro={
               <Bottone variante="tenue" onClick={nonOra}>
                 Non ora
               </Bottone>
-            </div>
-          ) : telefono === 'iphone' ? (
-            <p className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/50">
-              Tocca <Share aria-label="Condividi" className="inline size-4 align-text-bottom text-accento" />{' '}
-              <strong>Condividi</strong> (o il menu <strong>…</strong>), poi <strong>Aggiungi alla schermata Home</strong>.
-            </p>
-          ) : telefono === 'app-social' ? (
-            <p className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/50">
-              Da qui non si può installare: apri il link in <strong>Chrome</strong> o <strong>Safari</strong> (menu in alto,
-              "Apri nel browser").
-            </p>
-          ) : (
-            <p className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/50">
-              Tocca <EllipsisVertical aria-label="il menu" className="inline size-4 align-text-bottom text-accento" /> in alto a
-              destra, poi <strong>Installa app</strong> (o <strong>Aggiungi a schermata Home</strong>).
-            </p>
-          )}
+            }
+          />
         </div>
       </div>
     </section>
+  )
+}
+
+export function Vantaggi() {
+  return (
+    <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+      {VANTAGGI.map(({ icona: Icona, testo }) => (
+        <li key={testo} className="flex items-center gap-1.5">
+          <Icona aria-hidden className="size-3.5 text-accento dark:text-blue-300" />
+          {testo}
+        </li>
+      ))}
+    </ul>
   )
 }

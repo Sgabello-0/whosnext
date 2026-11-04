@@ -11,7 +11,7 @@ import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/ti
 import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda, Soffietto } from '../ui'
 import { ArrowLeftRight, ArrowUpDown, ChartPie, Check, ListOrdered, PartyPopper, Undo2 } from 'lucide-react'
 import { useConferma } from '../Conferma'
-import { annullaScambio, chiediScambio, richiestaInAttesa } from '../../lib/scambi'
+import { annullaScambio, chiediScambio, richiestaInAttesa, validita } from '../../lib/scambi'
 import { PannelloScambi, useRifiutoAutomatico, useScambi } from './Scambi'
 import { useAvvisi } from '../Avvisi'
 import { RiordinaLista } from './RiordinaLista'
@@ -84,14 +84,19 @@ export function ListaInterrogazione(p: Props) {
     const l = lista.dati
     const chi = perUid.get(uid)?.nome ?? 'Ex membro'
     const aPos = ordine.indexOf(uid)
+    // Una sola richiesta aperta: quella in attesa (se c'è) viene sostituita
+    const inAttesa = scambi.mie.find((s) => s.stato === 'attesa' && validita(s, l) === 'valida')
+    const vecchio = inAttesa ? perUid.get(ordine[inAttesa.aPos] ?? '')?.nome ?? 'un compagno' : null
     const ok = await conferma({
       titolo: `Chiedere lo scambio a ${chi}?`,
-      testo: `Tu passeresti dal n° ${miaPosizione + 1} al n° ${aPos + 1} (${stima(uid).toLowerCase()}). Finché ${chi} non accetta non cambia niente.`,
+      testo: `Tu passeresti dal n° ${miaPosizione + 1} al n° ${aPos + 1} (${stima(uid).toLowerCase()}). Finché ${chi} non accetta non cambia niente.${
+        vecchio ? ` La richiesta che hai fatto a ${vecchio} viene annullata: se ne può avere una sola alla volta.` : ''
+      }`,
       pulsante: 'Chiedi lo scambio',
     })
     if (!ok) return
     try {
-      const id = await chiediScambio(d, r, p.mioUid, l, aPos, scambi.mie)
+      const id = await chiediScambio(d, r, p.mioUid, l, aPos, scambi.mie, true)
       avvisi.mostra(`Richiesta inviata a ${chi}`, { annulla: () => annullaScambio(d, r, id) })
     } catch (e) {
       avvisi.errore(messaggioErrore(e))
