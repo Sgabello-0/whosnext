@@ -149,7 +149,7 @@ export async function ricordaScelte(db: Firestore, postino: Postino, adesso: Dat
   return mandate
 }
 
-/** La sera (dalle 18 alle 22, ora italiana): "Domani probabilmente tocca a te" a chi ha la data stimata domani. */
+/** La sera (dalle 18 alle 22, ora italiana): "Interrogazione prevista per domani" a chi ha la data stimata domani. */
 export async function ricordaDomani(db: Firestore, postino: Postino, adesso: Date): Promise<number> {
   const ora = oraItalia(adesso)
   if (ora < 18 || ora >= 22) return 0

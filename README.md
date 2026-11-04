@@ -43,7 +43,7 @@ stima la data per ciascuno e la tiene aggiornata con vacanze, lezioni saltate e 
 - **Le mie interrogazioni**: in un colpo d'occhio, per tutte le materie, la tua posizione e la data stimata.
 - **Da fare**: cosa scegliere, entro quando, e le richieste di scambio da guardare.
 - **Scambi di posto**: chiedi a un compagno di scambiare la posizione; basta che lui accetti. Massimo una richiesta aperta alla volta, e chi non vuole essere disturbato può rifiutarle tutte in automatico.
-- **Notifiche sul telefono**: lista pronta, richiesta e risposta agli scambi, promemoria prima della scadenza e "domani probabilmente tocca a te". Solo quelle importanti, tutte disattivabili.
+- **Notifiche sul telefono**: lista pronta, richiesta e risposta agli scambi, promemoria prima della scadenza e avviso la sera prima dell'interrogazione prevista. Solo quelle importanti, tutte disattivabili.
 - **Posizione esatta per DSA/BES**, visibile solo al capoclasse e al vice.
 
 ### Per il capoclasse e il vice

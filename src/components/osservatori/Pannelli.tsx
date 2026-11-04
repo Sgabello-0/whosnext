@@ -91,7 +91,7 @@ function DescrizioneMia({ v, adesso }: { v: VoceMia; adesso: Date }) {
         </>
       )
     case 'attesa-lista':
-      return <>Preferenze chiuse: la lista arriva a breve</>
+      return <>Preferenze chiuse: la lista sarà pubblicata a breve</>
     case 'in-lista':
       return (
         <>

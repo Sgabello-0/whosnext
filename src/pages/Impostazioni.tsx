@@ -104,7 +104,7 @@ function Interruttore(p: {
 const TESTO_PUSH: Record<StatoPush, string> = {
   attive: 'Attive su questo dispositivo.',
   spente: 'Un avviso sul telefono anche quando il sito è chiuso.',
-  negate: 'Le hai bloccate: riattivale dalle impostazioni del browser (il lucchetto accanto all\'indirizzo), poi riprova.',
+  negate: 'Notifiche bloccate: riattivale dalle impostazioni del browser (il lucchetto accanto all\'indirizzo) e riprova.',
   'non-supportate': '',
 }
 
@@ -156,12 +156,12 @@ function ImpostazioniNotifiche() {
           />
         )}
         <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-950/50 dark:text-slate-400">
-          <p className="mb-1.5 font-medium text-slate-700 dark:text-slate-300">Ti avvisiamo solo quando:</p>
+          <p className="mb-1.5 font-medium text-slate-700 dark:text-slate-300">Ricevi una notifica solo quando:</p>
           <ul className="list-disc space-y-0.5 pl-5">
-            <li>la lista è pronta, con la tua posizione</li>
-            <li>qualcuno ti chiede uno scambio, o risponde al tuo</li>
-            <li>la scadenza per scegliere è vicina e non hai ancora scelto</li>
-            <li>la sera prima, se probabilmente tocca a te</li>
+            <li>la lista è pubblicata, con la tua posizione</li>
+            <li>ricevi una richiesta di scambio o una risposta alla tua</li>
+            <li>la scadenza per indicare la preferenza è vicina</li>
+            <li>la sera prima dell'interrogazione prevista</li>
           </ul>
         </div>
       </div>

@@ -197,7 +197,7 @@ function RigaMateria({ classId, materia }: { classId: string; materia: ConId<Mat
     if (!db) return
     const ok = await conferma({
       titolo: `Eliminare ${materia.nome}?`,
-      testo: 'Spariscono anche tutte le sue interrogazioni, con preferenze e liste.',
+      testo: 'Verranno eliminate anche tutte le sue interrogazioni, con preferenze e liste.',
       pulsante: 'Elimina',
       pericolo: true,
     })

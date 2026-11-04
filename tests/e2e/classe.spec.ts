@@ -24,7 +24,7 @@ test('i docenti non vedono "Crea una classe"', async ({ browser }) => {
 test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ browser }, info) => {
   // 1. Anna crea la classe e ne diventa capoclasse
   const anna = await accedi(browser, 'anna.verdi@studenti.ittsrimini.edu.it', 'Anna Verdi')
-  await expect(anna.getByRole('heading', { name: 'Ciao Anna' })).toBeVisible()
+  await expect(anna.getByRole('heading', { name: /^(Buongiorno|Buon pomeriggio|Buonasera), Anna$/ })).toBeVisible()
   await anna.getByLabel('Nome della classe').fill('4ªB Informatica')
   await anna.getByRole('button', { name: 'Crea classe' }).click()
   await expect(anna.getByRole('heading', { name: '4ªB Informatica' })).toBeVisible()

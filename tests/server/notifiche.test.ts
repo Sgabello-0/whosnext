@@ -107,7 +107,7 @@ describe('avvisi', () => {
     expect(await avvisaListaPronta(db, p, R, LUNEDI_SERA)).toBe(3)
     expect(push.map((x) => x.tokens)).toEqual([['token-anna'], ['token-carla', 'scaduto']]) // Bruno ha spento le push
     expect(push[0]!.n).toMatchObject({
-      titolo: 'Storia – Orale: la lista è pronta',
+      titolo: 'Storia – Orale: lista pubblicata',
       testo: 'Sei il n° 1 di 3. Stimata: Martedì 10/11.',
       percorso: '/classe/c1/materia/s1/interrogazione/i1',
     })
@@ -133,7 +133,7 @@ describe('avvisi', () => {
     expect(await avvisaRichiestaScambio(db, p, R, 'carla_0', 'carla')).toBe('gia-mandata')
     expect(push).toHaveLength(1)
     expect(push[0]!.tokens).toEqual(['token-anna'])
-    expect(push[0]!.n.titolo).toBe('Carla ti chiede uno scambio')
+    expect(push[0]!.n.titolo).toBe('Richiesta di scambio da Carla')
     expect(push[0]!.n.testo).toContain('passeresti dal n° 1 al n° 3')
     expect(email).toHaveLength(1)
 
@@ -141,7 +141,7 @@ describe('avvisi', () => {
     await rifS.update({ stato: 'rifiutato', a: 'anna', aggiornato: Timestamp.now() })
     expect(await avvisaEsitoScambio(db, p, R, 'carla_0', 'carla')).toBe('non-valido')
     expect(await avvisaEsitoScambio(db, p, R, 'carla_0', 'anna')).toBe('mandata')
-    expect(push[1]).toMatchObject({ tokens: ['token-carla'], n: { titolo: 'Anna ha rifiutato lo scambio' } })
+    expect(push[1]).toMatchObject({ tokens: ['token-carla'], n: { titolo: 'Scambio rifiutato da Anna' } })
     expect(email).toHaveLength(1) // l'esito solo come push
   })
 
@@ -152,7 +152,7 @@ describe('avvisi', () => {
     const { p, push } = postinoFinto()
     expect(await ricordaScelte(db, p, new Date())).toBe(2) // Bruno e Carla (non il docente, non Anna)
     expect(push.map((x) => x.tokens[0])).toEqual(['token-bruno', 'token-carla'])
-    expect(push[0]!.n.titolo).toMatch(/^Scegli entro le \d{2}:\d{2}$/)
+    expect(push[0]!.n.titolo).toMatch(/^Preferenza da indicare entro le \d{2}:\d{2}$/)
     expect(await ricordaScelte(db, p, new Date())).toBe(0)
     // troppo presto: niente
     await svuota()
@@ -167,7 +167,7 @@ describe('avvisi', () => {
     expect(await ricordaDomani(db, p, LUNEDI_SERA)).toBe(1)
     expect(push[0]).toMatchObject({
       tokens: ['token-anna'],
-      n: { titolo: 'Domani probabilmente tocca a te', testo: 'Storia – Orale (martedì 10/11): sei il n° 1.' },
+      n: { titolo: 'Interrogazione prevista per domani', testo: 'Storia – Orale (martedì 10/11): sei il n° 1.' },
     })
     expect(await ricordaDomani(db, p, new Date('2026-11-09T19:30:00Z'))).toBe(0) // già avvisata
   })

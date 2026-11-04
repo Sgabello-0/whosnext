@@ -77,7 +77,7 @@ export function SegnaInterrogati(p: Props) {
           <input type="date" value={data} max={oggiISO()} onChange={(e) => setData(e.target.value)} className={`${CLASSE_INPUT} max-w-48`} />
         </Etichetta>
         <div className="space-y-2">
-          <p>Probabilmente interrogati: togli la spunta a chi era assente (resterà in testa alla lista).</p>
+          <p>Interrogati previsti: togli la spunta a chi era assente (resterà in testa alla lista).</p>
           <ul className="space-y-0.5">
             {elenco.map((u) => (
               <li key={u}>

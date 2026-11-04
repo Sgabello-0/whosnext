@@ -109,7 +109,7 @@ export function PannelloScambi(p: {
           await accettaScambio(d, p.r, s, p.uid, p.lista)
           avvisaServer('scambio-esito', p.r, s.id)
         },
-        `Scambio fatto: ora sei il n° ${s.daPos + 1}`,
+        `Scambio completato: ora sei il n° ${s.daPos + 1}`,
       )
     }
   }

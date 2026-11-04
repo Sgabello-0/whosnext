@@ -83,8 +83,8 @@ export function SceltaPreferenza(p: Props) {
         <p className="text-sm">
           {descrizioneAttuale ? (
             <>
-              Hai scelto: <strong>{descrizioneAttuale}</strong>. Le preferenze sono chiuse: a breve arriva la
-              lista.
+              Hai scelto: <strong>{descrizioneAttuale}</strong>. Le preferenze sono chiuse: la lista sarà
+              pubblicata a breve.
             </>
           ) : (
             'Non hai espresso una preferenza: avrai uno dei posti rimasti dopo gli altri.'
@@ -165,7 +165,7 @@ export function SceltaPreferenza(p: Props) {
                 La tua scelta: <strong>{descrizioneAttuale}</strong>. Puoi cambiarla fino alla scadenza.
               </>
             ) : (
-              'Non hai ancora scelto. Se non scegli, avrai uno dei posti rimasti.'
+              'Non hai ancora indicato una preferenza. Senza una scelta ti verrà assegnato uno dei posti rimasti.'
             )}
           </span>
           {attuale && (

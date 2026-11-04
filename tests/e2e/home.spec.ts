@@ -56,7 +56,7 @@ test('"Le mie interrogazioni" e "Da fare" nella pagina iniziale', async ({ brows
   await anna.getByRole('button', { name: 'Modifica' }).click()
   await anna.getByLabel('Scadenza per le preferenze').fill(dataOraLocale(new Date(Date.now() - 60_000)))
   await anna.getByRole('button', { name: 'Salva modifiche' }).click()
-  await expect(mieBruno.getByText(/Preferenze chiuse: la lista arriva a breve/)).toBeVisible()
+  await expect(mieBruno.getByText(/Preferenze chiuse: la lista sarà pubblicata a breve/)).toBeVisible()
   await anna.getByRole('link', { name: 'WhosNext' }).click()
   await expect(daFare.getByText('Le preferenze sono chiuse: genera la lista')).toBeVisible()
   await anna.screenshot({ path: info.outputPath('home-capo.png'), fullPage: true })

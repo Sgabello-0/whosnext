@@ -26,6 +26,12 @@ function siglaClasse(nome: string): string | null {
   return prima.length > 0 && prima.length <= 4 ? prima : null
 }
 
+/** Saluto secondo l'ora del giorno. */
+function saluto(ora: Date): string {
+  const h = ora.getHours()
+  return h < 13 ? 'Buongiorno' : h < 18 ? 'Buon pomeriggio' : 'Buonasera'
+}
+
 export default function Classi() {
   const profilo = useProfilo()
   const iscrizioni = useQuery<Membro>(db && queryMieIscrizioni(db, profilo.uid), `iscrizioni/${profilo.uid}`)
@@ -37,7 +43,9 @@ export default function Classi() {
         <OsservaClasse key={m.percorso} classId={classIdDa(m.percorso)} membro={m} />
       ))}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Ciao {profilo.nome.split(' ')[0]}</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          {saluto(new Date())}, {profilo.nome.split(' ')[0]}
+        </h1>
         <p className="mt-0.5 text-slate-600 dark:text-slate-400">
           {profilo.tipo === 'docente'
             ? nessuna
@@ -171,7 +179,7 @@ function FormUnisciti({ autoFocus }: { autoFocus?: boolean }) {
         placeholder="ABC-DEF"
         maxLength={200}
         autoFocus={autoFocus}
-        aiuto={profilo.tipo === 'docente' ? "Chiedi il codice d'invito al capoclasse." : 'Te lo dà il capoclasse (di solito su WhatsApp).'}
+        aiuto={profilo.tipo === 'docente' ? "Chiedi il codice d'invito al capoclasse." : 'Lo fornisce il capoclasse, di solito su WhatsApp.'}
       />
       {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
       <Bottone type="submit" disabled={!testo.trim()}>

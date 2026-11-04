@@ -331,7 +331,7 @@ function EliminaClasse({ classId, nome, codice }: { classId: string; nome: strin
     if (!db) return
     const ok = await conferma({
       titolo: `Eliminare ${nome}?`,
-      testo: 'Spariscono per tutti membri, materie, interrogazioni e calendario. Non si può annullare.',
+      testo: 'Verranno eliminati per tutti membri, materie, interrogazioni e calendario. L\'operazione non è reversibile.',
       pulsante: 'Elimina definitivamente',
       pericolo: true,
       richiediTesto: nome,
@@ -355,7 +355,7 @@ function EliminaClasse({ classId, nome, codice }: { classId: string; nome: strin
         Elimina la classe
       </p>
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        Spariscono per tutti membri, materie, interrogazioni e calendario. Non si può annullare.
+        Verranno eliminati per tutti membri, materie, interrogazioni e calendario. L'operazione non è reversibile.
       </p>
       <Bottone variante="pericolo" onClick={elimina} disabled={inCorso}>
         {inCorso ? 'Eliminazione…' : 'Elimina classe…'}

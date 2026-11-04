@@ -18,7 +18,7 @@ function rimandato(): boolean {
   }
 }
 
-/** Nella pagina iniziale, una volta: "vuoi un avviso quando la lista è pronta?". Si chiude e non torna per un mese. */
+/** Nella pagina iniziale, una volta: "vuoi ricevere un avviso quando la lista è pubblicata?". Si chiude e non torna per un mese. */
 export function InvitoNotifiche() {
   const profilo = useProfilo()
   const avvisi = useAvvisi()
@@ -41,7 +41,7 @@ export function InvitoNotifiche() {
     setInCorso(true)
     try {
       const stato = await attivaPush(profilo.uid)
-      if (stato === 'attive') avvisi.mostra('Notifiche attive: ti avvisiamo solo per le cose importanti')
+      if (stato === 'attive') avvisi.mostra('Notifiche attive: riceverai solo gli avvisi importanti')
       if (stato !== 'spente') setVisibile(false)
     } catch (e) {
       avvisi.errore(messaggioErrore(e))
@@ -63,8 +63,8 @@ export function InvitoNotifiche() {
       </span>
       <div className="min-w-0 flex-1 space-y-3">
         <div>
-          <p className="font-semibold">Vuoi un avviso quando la lista è pronta?</p>
-          <p className="text-sm text-slate-500">E quando qualcuno ti chiede uno scambio o la sera prima che tocchi a te. Niente altro.</p>
+          <p className="font-semibold">Vuoi ricevere un avviso quando la lista è pubblicata?</p>
+          <p className="text-sm text-slate-500">Anche per le richieste di scambio e la sera prima dell'interrogazione prevista. Nient'altro.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Bottone variante="primario" disabled={inCorso} onClick={attiva}>

@@ -10,7 +10,7 @@ export function Condividi(props: { testo: string; titolo: string; etichetta?: st
 
   async function copia() {
     if (await copiaTesto(props.testo)) avvisi.mostra('Testo copiato: incollalo dove vuoi')
-    else avvisi.errore('Non riesco a copiare: usa "Condividi" o seleziona il testo a mano')
+    else avvisi.errore('Impossibile copiare: usa "Condividi" o seleziona il testo a mano')
   }
 
   async function condividi() {

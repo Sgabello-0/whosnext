@@ -60,7 +60,7 @@ export default function Interrogazione() {
     if (!db) return
     const ok = await conferma({
       titolo: `Eliminare "${i.nome}"?`,
-      testo: 'Spariscono anche preferenze e lista. Non si può annullare.',
+      testo: 'Verranno eliminate anche preferenze e lista. L\'operazione non è reversibile.',
       pulsante: 'Elimina',
       pericolo: true,
     })

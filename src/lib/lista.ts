@@ -9,7 +9,7 @@ export function nonInterrogati(ordine: readonly string[], interrogati: Readonly<
 }
 
 /**
- * "Probabilmente interrogati" in una lezione: i primi N non ancora interrogati.
+ * "Interrogati previsti" in una lezione: i primi N non ancora interrogati.
  * Senza numero per lezione si propone solo il primo.
  */
 export function propostaLezione(

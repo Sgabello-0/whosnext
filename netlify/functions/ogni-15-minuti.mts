@@ -1,7 +1,7 @@
 /**
  * Ogni 15 minuti: genera le liste con le preferenze scadute (e avvisa la classe),
  * ricorda di scegliere a chi non l'ha fatto (scadenza entro 6 ore) e, la sera,
- * avvisa chi probabilmente sarà interrogato domani.
+ * avvisa chi ha l'interrogazione prevista per domani.
  */
 import type { Config } from '@netlify/functions'
 import { database } from '../lib/admin'

@@ -18,7 +18,7 @@ function nomeBreve(nome: string): string {
 }
 
 export function listaPronta(o: Interr & { posizione: number; totale: number; stima: string; link: string }): Notifica {
-  const titolo = `${o.materia} – ${o.nome}: la lista è pronta`
+  const titolo = `${o.materia} – ${o.nome}: lista pubblicata`
   const testo = `Sei il n° ${o.posizione} di ${o.totale}. ${o.stima}.`
   return {
     titolo,
@@ -37,8 +37,8 @@ export function listaPronta(o: Interr & { posizione: number; totale: number; sti
 }
 
 export function richiestaScambio(o: Interr & { chi: string; mia: number; sua: number; link: string }): Notifica {
-  const titolo = `${nomeBreve(o.chi)} ti chiede uno scambio`
-  const testo = `${o.materia} – ${o.nome}: passeresti dal n° ${o.mia} al n° ${o.sua}. Tocca per rispondere.`
+  const titolo = `Richiesta di scambio da ${nomeBreve(o.chi)}`
+  const testo = `${o.materia} – ${o.nome}: passeresti dal n° ${o.mia} al n° ${o.sua}. Apri per accettare o rifiutare.`
   return {
     titolo,
     testo,
@@ -58,28 +58,28 @@ export function richiestaScambio(o: Interr & { chi: string; mia: number; sua: nu
 export function esitoScambio(o: Interr & { chi: string; accettato: boolean; posizione: number }): Notifica {
   return o.accettato
     ? {
-        titolo: `${nomeBreve(o.chi)} ha accettato lo scambio`,
+        titolo: `Scambio accettato da ${nomeBreve(o.chi)}`,
         testo: `${o.materia} – ${o.nome}: ora sei il n° ${o.posizione}.`,
         percorso: o.percorso,
       }
     : {
-        titolo: `${nomeBreve(o.chi)} ha rifiutato lo scambio`,
-        testo: `${o.materia} – ${o.nome}: resti al n° ${o.posizione}.`,
+        titolo: `Scambio rifiutato da ${nomeBreve(o.chi)}`,
+        testo: `${o.materia} – ${o.nome}: la tua posizione resta il n° ${o.posizione}.`,
         percorso: o.percorso,
       }
 }
 
 export function ricordaScelta(o: Interr & { ora: string }): Notifica {
   return {
-    titolo: `Scegli entro le ${o.ora}`,
-    testo: `${o.materia} – ${o.nome}: inizio, metà o fine? Se non scegli avrai uno dei posti rimasti.`,
+    titolo: `Preferenza da indicare entro le ${o.ora}`,
+    testo: `${o.materia} – ${o.nome}: indica se preferisci inizio, metà o fine. Senza una scelta ti verrà assegnato uno dei posti rimasti.`,
     percorso: o.percorso,
   }
 }
 
 export function toccaDomani(o: Interr & { giorno: DataISO; posizione: number }): Notifica {
   return {
-    titolo: `Domani probabilmente tocca a te`,
+    titolo: 'Interrogazione prevista per domani',
     testo: `${o.materia} – ${o.nome} (${formattaGiorno(o.giorno).toLowerCase()}): sei il n° ${o.posizione}.`,
     percorso: o.percorso,
   }
