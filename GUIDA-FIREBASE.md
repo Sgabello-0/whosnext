@@ -159,3 +159,20 @@ Compila il sito con i valori del tuo `.env` e lo pubblica su **https://whos-next
 - I vecchi indirizzi `whosnext-4b067.web.app` e `whosnext-4b067.firebaseapp.com` mostrano solo la pagina della cartella `reindirizzamento/`: portano allo stesso percorso sul nuovo indirizzo e tolgono dal telefono la vecchia copia salvata dell'app.
 - Gli indirizzi dei tunnel di prova (`….trycloudflare.com`) si possono togliere dai domini autorizzati quando non servono più.
 - L'uso (letture e scritture del database, traffico del sito) si vede in Firebase → Firestore → **Utilizzo** e in Hosting.
+
+## Server: generazione automatica e notifiche (Netlify Functions)
+
+Il server (cartella `netlify/`) genera le liste alla scadenza e manda le notifiche. Gira gratis su Netlify; il sito resta su Firebase Hosting.
+
+1. **Chiave per le push**: Firebase → ⚙ Impostazioni progetto → **Cloud Messaging** → *Configurazione web* → *Certificati push web* → **Genera coppia di chiavi**. Copia la chiave pubblica in `.env` come `VITE_FIREBASE_VAPID_KEY` (non è segreta).
+2. **Account di servizio** (questo sì è segreto): Impostazioni progetto → **Account di servizio** → **Genera nuova chiave privata**. Si scarica un file JSON: non va mai su GitHub né in chat.
+3. **Email (facoltativa)**: un Gmail dedicato (es. `whosnext.avvisi@gmail.com`) con la verifica in due passaggi attiva → Account Google → Sicurezza → **Password per le app** → copia la password di 16 lettere.
+4. **Netlify**: *Add new project* → *Import an existing project* → GitHub → `whosnext` → lascia le impostazioni (le legge da `netlify.toml`) → **Deploy**.
+5. Netlify → *Project configuration* → **Environment variables** → aggiungi (ambito *Functions*, segna come segrete quelle con ★):
+   - `FIREBASE_CLIENT_EMAIL` = il valore di `client_email` nel file JSON
+   - ★ `FIREBASE_PRIVATE_KEY` = il valore di `private_key` (da `-----BEGIN` a `END PRIVATE KEY-----\n`)
+   - `EMAIL_UTENTE` e ★ `EMAIL_PASSWORD` (solo se hai fatto il passo 3)
+6. *Deploys* → **Trigger deploy** (le variabili valgono dal deploy successivo). Poi cancella il file JSON dal computer.
+7. Nel `.env` del sito: `VITE_URL_NOTIFICHE=https://<nome-progetto>.netlify.app/api/notifica`, poi `npm run deploy:sito`.
+
+Le notifiche già mandate sono in Firestore → `invii` (una per chiave: non partono mai due volte). I log del server sono su Netlify → *Logs* → *Functions*.
