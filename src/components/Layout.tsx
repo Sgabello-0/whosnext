@@ -1,4 +1,5 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { aggiornaPush } from '../lib/push'
 import { Link, useLocation } from 'react-router'
 import { LogOut, Settings } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -36,6 +37,11 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { profilo, esci } = useAuth()
   const { pathname } = useLocation()
   const animazione = useDirezione(pathname)
+  const uid = profilo?.uid
+  useEffect(() => {
+    // il token delle notifiche può cambiare nel tempo: lo si tiene aggiornato
+    if (uid) aggiornaPush(uid).catch(() => undefined)
+  }, [uid])
   return (
     <div className="min-h-dvh overflow-x-clip">
       {USA_EMULATORI && (

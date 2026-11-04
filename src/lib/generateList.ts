@@ -211,3 +211,15 @@ export function generaLista(opz: {
     },
   }
 }
+
+/** Converte i documenti delle preferenze nel formato dell'algoritmo (va bene sia per il sito sia per il server). */
+export function preferenzeDa(
+  documenti: { id: string; dati: { scelta: Scelta; posizioneDSA?: number | null; aggiornato?: { toMillis(): number } } }[],
+): Map<string, Preferenza> {
+  return new Map(
+    documenti.map(({ id, dati }) => [
+      id,
+      { scelta: dati.scelta, posizioneDSA: dati.posizioneDSA ?? null, quando: dati.aggiornato?.toMillis() ?? 0 },
+    ]),
+  )
+}

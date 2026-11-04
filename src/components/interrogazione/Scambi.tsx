@@ -7,6 +7,7 @@ import { messaggioErrore } from '../../lib/errori'
 import { useQuery } from '../../lib/hooks'
 import { linkAssoluto, linkWhatsApp, messaggioScambio, percorsoInterrogazione } from '../../lib/messaggi'
 import { accettaScambio, annullaScambio, rifiutaScambio, validita, type Scambio } from '../../lib/scambi'
+import { avvisaServer } from '../../lib/avvisaServer'
 import type { DocLista, DocScambio, Membro } from '../../lib/tipi'
 import { useAvvisi } from '../Avvisi'
 import { useConferma } from '../Conferma'
@@ -45,7 +46,10 @@ export function useRifiutoAutomatico(r: Rif, uid: string, attivo: boolean, inArr
       const k = `${s.id}/${s.creato?.toMillis()}`
       if (fatti.current.has(k)) continue
       fatti.current.add(k)
-      rifiutaScambio(db, r, s.id, uid).catch(() => fatti.current.delete(k))
+      rifiutaScambio(db, r, s.id, uid).then(
+        () => avvisaServer('scambio-esito', r, s.id),
+        () => fatti.current.delete(k),
+      )
     }
   }, [attivo, inArrivo, r, uid])
 }
@@ -98,7 +102,16 @@ export function PannelloScambi(p: {
       testo: `Tu diventi il n° ${s.daPos + 1} (${p.stima(s.da).toLowerCase()}), ${chi} il n° ${s.aPos + 1}. La lista cambia subito per tutti.`,
       pulsante: 'Accetta lo scambio',
     })
-    if (ok) await esegui(s.id, () => accettaScambio(d, p.r, s, p.uid, p.lista), `Scambio fatto: ora sei il n° ${s.daPos + 1}`)
+    if (ok) {
+      await esegui(
+        s.id,
+        async () => {
+          await accettaScambio(d, p.r, s, p.uid, p.lista)
+          avvisaServer('scambio-esito', p.r, s.id)
+        },
+        `Scambio fatto: ora sei il n° ${s.daPos + 1}`,
+      )
+    }
   }
 
   return (
@@ -123,7 +136,17 @@ export function PannelloScambi(p: {
                 variante="secondario"
                 icona={X}
                 disabled={occupato === s.id}
-                onClick={() => db && esegui(s.id, () => rifiutaScambio(db!, p.r, s.id, p.uid), `Hai rifiutato lo scambio con ${nome(s.da)}`)}
+                onClick={() =>
+                  db &&
+                  esegui(
+                    s.id,
+                    async () => {
+                      await rifiutaScambio(db!, p.r, s.id, p.uid)
+                      avvisaServer('scambio-esito', p.r, s.id)
+                    },
+                    `Hai rifiutato lo scambio con ${nome(s.da)}`,
+                  )
+                }
               >
                 Rifiuta
               </Bottone>

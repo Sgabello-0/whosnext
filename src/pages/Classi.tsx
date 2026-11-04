@@ -12,6 +12,7 @@ import type { Classe, Membro } from '../lib/tipi'
 import { Badge, Bottone, Caricamento, Campo, Modulo, Pallino, Riquadro, RigaLink, Scheda } from '../components/ui'
 import { ProviderRaccolta } from '../lib/raccolta'
 import { OsservaClasse } from '../components/osservatori/Osservatori'
+import { InvitoNotifiche } from '../components/InvitoNotifiche'
 import { PannelloDaFare, PannelloMie } from '../components/osservatori/Pannelli'
 
 /** classes/{classId}/members/{uid} → classId */
@@ -50,6 +51,7 @@ export default function Classi() {
 
       <PannelloDaFare />
       {iscrizioni.dati && iscrizioni.dati.length > 0 && <PannelloMie caricamento={!iscrizioni.dati} />}
+      {iscrizioni.dati && iscrizioni.dati.length > 0 && <InvitoNotifiche />}
 
       {iscrizioni.errore ? (
         <Riquadro tono="errore">{messaggioErrore(iscrizioni.errore)}</Riquadro>

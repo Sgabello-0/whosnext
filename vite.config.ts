@@ -10,6 +10,10 @@ export default defineConfig({
     // App installabile (icona sulla schermata Home) e file del sito salvati sul telefono
     VitePWA({
       registerType: 'autoUpdate',
+      // service worker scritto a mano (sw/sw.ts): cache del sito + notifiche push
+      strategies: 'injectManifest',
+      srcDir: 'sw',
+      filename: 'sw.ts',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'WhosNext',
@@ -27,11 +31,9 @@ export default defineConfig({
           { src: 'pwa-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
-        navigateFallback: '/index.html',
-        // Le pagine interne di Firebase (login) non vanno servite dalla cache
-        navigateFallbackDenylist: [/^\/__\//],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
     }),
   ],

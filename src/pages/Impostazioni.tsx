@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeftRight, CircleCheck, ExternalLink, LogOut, MonitorSmartphone, Moon, Palette, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react'
+import { ArrowLeftRight, Bell, CircleCheck, Mail, ExternalLink, LogOut, MonitorSmartphone, Moon, Palette, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react'
 import { useAuth, useProfilo } from '../lib/auth'
 import { db } from '../lib/firebase'
 import { queryMieIscrizioni, rifUtente } from '../lib/classi'
@@ -7,6 +7,8 @@ import { messaggioErrore } from '../lib/errori'
 import { useDocumento, useQuery } from '../lib/hooks'
 import { tipoTelefono, useInstallazione } from '../lib/installazione'
 import { impostaRifiutaScambi } from '../lib/scambi'
+import { serverAttivo } from '../lib/avvisaServer'
+import { attivaPush, disattivaPush, impostaEmail, statoPush, type StatoPush } from '../lib/push'
 import { impostaTema, useTema, type Tema } from '../lib/tema'
 import type { ImpostazioniUtente, Membro } from '../lib/tipi'
 import { useAvvisi } from '../components/Avvisi'
@@ -42,6 +44,8 @@ export default function Impostazioni() {
         </div>
       </Scheda>
 
+      {/* finché il server delle notifiche non è collegato, gli interruttori non servirebbero a niente */}
+      {profilo.tipo === 'studente' && serverAttivo && <ImpostazioniNotifiche />}
       {profilo.tipo === 'studente' && <ImpostazioneScambi />}
       <ImpostazioneTema />
       <AppSulTelefono />
@@ -62,6 +66,122 @@ export default function Impostazioni() {
         </a>
       </Scheda>
     </>
+  )
+}
+
+/** Interruttore con titolo e spiegazione. */
+function Interruttore(p: {
+  titolo: string
+  testo: string
+  icona: typeof Bell
+  acceso: boolean
+  disattivo?: boolean
+  onCambia: (v: boolean) => void
+}) {
+  const Icona = p.icona
+  return (
+    <label className={`flex items-start gap-3 ${p.disattivo ? 'opacity-70' : 'cursor-pointer'}`}>
+      <Icona aria-hidden className="mt-0.5 size-4.5 shrink-0 text-slate-500" />
+      <span className="min-w-0 flex-1">
+        <span className="block font-medium">{p.titolo}</span>
+        <span className="mt-0.5 block text-sm text-slate-500">{p.testo}</span>
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={p.acceso}
+        disabled={p.disattivo}
+        onChange={(e) => p.onCambia(e.target.checked)}
+        className="mt-1 size-5 shrink-0 accent-accento"
+      />
+    </label>
+  )
+}
+
+const TESTO_PUSH: Record<StatoPush, string> = {
+  attive: 'Attive su questo dispositivo.',
+  spente: 'Un avviso sul telefono anche quando il sito è chiuso.',
+  negate: 'Le hai bloccate: riattivale dalle impostazioni del browser (il lucchetto accanto all\'indirizzo), poi riprova.',
+  'non-supportate': '',
+}
+
+/** Push (su questo dispositivo) ed email: solo per le cose importanti. */
+function ImpostazioniNotifiche() {
+  const profilo = useProfilo()
+  const avvisi = useAvvisi()
+  const utente = useDocumento<{ impostazioni?: Partial<ImpostazioniUtente> }>(db && rifUtente(db, profilo.uid))
+  const [push, setPush] = useState<StatoPush>(() => statoPush())
+  const [inCorso, setInCorso] = useState(false)
+  const emailAttive = utente.dati?.impostazioni?.notificheEmail !== false
+  const iPhone = tipoTelefono() === 'iphone'
+
+  async function cambiaPush(attiva: boolean) {
+    setInCorso(true)
+    try {
+      if (attiva) {
+        const nuovo = await attivaPush(profilo.uid)
+        setPush(nuovo)
+        if (nuovo === 'attive') avvisi.mostra('Notifiche attive su questo dispositivo')
+      } else {
+        await disattivaPush(profilo.uid)
+        setPush('spente')
+        avvisi.mostra('Notifiche spente su questo dispositivo')
+      }
+    } catch (e) {
+      avvisi.errore(messaggioErrore(e))
+    } finally {
+      setInCorso(false)
+    }
+  }
+
+  async function cambiaEmail(attive: boolean) {
+    try {
+      await impostaEmail(profilo.uid, attive)
+      avvisi.mostra(attive ? 'Email attive' : 'Email spente')
+    } catch (e) {
+      avvisi.errore(messaggioErrore(e))
+    }
+  }
+
+  return (
+    <Scheda titolo="Notifiche" icona={Bell} sottotitolo="Solo per le cose importanti, niente di più.">
+      <div className="space-y-5">
+        {push === 'non-supportate' ? (
+          <p className="flex items-start gap-3 text-sm text-slate-500">
+            <Bell aria-hidden className="mt-0.5 size-4.5 shrink-0" />
+            {iPhone
+              ? "Su iPhone le notifiche arrivano solo con l'app installata: aggiungila alla schermata Home (qui sotto) e aprila da lì."
+              : 'Su questo browser le notifiche non sono disponibili.'}
+          </p>
+        ) : (
+          <Interruttore
+            titolo="Notifiche sul telefono"
+            testo={TESTO_PUSH[push]}
+            icona={Bell}
+            acceso={push === 'attive'}
+            disattivo={inCorso || push === 'negate'}
+            onCambia={cambiaPush}
+          />
+        )}
+        <Interruttore
+          titolo="Email"
+          testo="Solo quando la lista è pronta e quando qualcuno ti chiede uno scambio, all'indirizzo della scuola."
+          icona={Mail}
+          acceso={emailAttive}
+          disattivo={utente.dati === undefined}
+          onCambia={cambiaEmail}
+        />
+        <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-950/50 dark:text-slate-400">
+          <p className="mb-1.5 font-medium text-slate-700 dark:text-slate-300">Ti avvisiamo solo quando:</p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            <li>la lista è pronta, con la tua posizione</li>
+            <li>qualcuno ti chiede uno scambio, o risponde al tuo</li>
+            <li>la scadenza per scegliere è vicina e non hai ancora scelto</li>
+            <li>la sera prima, se probabilmente tocca a te</li>
+          </ul>
+        </div>
+      </div>
+    </Scheda>
   )
 }
 

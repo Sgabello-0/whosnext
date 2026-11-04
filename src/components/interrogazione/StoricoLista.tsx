@@ -22,7 +22,7 @@ export function StoricoLista(p: { classId: string; subjectId: string; interrogaz
     const d = v.dettagli
     switch (v.tipo) {
       case 'generata':
-        return `${chi} ha generato la lista`
+        return v.chi === 'automatico' ? 'La lista è stata generata in automatico alla scadenza' : `${chi} ha generato la lista`
       case 'riordino': {
         const s = d.spostati ?? []
         if (s.length === 0) return `${chi} ha salvato la lista senza cambiamenti`

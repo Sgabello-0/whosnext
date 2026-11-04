@@ -1,12 +1,14 @@
+# Netlify serve solo per le funzioni sul server (generazione automatica e notifiche).
+# Il sito è pubblicato su Firebase Hosting (npm run deploy:sito).
 [build]
-  command = "npm run build"
-  publish = "dist"
+  command = "echo 'niente da compilare: solo funzioni'"
+  publish = "netlify/sito"
 
 [build.environment]
   NODE_VERSION = "22"
 
-# Single Page App: tutte le rotte servono index.html
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  # le librerie di Firebase Admin restano fuori dal pacchetto (Netlify le installa)
+  external_node_modules = ["firebase-admin", "nodemailer"]

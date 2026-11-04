@@ -19,6 +19,8 @@
   "include": [
     "vite.config.ts",
     "vitest.rules.config.ts",
+    "vitest.server.config.ts",
+    "netlify",
     "tests"
   ]
 }

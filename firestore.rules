@@ -98,7 +98,9 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow create, update: if isScuola() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nome', 'email', 'foto', 'tipo', 'impostazioni', 'creato', 'aggiornato'])
+        && request.resource.data.keys().hasOnly(['nome', 'email', 'foto', 'tipo', 'impostazioni', 'creato', 'aggiornato', 'fcmTokens'])
+        // i dispositivi a cui mandare le notifiche push (al massimo 20)
+        && (!('fcmTokens' in request.resource.data) || (request.resource.data.fcmTokens is list && request.resource.data.fcmTokens.size() <= 20))
         && testo(request.resource.data.nome, 100)
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.tipo == tipoAccount()
@@ -106,6 +108,8 @@ service cloud.firestore {
         && request.resource.data.impostazioni is map;
       allow delete: if false;
     }
+
+    // invii/{chiave}: notifiche già mandate dal server. I client non ci accedono (vale la regola generale: vietato).
 
     // ───────────── Codici d'invito ─────────────
     // invites/{codice} → { classId, nomeClasse }

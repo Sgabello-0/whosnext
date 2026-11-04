@@ -1,3 +1,4 @@
+import { avvisaServer, serverAttivo } from '../../lib/avvisaServer'
 import { useState } from 'react'
 import { db } from '../../lib/firebase'
 import { rifPreferenze } from '../../lib/configurazione'
@@ -58,6 +59,7 @@ export function PannelloPreferenze(p: {
     setErrore(null)
     try {
       await generaEPubblicaLista(db, p, p.mioUid)
+      avvisaServer('lista-pronta', { classId: p.classId, subjectId: p.subjectId, interrogazioneId: p.interrogazioneId })
       avvisi.mostra('Lista generata: ora la vedono tutti')
     } catch (e) {
       setErrore(messaggioErrore(e))
@@ -96,7 +98,10 @@ export function PannelloPreferenze(p: {
 
         {p.scaduta ? (
           <div className="space-y-2">
-            <p>Le preferenze sono chiuse: puoi generare la lista.</p>
+            <p>
+              Le preferenze sono chiuse: puoi generare la lista.
+              {serverAttivo && ' Se non lo fai, si genera da sola entro un quarto d\'ora.'}
+            </p>
             <Bottone onClick={genera} disabled={inCorso} icona={Shuffle}>
               {inCorso ? 'Generazione…' : 'Genera lista'}
             </Bottone>

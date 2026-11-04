@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore'
 import { ErroreApp, rifDSA, rifMembri } from './classi'
 import { rifInterrogazione, rifLista, rifPreferenza, rifPreferenze, rifRapporto } from './configurazione'
-import { generaLista, semeCasuale, type Preferenza, type Risultato, type Scelta } from './generateList'
+import { generaLista, preferenzeDa, semeCasuale, type Risultato, type Scelta } from './generateList'
 import { aggiungiVoceStorico } from './storico'
 import type { DocPreferenza, Interrogazione, Membro } from './tipi'
 
@@ -40,15 +40,7 @@ export async function togliPreferenza(db: Firestore, r: Rif, uid: string): Promi
   await deleteDoc(rifPreferenza(db, r.classId, r.subjectId, r.interrogazioneId, uid))
 }
 
-/** Converte i documenti delle preferenze nel formato dell'algoritmo. */
-export function preferenzeDa(documenti: { id: string; dati: DocPreferenza }[]): Map<string, Preferenza> {
-  return new Map(
-    documenti.map(({ id, dati }) => [
-      id,
-      { scelta: dati.scelta, posizioneDSA: dati.posizioneDSA ?? null, quando: dati.aggiornato?.toMillis() ?? 0 },
-    ]),
-  )
-}
+export { preferenzeDa }
 
 /**
  * Genera la lista e la pubblica: legge studenti, badge DSA e preferenze, calcola l'ordine

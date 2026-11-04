@@ -13,6 +13,7 @@ import { ArrowLeftRight, ArrowUpDown, ChartPie, Check, ListOrdered, PartyPopper,
 import { useConferma } from '../Conferma'
 import { annullaScambio, chiediScambio, richiestaInAttesa, validita } from '../../lib/scambi'
 import { PannelloScambi, useRifiutoAutomatico, useScambi } from './Scambi'
+import { avvisaServer } from '../../lib/avvisaServer'
 import { useAvvisi } from '../Avvisi'
 import { RiordinaLista } from './RiordinaLista'
 import { StoricoLista } from './StoricoLista'
@@ -97,6 +98,7 @@ export function ListaInterrogazione(p: Props) {
     if (!ok) return
     try {
       const id = await chiediScambio(d, r, p.mioUid, l, aPos, scambi.mie, true)
+      avvisaServer('scambio-richiesta', r, id)
       avvisi.mostra(`Richiesta inviata a ${chi}`, { annulla: () => annullaScambio(d, r, id) })
     } catch (e) {
       avvisi.errore(messaggioErrore(e))
