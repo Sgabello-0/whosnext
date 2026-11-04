@@ -170,7 +170,7 @@ Il server (cartella `netlify/`) genera le liste alla scadenza e manda le notific
 4. **Netlify**: *Add new project* → *Import an existing project* → GitHub → `whosnext` → lascia le impostazioni (le legge da `netlify.toml`) → **Deploy**.
 5. Netlify → *Project configuration* → **Environment variables** → aggiungi (ambito *Functions*, segna come segrete quelle con ★):
    - `FIREBASE_CLIENT_EMAIL` = il valore di `client_email` nel file JSON
-   - ★ `FIREBASE_PRIVATE_KEY` = il valore di `private_key` (da `-----BEGIN` a `END PRIVATE KEY-----\n`)
+   - ★ `FIREBASE_PRIVATE_KEY` = il valore di `private_key`: tutto quello che c'è tra le virgolette, una riga sola piena di `\n`, da `-----BEGIN PRIVATE KEY-----` fino a `-----END PRIVATE KEY-----\n`. **Attenzione:** non finisce con `==`, quelli sono a metà; se nei log delle funzioni compare "FIREBASE_PRIVATE_KEY è tagliata", ricopiala intera.
    - `EMAIL_UTENTE` e ★ `EMAIL_PASSWORD` (solo se hai fatto il passo 3)
 6. *Deploys* → **Trigger deploy** (le variabili valgono dal deploy successivo). Poi cancella il file JSON dal computer.
 7. Nel `.env` del sito: `VITE_URL_NOTIFICHE=https://<nome-progetto>.netlify.app/api/notifica`, poi `npm run deploy:sito`.
