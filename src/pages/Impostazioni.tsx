@@ -34,10 +34,10 @@ export default function Impostazioni() {
               <span className="truncate">{profilo.nome}</span>
               <Badge colore={profilo.tipo === 'docente' ? 'viola' : 'blu'}>{profilo.tipo === 'docente' ? 'Docente' : 'Studente'}</Badge>
             </p>
-            <p className="truncate text-sm text-slate-500">{profilo.email}</p>
+            <p className="truncate text-sm text-slate-600 dark:text-slate-400">{profilo.email}</p>
           </div>
         </div>
-        <p className="mt-3 text-sm text-slate-500">Nome e foto sono quelli del tuo account Google della scuola.</p>
+        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">Nome e foto sono quelli del tuo account Google della scuola.</p>
         <div className="mt-4">
           <Bottone variante="secondario" icona={LogOut} onClick={esci}>
             Esci dall'account
@@ -67,7 +67,7 @@ export default function Impostazioni() {
         </a>
       </Scheda>
 
-      <p className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">WhosNext · {CREDITI}</p>
+      <p className="pt-2 text-center text-xs text-slate-600 dark:text-slate-400">WhosNext · {CREDITI}</p>
     </>
   )
 }
@@ -84,10 +84,10 @@ function Interruttore(p: {
   const Icona = p.icona
   return (
     <label className={`flex items-start gap-3 ${p.disattivo ? 'opacity-70' : 'cursor-pointer'}`}>
-      <Icona aria-hidden className="mt-0.5 size-4.5 shrink-0 text-slate-500" />
+      <Icona aria-hidden className="mt-0.5 size-4.5 shrink-0 text-slate-600 dark:text-slate-400" />
       <span className="min-w-0 flex-1">
         <span className="block font-medium">{p.titolo}</span>
-        <span className="mt-0.5 block text-sm text-slate-500">{p.testo}</span>
+        <span className="mt-0.5 block text-sm text-slate-600 dark:text-slate-400">{p.testo}</span>
       </span>
       <input
         type="checkbox"
@@ -139,7 +139,7 @@ function ImpostazioniNotifiche() {
     <Scheda titolo="Notifiche" icona={Bell} sottotitolo="Solo per le cose importanti, niente di più.">
       <div className="space-y-5">
         {push === 'non-supportate' ? (
-          <p className="flex items-start gap-3 text-sm text-slate-500">
+          <p className="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-400">
             <Bell aria-hidden className="mt-0.5 size-4.5 shrink-0" />
             {iPhone
               ? "Su iPhone le notifiche arrivano solo con l'app installata: aggiungila alla schermata Home (qui sotto) e aprila da lì."
@@ -209,7 +209,7 @@ function ImpostazioneScambi() {
       <label className="flex cursor-pointer items-start gap-3">
         <span className="min-w-0 flex-1">
           <span className="block font-medium">Rifiuta in automatico gli scambi</span>
-          <span className="mt-0.5 block text-sm text-slate-500">
+          <span className="mt-0.5 block text-sm text-slate-600 dark:text-slate-400">
             {valore
               ? 'Nessuno può chiederti di scambiare il posto, in nessuna delle tue classi.'
               : 'I compagni possono chiederti di scambiare il posto nelle liste: decidi tu se accettare.'}

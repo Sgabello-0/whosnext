@@ -68,7 +68,7 @@ export function Guida(p: { classId: string; nomeClasse: string; codice: string; 
         <button
           type="button"
           onClick={nascondi}
-          className="rounded-lg px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+          className="rounded-lg px-2 py-1 text-sm text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400"
         >
           Nascondi
         </button>
@@ -87,7 +87,7 @@ export function Guida(p: { classId: string; nomeClasse: string; codice: string; 
               aria-hidden
               className={`flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
                 passo.fatto
-                  ? 'bg-emerald-600 text-white'
+                  ? 'bg-emerald-700 text-white'
                   : i === prossimo
                     ? 'bg-accento text-white'
                     : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
@@ -96,7 +96,7 @@ export function Guida(p: { classId: string; nomeClasse: string; codice: string; 
               {passo.fatto ? <Check className="size-4" /> : i + 1}
             </span>
             <div className="min-w-0 flex-1 space-y-2">
-              <p className={passo.fatto ? 'text-slate-500 line-through' : 'font-medium'}>
+              <p className={passo.fatto ? 'text-slate-600 line-through dark:text-slate-400' : 'font-medium'}>
                 {passo.titolo}
                 <span className="sr-only">{passo.fatto ? ' (fatto)' : ' (da fare)'}</span>
               </p>
@@ -126,7 +126,7 @@ export function Guida(p: { classId: string; nomeClasse: string; codice: string; 
                 />
               )}
               {i === prossimo && i === 3 && (
-                <p className="text-sm text-slate-500">Tocca "Nuova interrogazione" qui sotto.</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Tocca "Nuova interrogazione" qui sotto.</p>
               )}
             </div>
           </li>

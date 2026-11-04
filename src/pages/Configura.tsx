@@ -301,7 +301,7 @@ function ConfiguraCalendario({
       <Scheda
         titolo="Settimana e fine anno"
         icona={CalendarDays}
-        azioni={salvataggio ? <span className="text-xs text-slate-500">Salvataggio…</span> : undefined}
+        azioni={salvataggio ? <span className="text-xs text-slate-600 dark:text-slate-400">Salvataggio…</span> : undefined}
       >
         <div className="space-y-5">
           <div className="space-y-2">
@@ -316,7 +316,7 @@ function ConfiguraCalendario({
                 )
               }
             />
-            <p className="text-xs text-slate-500">Le lezioni di una materia contano solo nei giorni di scuola.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Le lezioni di una materia contano solo nei giorni di scuola.</p>
           </div>
 
           <FineAnno cal={cal} salva={salva} />
@@ -378,7 +378,7 @@ function ConfiguraCalendario({
             onTogli={(e) => salva(senzaEccezione(cal, e), 'Tolta dal calendario', cal)}
           />
           {materie.length === 0 ? (
-            <p className="text-sm text-slate-500">Aggiungi prima una materia.</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Aggiungi prima una materia.</p>
           ) : (
             <NuovaLezione
               materie={materie}
@@ -432,7 +432,7 @@ function ElencoEccezioni(props: {
   descrivi: (e: Eccezione) => string
   onTogli: (e: Eccezione) => void
 }) {
-  if (props.eccezioni.length === 0) return <p className="text-sm text-slate-500">Nessuna.</p>
+  if (props.eccezioni.length === 0) return <p className="text-sm text-slate-600 dark:text-slate-400">Nessuna.</p>
   return (
     <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
       {props.eccezioni.map((e) => {
@@ -540,7 +540,7 @@ function NuovaLezione({
         </Bottone>
       </div>
       {dataValida(data) && (
-        <p className="text-xs text-slate-500 sm:col-span-3">
+        <p className="text-xs text-slate-600 sm:col-span-3 dark:text-slate-400">
           {formattaGiorno(data)}/{data.slice(0, 4)}
         </p>
       )}

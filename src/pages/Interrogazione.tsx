@@ -43,7 +43,7 @@ export default function Interrogazione() {
   if (interr.dati === null || materia.dati === null) {
     return (
       <Scheda titolo="Interrogazione non trovata">
-        <p className="mb-4 text-sm text-slate-500">Forse è stata eliminata.</p>
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">Forse è stata eliminata.</p>
         <LinkBottone to={`/classe/${classId}`}>Torna alla classe</LinkBottone>
       </Scheda>
     )
@@ -116,7 +116,7 @@ export default function Interrogazione() {
         <div className="flex flex-wrap gap-2">
           {i.stato === 'raccolta' && (
             <Info icona={Clock}>
-              Preferenze entro {formattaScadenza(scadenza)} <span className="text-slate-500">({tempoMancante(scadenza, adesso)})</span>
+              Preferenze entro {formattaScadenza(scadenza)} <span className="text-slate-600 dark:text-slate-400">({tempoMancante(scadenza, adesso)})</span>
             </Info>
           )}
           <Info icona={CalendarDays}>

@@ -39,7 +39,7 @@ export function CediRuolo({ classId, mioUid, studenti }: { classId: string; mioU
   return (
     <div className="space-y-3">
       {candidati.length === 0 ? (
-        <p className="text-sm text-slate-500">Nella classe non ci sono ancora altri studenti.</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Nella classe non ci sono ancora altri studenti.</p>
       ) : (
         <>
           <Etichetta testo="Nuovo capoclasse">

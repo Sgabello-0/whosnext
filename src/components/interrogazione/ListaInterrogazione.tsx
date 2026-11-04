@@ -127,7 +127,7 @@ export function ListaInterrogazione(p: Props) {
           role="status"
           className={`flex gap-4 rounded-2xl p-4 shadow-sm sm:p-5 ${
             interrogati[p.mioUid]
-              ? 'bg-emerald-600 text-white'
+              ? 'bg-emerald-700 text-white'
               : 'bg-gradient-to-br from-accento to-blue-700 text-white'
           }`}
         >
@@ -249,7 +249,7 @@ export function ListaInterrogazione(p: Props) {
                       {io && <Badge>tu</Badge>}
                       {quando && <Badge colore="verde">interrogato</Badge>}
                     </p>
-                    <p className="text-xs text-slate-500">{quando ? formattaGiorno(quando) : stima(uid)}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">{quando ? formattaGiorno(quando) : stima(uid)}</p>
                   </div>
                   {possoScambiare && uid !== p.mioUid && !quando && !riordino && (
                     richiestaInAttesa(scambi.mie, i, lista.dati!) ? (
@@ -325,7 +325,7 @@ function RapportoSoddisfazione(p: Props) {
         {riga('Metà ottenuta', r.meta.ottenute, r.meta.richieste)}
         {riga('Fine ottenuta', r.fine.ottenute, r.fine.richieste)}
         {riga('DSA/BES alla posizione esatta', r.dsa.esatte, r.dsa.richieste)}
-        <li className="text-xs text-slate-500">
+        <li className="text-xs text-slate-600 dark:text-slate-400">
           Seme del sorteggio: {r.seme}. Il rapporto si riferisce alla lista appena generata, prima di eventuali
           riordini.
         </li>

@@ -51,7 +51,7 @@ export function Invito({ codice, nomeClasse }: { codice: string; nomeClasse: str
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-950/50">
           <div>
-            <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">Codice della classe</p>
+            <p className="text-xs font-medium tracking-wide text-slate-600 uppercase dark:text-slate-400">Codice della classe</p>
             <p className="font-mono text-2xl font-bold tracking-[0.2em]" aria-label={`Codice ${codice.split('').join(' ')}`}>
               {formattaCodice(codice)}
             </p>

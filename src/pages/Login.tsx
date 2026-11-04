@@ -93,7 +93,7 @@ export default function Login() {
         <Bottone onClick={() => accedi('popup')} disabled={inCorso} larga>
           {inCorso ? 'Accesso in corso…' : 'Accedi con Google'}
         </Bottone>
-        <p className="text-center text-sm text-slate-500">
+        <p className="text-center text-sm text-slate-600 dark:text-slate-400">
           Usa l'account della scuola: <strong>@{DOMINI.studenti}</strong> per gli studenti,{' '}
           <strong>@{DOMINI.docenti}</strong> per i professori.
         </p>
@@ -118,7 +118,7 @@ export default function Login() {
           </Riquadro>
         )}
       </section>
-      <p className="mt-10 text-center text-xs text-slate-400 dark:text-slate-500">{CREDITI}</p>
+      <p className="mt-10 text-center text-xs text-slate-600 dark:text-slate-400">{CREDITI}</p>
     </main>
   )
 }

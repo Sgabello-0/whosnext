@@ -89,7 +89,7 @@ export function PannelloPreferenze(p: {
             )
           })}
           {senzaRisposta.length > 0 && (
-            <li className="text-slate-500">
+            <li className="text-slate-600 dark:text-slate-400">
               <strong>Non hanno risposto</strong> ({senzaRisposta.length}):{' '}
               {senzaRisposta.map((s) => s.nome).sort((a, b) => a.localeCompare(b, 'it')).join(', ')}
             </li>
@@ -108,7 +108,7 @@ export function PannelloPreferenze(p: {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-slate-500">
+            <p className="text-slate-600 dark:text-slate-400">
               Potrai generare la lista dopo la scadenza. Se tutti hanno già risposto, puoi anticipare la scadenza da
               "Modifica".
             </p>

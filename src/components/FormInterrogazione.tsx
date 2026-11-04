@@ -53,7 +53,7 @@ export function FormInterrogazione(props: {
       </Etichetta>
       <div>
         <SelettoreGiorni etichetta="Giorni in cui si interroga" valore={giorni} onChange={setGiorni} />
-        <p className="mt-1.5 text-xs text-slate-500">
+        <p className="mt-1.5 text-xs text-slate-600 dark:text-slate-400">
           Proposti quelli della materia. Se li togli tutti, la stima dirà solo "tra N lezioni".
         </p>
       </div>

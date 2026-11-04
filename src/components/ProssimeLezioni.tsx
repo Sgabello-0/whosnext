@@ -11,7 +11,7 @@ export function ProssimeLezioni(props: { giorni: number[]; subjectId: string; ca
   })
   if (lezioni.length === 0) {
     return (
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-600 dark:text-slate-400">
         {props.giorni.length === 0 ? 'Nessun giorno di lezione fisso.' : "Nessuna lezione fino alla fine dell'anno."}
       </p>
     )

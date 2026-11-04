@@ -11,7 +11,7 @@ export function ListaMembri(props: {
   mostraEmail?: boolean
   azioni?: (m: Membro) => ReactNode
 }) {
-  if (props.membri.length === 0) return <p className="text-sm text-slate-500">Nessuno.</p>
+  if (props.membri.length === 0) return <p className="text-sm text-slate-600 dark:text-slate-400">Nessuno.</p>
   return (
     <ul className="divide-y divide-slate-100 dark:divide-slate-800">
       {props.membri.map((m) => (
@@ -27,7 +27,7 @@ export function ListaMembri(props: {
               {m.ruolo === 'docente' && m.permessoModifica && <Badge colore="verde">Può modificare</Badge>}
               {m.ruolo === 'docente' && m.richiestaPermesso && <Badge colore="viola">Chiede il permesso</Badge>}
             </p>
-            {props.mostraEmail && <p className="truncate text-xs text-slate-500">{m.email}</p>}
+            {props.mostraEmail && <p className="truncate text-xs text-slate-600 dark:text-slate-400">{m.email}</p>}
           </div>
           {props.azioni && <div className="flex basis-full flex-wrap gap-1.5 pl-11 sm:basis-auto sm:pl-0">{props.azioni(m)}</div>}
         </li>

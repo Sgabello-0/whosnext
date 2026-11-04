@@ -87,7 +87,7 @@ export default function Unisciti() {
           Stai per entrare in <strong>{stato.invito.nomeClasse}</strong> come{' '}
           <strong>{profilo.tipo === 'docente' ? 'docente' : 'studente'}</strong>.
         </p>
-        <p className="font-mono text-sm text-slate-500">Codice {formattaCodice(codice)}</p>
+        <p className="font-mono text-sm text-slate-600 dark:text-slate-400">Codice {formattaCodice(codice)}</p>
         {profilo.tipo === 'docente' && (
           <Riquadro tono="info" icona={Eye}>
             Come docente vedrai le liste delle interrogazioni. Per modificarle potrai chiedere il permesso al

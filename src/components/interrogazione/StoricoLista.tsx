@@ -47,7 +47,7 @@ export function StoricoLista(p: { classId: string; subjectId: string; interrogaz
         {voci.dati.map((v) => (
           <li key={v.id}>
             <span className="block">{descrivi(v)}</span>
-            {v.quando && <span className="block text-xs text-slate-500">{formattaScadenza(v.quando.toDate())}</span>}
+            {v.quando && <span className="block text-xs text-slate-600 dark:text-slate-400">{formattaScadenza(v.quando.toDate())}</span>}
           </li>
         ))}
       </ol>

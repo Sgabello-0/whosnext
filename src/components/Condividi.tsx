@@ -29,7 +29,7 @@ export function Condividi(props: { testo: string; titolo: string; etichetta?: st
           href={linkWhatsApp(props.testo)}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 active:scale-[0.98]"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 active:scale-[0.98]"
         >
           <MessageCircle aria-hidden className="size-4" />
           WhatsApp

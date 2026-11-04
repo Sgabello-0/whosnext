@@ -16,7 +16,7 @@ function Titolo({ d, mostraClasse }: { d: InterrogazioneOsservata; mostraClasse:
   return (
     <span className="block font-semibold">
       {d.nomeMateria} – {d.nome}
-      {mostraClasse && <span className="font-normal text-slate-500"> · {d.nomeClasse}</span>}
+      {mostraClasse && <span className="font-normal text-slate-600 dark:text-slate-400"> · {d.nomeClasse}</span>}
     </span>
   )
 }

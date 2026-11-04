@@ -98,7 +98,7 @@ export function BottoneIcona(props: { icona: LucideIcon; etichetta: string; onCl
       disabled={props.disabled}
       aria-label={props.etichetta}
       title={props.etichetta}
-      className="inline-flex size-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-3 focus-visible:outline-accento disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+      className="inline-flex size-9 items-center justify-center rounded-full text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-3 focus-visible:outline-accento disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-100 dark:text-slate-400"
     >
       <Icona aria-hidden className="size-4.5" />
     </button>
@@ -136,7 +136,7 @@ export function Scheda(props: {
             )}
             <div className="min-w-0">
               {props.titolo && <h2 className="text-base font-semibold sm:text-lg">{props.titolo}</h2>}
-              {props.sottotitolo && <p className="text-xs text-slate-500 sm:text-sm">{props.sottotitolo}</p>}
+              {props.sottotitolo && <p className="text-xs text-slate-600 sm:text-sm dark:text-slate-400">{props.sottotitolo}</p>}
             </div>
           </div>
           {props.azioni}
@@ -172,7 +172,7 @@ export function IntestazionePagina(props: {
             <h1 className="text-2xl font-bold tracking-tight break-words sm:text-3xl">{props.titolo}</h1>
             {props.badge}
           </div>
-          {props.sottotitolo && <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{props.sottotitolo}</div>}
+          {props.sottotitolo && <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">{props.sottotitolo}</div>}
         </div>
         {props.azioni && <div className="flex basis-full flex-wrap gap-2 sm:basis-auto sm:shrink-0">{props.azioni}</div>}
       </div>
@@ -226,7 +226,7 @@ export function Vuoto(props: { icona?: LucideIcon; titolo?: string; children?: R
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-6 text-center dark:border-slate-700">
       {Icona && <Icona aria-hidden className="size-7 text-slate-400" />}
       {props.titolo && <p className="font-semibold">{props.titolo}</p>}
-      {props.children && <div className="max-w-sm text-sm text-slate-500 dark:text-slate-400">{props.children}</div>}
+      {props.children && <div className="max-w-sm text-sm text-slate-600 dark:text-slate-400">{props.children}</div>}
       {props.azione && <div className="mt-2">{props.azione}</div>}
     </div>
   )
@@ -247,7 +247,7 @@ export function Soffietto(props: {
       className="group rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
       <summary className="flex cursor-pointer list-none items-center gap-2.5 rounded-2xl px-4 py-3.5 font-semibold select-none hover:bg-slate-50 sm:px-5 dark:hover:bg-slate-800/50 [&::-webkit-details-marker]:hidden">
-        {Icona && <Icona aria-hidden className="size-4.5 shrink-0 text-slate-500" />}
+        {Icona && <Icona aria-hidden className="size-4.5 shrink-0 text-slate-600 dark:text-slate-400" />}
         <h2 className="min-w-0 flex-1 text-base">{props.titolo}</h2>
         {props.destra}
         <ChevronRight aria-hidden className="size-4 shrink-0 text-slate-400 transition group-open:rotate-90" />
@@ -264,7 +264,7 @@ export function Info(props: { icona: LucideIcon; children: ReactNode }) {
   const Icona = props.icona
   return (
     <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-      <Icona aria-hidden className="size-3.5 shrink-0 text-slate-500" />
+      <Icona aria-hidden className="size-3.5 shrink-0 text-slate-600 dark:text-slate-400" />
       {props.children}
     </span>
   )
@@ -318,7 +318,7 @@ export function Avatar(props: { nome: string; foto: string | null; grande?: bool
 
 export function Caricamento(props: { testo?: string }) {
   return (
-    <p className="flex items-center gap-2 py-6 text-sm text-slate-500" role="status">
+    <p className="flex items-center gap-2 py-6 text-sm text-slate-600 dark:text-slate-400" role="status">
       <span className="size-4 animate-spin rounded-full border-2 border-slate-300 border-t-accento" aria-hidden />
       {props.testo ?? 'Caricamento…'}
     </p>
@@ -350,7 +350,7 @@ export function Campo(props: {
         autoFocus={props.autoFocus}
         className={CLASSE_INPUT}
       />
-      {props.aiuto && <span className="mt-1.5 block text-xs text-slate-500">{props.aiuto}</span>}
+      {props.aiuto && <span className="mt-1.5 block text-xs text-slate-600 dark:text-slate-400">{props.aiuto}</span>}
     </label>
   )
 }
@@ -361,7 +361,7 @@ export function Etichetta(props: { testo: string; aiuto?: string; children: Reac
     <label className="block text-sm">
       <span className="mb-2 block font-medium">{props.testo}</span>
       {props.children}
-      {props.aiuto && <span className="mt-1.5 block text-xs text-slate-500">{props.aiuto}</span>}
+      {props.aiuto && <span className="mt-1.5 block text-xs text-slate-600 dark:text-slate-400">{props.aiuto}</span>}
     </label>
   )
 }

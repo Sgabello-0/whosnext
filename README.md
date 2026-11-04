@@ -122,6 +122,8 @@ flowchart LR
 
 - Accesso solo con gli account Google della scuola; i domini sono controllati anche dalle regole del database.
 - Regole di Firestore coperte da test sull'emulatore, verificati anche "indebolendo" le regole una alla volta per controllare che i test se ne accorgano.
+- Test di attacco: richieste di scambio false, profili truccati, token non firmati, link esterni nelle notifiche, codice HTML nei nomi.
+- Accessibilità controllata in automatico (axe, WCAG 2.1 AA) su tutte le pagine principali, con il tema chiaro e quello scuro.
 - Dati raccolti al minimo: nome, email e foto dell'account della scuola. Dettagli nell'[informativa sulla privacy](PRIVACY.md).
 
 ## Sviluppo

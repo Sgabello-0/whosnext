@@ -74,12 +74,12 @@ function MateriaConInterrogazioni({ classId, materia }: { classId: string; mater
         className="group flex items-baseline justify-between gap-2 rounded-lg py-1"
       >
         <span className="font-bold group-hover:underline">{materia.nome}</span>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-slate-600 dark:text-slate-400">
           {materia.orario.length ? materia.orario.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}
         </span>
       </Link>
       {interrogazioni.dati && attive.length === 0 && (
-        <p className="py-1 text-sm text-slate-500">Nessuna interrogazione in corso.</p>
+        <p className="py-1 text-sm text-slate-600 dark:text-slate-400">Nessuna interrogazione in corso.</p>
       )}
       {attive.length > 0 && (
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -96,7 +96,7 @@ function MateriaConInterrogazioni({ classId, materia }: { classId: string; mater
               }
             >
               <span className="block font-medium">{i.nome}</span>
-              <span className="block text-xs text-slate-500">
+              <span className="block text-xs text-slate-600 dark:text-slate-400">
                 {i.stato === 'raccolta'
                   ? `Preferenze entro ${formattaScadenza(i.scadenzaPreferenze.toDate())}`
                   : 'Lista pronta'}

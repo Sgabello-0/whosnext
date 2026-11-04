@@ -120,7 +120,7 @@ export function SceltaPreferenza(p: Props) {
                 <Icona aria-hidden className={`mb-1.5 size-5 ${scelta ? 'text-white' : 'text-accento dark:text-blue-300'}`} />
                 {scelta && <CircleCheck aria-hidden className="pop absolute top-2.5 right-2.5 size-5" />}
                 <span className="block font-semibold">{ETICHETTA_SCELTA[s]}</span>
-                <span className={`block text-xs ${scelta ? 'text-blue-100' : 'text-slate-500'}`}>{SPIEGAZIONE_SCELTA[s]}</span>
+                <span className={`block text-xs ${scelta ? 'text-blue-100' : 'text-slate-600 dark:text-slate-400'}`}>{SPIEGAZIONE_SCELTA[s]}</span>
               </button>
             )
           })}
@@ -169,7 +169,7 @@ export function SceltaPreferenza(p: Props) {
             )}
           </span>
           {attuale && (
-            <button type="button" className="text-slate-500 underline" onClick={togli}>
+            <button type="button" className="text-slate-600 underline dark:text-slate-400" onClick={togli}>
               Togli la mia scelta
             </button>
           )}

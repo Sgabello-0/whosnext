@@ -37,7 +37,7 @@ export default function Materia() {
   if (materia.dati === null) {
     return (
       <Scheda titolo="Materia non trovata">
-        <p className="mb-4 text-sm text-slate-500">Forse è stata eliminata.</p>
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">Forse è stata eliminata.</p>
         <LinkBottone to={`/classe/${classId}`}>Torna alla classe</LinkBottone>
       </Scheda>
     )
@@ -100,7 +100,7 @@ export default function Materia() {
                   }
                 >
                   <span className="block font-medium">{i.nome}</span>
-                  <span className="block text-xs text-slate-500">
+                  <span className="block text-xs text-slate-600 dark:text-slate-400">
                     {i.stato === 'raccolta'
                       ? `Preferenze entro ${formattaScadenza(i.scadenzaPreferenze.toDate())}`
                       : i.stato === 'lista'

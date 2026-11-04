@@ -172,12 +172,12 @@ export function PannelloScambi(p: {
                 ) : valida ? (
                   <>
                     Hai chiesto il n° {s.aPos + 1} a <strong>{nome(destinatario)}</strong>
-                    <span className="block text-xs text-slate-500">In attesa di risposta</span>
+                    <span className="block text-xs text-slate-600 dark:text-slate-400">In attesa di risposta</span>
                   </>
                 ) : (
                   <>
                     La richiesta per il n° {s.aPos + 1} non è più valida
-                    <span className="block text-xs text-slate-500">La lista è cambiata</span>
+                    <span className="block text-xs text-slate-600 dark:text-slate-400">La lista è cambiata</span>
                   </>
                 )}
               </span>
@@ -197,7 +197,7 @@ export function PannelloScambi(p: {
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800"
                     >
                       <MessageCircle aria-hidden className="size-3.5" />
                       Avvisa su WhatsApp

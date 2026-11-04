@@ -33,4 +33,12 @@ for (const i of icone) {
   await pagina.screenshot({ path: cartella + i.nome, omitBackground: i.margine === 0 })
   console.log('creata', i.nome)
 }
+// Iconcina per la barra delle notifiche di Android: conta solo la forma (bianco su trasparente)
+await pagina.setViewportSize({ width: 96, height: 96 })
+await pagina.setContent(
+  `<html><body style="margin:0;background:transparent"><svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 32 32">
+    <path d="M7 9h18M7 16h18M7 23h11" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/></svg></body></html>`,
+)
+await pagina.screenshot({ path: cartella + 'badge-96.png', omitBackground: true })
+console.log('creata', 'badge-96.png')
 await browser.close()

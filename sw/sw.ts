@@ -6,6 +6,7 @@
 import { clientsClaim } from 'workbox-core'
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { linkSicuro, notificaDa } from './notifica'
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: (import('workbox-precaching').PrecacheEntry | string)[] }
 
@@ -17,32 +18,30 @@ precacheAndRoute(self.__WB_MANIFEST)
 // Pagine dell'app dalla cache; le pagine interne di Firebase (login) no
 registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html'), { denylist: [/^\/__\//] }))
 
-type Dati = { titolo?: string; testo?: string; link?: string; title?: string; body?: string }
-
 self.addEventListener('push', (evento) => {
-  let d: Dati = {}
+  let contenuto: string | undefined
   try {
-    const json = evento.data?.json() as { data?: Dati; notification?: Dati } & Dati
-    d = json?.data ?? json?.notification ?? json ?? {}
+    contenuto = evento.data?.text()
   } catch {
-    d = { testo: evento.data?.text() }
+    contenuto = undefined
   }
-  const link = d.link ?? '/'
+  const n = notificaDa(contenuto, self.location.origin)
   evento.waitUntil(
-    self.registration.showNotification(d.titolo ?? d.title ?? 'WhosNext', {
-      body: d.testo ?? d.body ?? '',
+    self.registration.showNotification(n.titolo, {
+      body: n.testo,
       icon: '/pwa-192.png',
-      badge: '/pwa-192.png',
+      // Android usa solo la forma dell'iconcina: bianca su trasparente
+      badge: '/badge-96.png',
       // stessa pagina = stessa notifica: la nuova sostituisce la vecchia
-      tag: link,
-      data: { link },
+      tag: n.link,
+      data: { link: n.link },
     }),
   )
 })
 
 self.addEventListener('notificationclick', (evento) => {
   evento.notification.close()
-  const link = (evento.notification.data as { link?: string } | undefined)?.link ?? '/'
+  const link = linkSicuro((evento.notification.data as { link?: string } | undefined)?.link, self.location.origin)
   evento.waitUntil(
     (async () => {
       const finestre = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })

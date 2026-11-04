@@ -79,7 +79,7 @@ export function RiordinaLista(p: Props) {
 
   return (
     <Scheda titolo="Riordina la lista" icona={ArrowUpDown} tono="evidenza">
-      <p className="mb-3 text-sm text-slate-500">
+      <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">
         Trascina i nomi tenendo premuto ⠿, oppure usa le frecce. Le modifiche si salvano solo con "Salva ordine".
       </p>
       <DndContext
@@ -159,7 +159,7 @@ function Riga(p: {
       >
         <GripVertical aria-hidden className="size-5" />
       </button>
-      <span className="w-6 text-right font-mono text-sm text-slate-500">{p.indice + 1}</span>
+      <span className="w-6 text-right font-mono text-sm text-slate-600 dark:text-slate-400">{p.indice + 1}</span>
       <Avatar nome={nome} foto={p.membro?.foto ?? null} />
       <span className={`min-w-0 flex-1 truncate ${p.interrogato ? 'text-slate-400 line-through' : ''}`}>
         {nome}

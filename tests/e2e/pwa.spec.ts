@@ -59,3 +59,6 @@ test('si apre anche senza connessione, con gli ultimi dati', async ({ browser },
   await expect(anna.getByRole('link', { name: /4ªB offline/ })).toBeVisible({ timeout: 20_000 })
   await anna.context().setOffline(false)
 })
+
+// Le notifiche push non si provano qui: Chrome senza finestra nega sempre il permesso.
+// La logica del service worker (dati della push, link sicuri) è in sw/notifica.test.ts.

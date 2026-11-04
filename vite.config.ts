@@ -56,6 +56,6 @@ export default defineConfig({
     allowedHosts: ['.trycloudflare.com'],
   },
   test: {
-    include: ['src/**/*.test.ts', 'netlify/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'netlify/**/*.test.ts', 'sw/**/*.test.ts'],
   },
 })

@@ -53,9 +53,9 @@ export function OrarioSettimanale({ classId, materie, cal }: { classId: string; 
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th className="py-1.5 pr-2 text-left font-medium text-slate-500">Materia</th>
+              <th className="py-1.5 pr-2 text-left font-medium text-slate-600 dark:text-slate-400">Materia</th>
               {giorni.map((g) => (
-                <th key={g} scope="col" className="px-1 py-1.5 text-center font-medium text-slate-500" title={NOMI_GIORNI[g]}>
+                <th key={g} scope="col" className="px-1 py-1.5 text-center font-medium text-slate-600 dark:text-slate-400" title={NOMI_GIORNI[g]}>
                   {NOMI_GIORNI_BREVI[g]}
                 </th>
               ))}

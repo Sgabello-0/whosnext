@@ -104,7 +104,7 @@ export function InstallaApp() {
             <h2 id="titolo-installa" className="font-semibold">
               Installa l'app
             </h2>
-            <p className="text-sm text-slate-500">Metti WhosNext nella schermata Home</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Metti WhosNext nella schermata Home</p>
           </div>
           <button
             type="button"
