@@ -4,9 +4,10 @@
  * Il server controlla nel database che l'azione sia davvero avvenuta, e da chi, prima di avvisare.
  */
 import type { Config } from '@netlify/functions'
-import { autenticazione, database } from '../lib/admin'
+import { database } from '../lib/admin'
 import { avvisaEsitoScambio, avvisaListaPronta, avvisaRichiestaScambio } from '../lib/eventi'
 import { postinoVero } from '../lib/postinoVero'
+import { uidDalToken } from '../lib/token'
 
 const ORIGINI = (process.env.ORIGINI_PERMESSE ?? 'https://whos-next.web.app,http://localhost:5173').split(',')
 const ID = /^[A-Za-z0-9_-]{1,128}$/
@@ -31,7 +32,7 @@ export default async function notifica(req: Request) {
   if (!token) return risposta(401, { errore: 'manca il token' }, origine)
   let uid: string
   try {
-    uid = (await autenticazione().verifyIdToken(token)).uid
+    uid = await uidDalToken(token)
   } catch {
     return risposta(401, { errore: 'token non valido' }, origine)
   }

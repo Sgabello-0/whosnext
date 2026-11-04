@@ -1,5 +1,6 @@
 /** Testi delle notifiche (push ed email). Logica pura. */
 import { formattaGiorno, type DataISO } from '../../src/lib/calendar'
+import type { Email } from './email'
 
 export type Notifica = {
   titolo: string
@@ -7,7 +8,7 @@ export type Notifica = {
   /** percorso nel sito da aprire toccando la notifica */
   percorso: string
   /** solo per le notifiche più importanti */
-  email?: { oggetto: string; testo: string }
+  email?: Email
 }
 
 type Interr = { materia: string; nome: string; percorso: string }
@@ -25,7 +26,12 @@ export function listaPronta(o: Interr & { posizione: number; totale: number; sti
     percorso: o.percorso,
     email: {
       oggetto: titolo,
-      testo: `${testo}\n\nLa lista completa, e le date aggiornate, sono qui: ${o.link}\n\n— WhosNext`,
+      righe: [
+        `Sei il **n° ${o.posizione} di ${o.totale}**. ${o.stima}.`,
+        'Le date possono cambiare con vacanze e lezioni saltate: nella pagina della lista sono sempre aggiornate.',
+      ],
+      pulsante: 'Apri la lista',
+      link: o.link,
     },
   }
 }
@@ -39,7 +45,12 @@ export function richiestaScambio(o: Interr & { chi: string; mia: number; sua: nu
     percorso: o.percorso,
     email: {
       oggetto: `${o.chi} ti chiede uno scambio di posto (${o.materia})`,
-      testo: `${o.chi} vorrebbe scambiare il posto con te in ${o.materia} – ${o.nome}: tu passeresti dal n° ${o.mia} al n° ${o.sua}.\n\nAccetta o rifiuta qui: ${o.link}\n\n— WhosNext`,
+      righe: [
+        `**${o.chi}** vorrebbe scambiare il posto con te in ${o.materia} – ${o.nome}.`,
+        `Tu passeresti dal **n° ${o.mia}** al **n° ${o.sua}**. Se non ti va, puoi rifiutare.`,
+      ],
+      pulsante: 'Rispondi',
+      link: o.link,
     },
   }
 }

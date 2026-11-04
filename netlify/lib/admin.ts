@@ -5,9 +5,10 @@
  * Solo questi due, non tutto il file: su Netlify le variabili insieme non possono superare circa 4 KB.
  */
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app'
-import { getAuth } from 'firebase-admin/auth'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getMessaging } from 'firebase-admin/messaging'
+
+export const PROGETTO = process.env.FIREBASE_PROJECT_ID ?? 'whosnext-4b067'
 
 function app(): App {
   const esistente = getApps()[0]
@@ -20,16 +21,11 @@ function app(): App {
   if (!clientEmail || !privateKey) throw new Error('Mancano FIREBASE_CLIENT_EMAIL e FIREBASE_PRIVATE_KEY nelle variabili di Netlify')
   if (!privateKey.includes('-----END PRIVATE KEY-----'))
     throw new Error('FIREBASE_PRIVATE_KEY è tagliata: deve finire con "-----END PRIVATE KEY-----"')
-  const projectId = process.env.FIREBASE_PROJECT_ID ?? 'whosnext-4b067'
-  return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), projectId })
+  return initializeApp({ credential: cert({ projectId: PROGETTO, clientEmail, privateKey }), projectId: PROGETTO })
 }
 
 export function database(): Firestore {
   return getFirestore(app())
-}
-
-export function autenticazione() {
-  return getAuth(app())
 }
 
 export function messaggistica() {

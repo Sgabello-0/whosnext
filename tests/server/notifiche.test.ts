@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { database } from '../../netlify/lib/admin'
 import { avvisaEsitoScambio, avvisaListaPronta, avvisaRichiestaScambio, ricordaDomani, ricordaScelte } from '../../netlify/lib/eventi'
 import { generaScadute } from '../../netlify/lib/generazione'
+import { htmlEmail, testoEmail } from '../../netlify/lib/email'
 import type { Postino } from '../../netlify/lib/postino'
 import type { Notifica } from '../../netlify/lib/testi'
 
@@ -17,14 +18,14 @@ type Mandata = { uid?: string; tokens?: string[]; email?: string; n?: Notifica; 
 /** Postino finto: tiene traccia di cosa avrebbe mandato. Il token "scaduto" risulta non più valido. */
 function postinoFinto() {
   const push: { tokens: string[]; n: Notifica }[] = []
-  const email: { a: string; oggetto: string; testo: string }[] = []
+  const email: { a: string; oggetto: string; testo: string; html: string }[] = []
   const p: Postino = {
     async push(tokens, n) {
       push.push({ tokens, n })
       return tokens.filter((t) => t === 'scaduto')
     },
-    async email(a, oggetto, testo) {
-      email.push({ a, oggetto, testo })
+    async email(a, e) {
+      email.push({ a, oggetto: e.oggetto, testo: testoEmail(e), html: htmlEmail(e) })
     },
   }
   return { p, push, email }
@@ -111,7 +112,10 @@ describe('avvisi', () => {
       percorso: '/classe/c1/materia/s1/interrogazione/i1',
     })
     expect(email.map((e) => e.a)).toEqual(['anna@studenti.ittsrimini.edu.it', 'bruno@studenti.ittsrimini.edu.it']) // Carla no
-    expect(email[0]!.testo).toContain('https://whos-next.web.app/classe/c1/materia/s1/interrogazione/i1')
+    expect(email[0]!.testo).toContain('Apri la lista: https://whos-next.web.app/classe/c1/materia/s1/interrogazione/i1')
+    expect(email[0]!.testo).toContain('Sei il n° 1 di 3.')
+    expect(email[0]!.html).toContain('<strong style="color:#0f172a">n° 1 di 3</strong>')
+    expect(email[0]!.html).toContain('href="https://whos-next.web.app/classe/c1/materia/s1/interrogazione/i1"')
     // il token non più valido viene tolto
     expect((await db.doc('users/carla').get()).data()!.fcmTokens).toEqual(['token-carla'])
     // rifarlo non manda niente

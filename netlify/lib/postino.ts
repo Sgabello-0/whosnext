@@ -3,12 +3,13 @@
  * Ogni notifica ha una chiave: se è già stata mandata non si manda di nuovo (documento invii/{chiave}).
  */
 import { FieldValue, type Firestore } from 'firebase-admin/firestore'
+import type { Email } from './email'
 import type { Notifica } from './testi'
 
 export type Postino = {
   /** manda la push ai dispositivi; restituisce i token non più validi (da togliere) */
   push(tokens: string[], n: Notifica): Promise<string[]>
-  email(a: string, oggetto: string, testo: string): Promise<void>
+  email(a: string, e: Email): Promise<void>
 }
 
 export type Esito = 'mandata' | 'gia-mandata' | 'nessun-utente'
@@ -36,7 +37,7 @@ export async function avvisa(db: Firestore, postino: Postino, uid: string, chiav
     if (nonValidi.length > 0) await utente.ref.update({ fcmTokens: FieldValue.arrayRemove(...nonValidi) })
   }
   if (n.email && u.impostazioni?.notificheEmail !== false && u.email) {
-    await postino.email(u.email, n.email.oggetto, n.email.testo)
+    await postino.email(u.email, n.email)
   }
   return 'mandata'
 }
