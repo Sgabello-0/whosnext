@@ -95,7 +95,7 @@ export function InstallaApp() {
   return (
     <section
       aria-labelledby="titolo-installa"
-      className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] motion-safe:animate-[sali_300ms_ease-out]"
+      className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] motion-safe:animate-[sali_220ms_ease-out]"
     >
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-900">
         <div className="flex items-start gap-3">
