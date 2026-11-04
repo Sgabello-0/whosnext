@@ -5,7 +5,8 @@
   publish = "netlify/sito"
 
 [build.environment]
-  NODE_VERSION = "22"
+  # Node 24: Firebase Admin carica "jose" (solo ESM) con require(), che su Node 22 delle funzioni non va
+  NODE_VERSION = "24"
 
 [functions]
   directory = "netlify/functions"
