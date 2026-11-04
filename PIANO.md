@@ -37,7 +37,7 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 - **Frontend**: React + Vite + TypeScript, Tailwind, `@dnd-kit` per il trascinamento, installabile come PWA (serve per le notifiche push su iPhone).
 - **Login e database**: Firebase (piano Spark): Auth con Google, Firestore in tempo reale.
 - **Hosting**: Firebase Hosting (deciso il 04/11/2026 al posto di Netlify: stesso progetto, login sullo stesso dominio, gratis senza carta).
-- **Logica protetta**: Netlify Functions con `firebase-admin`, per generare la lista, accettare gli scambi (in transazione) e inviare email e push.
+- **Logica protetta**: Netlify Functions con `firebase-admin`, per generare la lista in automatico e inviare email e push (gli scambi non servono: li controllano le regole).
 - **Email**: Brevo o Resend, piano gratuito. **Push**: Firebase Cloud Messaging.
 - **Job pianificato**: Netlify Scheduled Function ogni ora, per le scadenze delle preferenze, la generazione delle liste e i promemoria.
 
@@ -64,7 +64,7 @@ inbox/{uid}/items/{id}    tipo, riferimento, letto
 
 Il badge DSA/BES sta in una collezione separata (`dsa`) perché le regole di Firestore proteggono documenti interi, non singoli campi: se fosse un campo di `members` lo vedrebbe tutta la classe. Il vice e i docenti con permesso sono indicati dal `ruolo` e da `permessoModifica` nel documento del membro.
 
-Le regole di sicurezza permettono letture e scritture solo ai membri della classe. Ordine della lista, badge DSA e calendario li modificano solo capo e vice. Gli scambi li accetta solo il server (Functions).
+Le regole di sicurezza permettono letture e scritture solo ai membri della classe. Ordine della lista, badge DSA e calendario li modificano solo capo e vice. Gli scambi li accetta chi riceve la richiesta: le regole verificano che cambino solo le due posizioni.
 
 ## Funzionalità
 
