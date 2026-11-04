@@ -26,7 +26,7 @@ export function testoEmail(e: Email): string {
   return [
     ...e.righe.map((r) => r.replace(/\*\*/g, '')),
     `${e.pulsante}: ${e.link}`,
-    `— WhosNext\nPuoi disattivare le email dalle Impostazioni: ${SITO}/impostazioni`,
+    `— WhosNext\nQuesta email è inviata in automatico: non rispondere, nessuno legge le risposte.\nPuoi disattivare le email dalle Impostazioni: ${SITO}/impostazioni`,
   ].join('\n\n')
 }
 
@@ -60,6 +60,7 @@ export function htmlEmail(e: Email): string {
       </tr></table>
     </td></tr>
     <tr><td style="padding:16px 8px 0;font-size:13px;line-height:1.5;color:#64748b;text-align:center">
+      Questa email è inviata in automatico: non rispondere, nessuno legge le risposte.<br>
       Ricevi questa email perché sei iscritto a WhosNext.<br>
       Puoi disattivare le email dalle <a href="${SITO}/impostazioni" style="color:#64748b">Impostazioni</a>.
     </td></tr>
