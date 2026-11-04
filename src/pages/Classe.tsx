@@ -17,7 +17,8 @@ import { Invito } from '../components/Invito'
 import { InterrogazioniClasse } from '../components/InterrogazioniClasse'
 import { StatoClasse } from '../components/StatoClasse'
 import { Avatar, Bottone, IntestazionePagina, LinkBottone, Riquadro, Soffietto } from '../components/ui'
-import { BadgeCheck, Eye, GraduationCap, LogOut, Settings, Sparkles, Users } from 'lucide-react'
+import { ArrowLeftRight, BadgeCheck, Eye, GraduationCap, LogOut, Settings, Sparkles, Users } from 'lucide-react'
+import { impostaRifiutaScambi } from '../lib/scambi'
 
 export default function Classe() {
   const { classId = '' } = useParams()
@@ -69,6 +70,8 @@ export default function Classe() {
 
       <InterrogazioniClasse classId={classId} staff={staff} mioUid={io.uid} />
 
+      {io.ruolo !== 'docente' && <ImpostazioneScambi classId={classId} io={io} />}
+
       <Soffietto
         titolo={`Studenti (${studenti.length})`}
         icona={Users}
@@ -99,6 +102,60 @@ function PilaAvatar({ membri }: { membri: Membro[] }) {
         <Avatar key={m.uid} nome={m.nome} foto={m.foto} piccolo />
       ))}
     </span>
+  )
+}
+
+/** "Rifiuta in automatico" le richieste di scambio (vale per tutte le interrogazioni della classe). */
+function ImpostazioneScambi({ classId, io }: { classId: string; io: Membro }) {
+  const avvisi = useAvvisi()
+  const [inCorso, setInCorso] = useState(false)
+  const salvato = !!io.rifiutaScambi
+  // L'interruttore si sposta subito; torna com'era se il salvataggio non riesce
+  const [rifiuta, setRifiuta] = useState(salvato)
+  const [ultimoSalvato, setUltimoSalvato] = useState(salvato)
+  if (salvato !== ultimoSalvato) {
+    setUltimoSalvato(salvato)
+    setRifiuta(salvato)
+  }
+
+  async function cambia(valore: boolean) {
+    if (!db) return
+    const d = db
+    setRifiuta(valore)
+    setInCorso(true)
+    try {
+      await impostaRifiutaScambi(d, classId, io.uid, valore)
+      avvisi.mostra(valore ? 'Da ora rifiuti in automatico le richieste di scambio' : 'Da ora ricevi le richieste di scambio', {
+        annulla: () => impostaRifiutaScambi(d, classId, io.uid, !valore),
+      })
+    } catch (e) {
+      setRifiuta(!valore)
+      avvisi.errore(messaggioErrore(e))
+    } finally {
+      setInCorso(false)
+    }
+  }
+
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:px-5 dark:border-slate-800 dark:bg-slate-900">
+      <ArrowLeftRight aria-hidden className="mt-0.5 size-4.5 shrink-0 text-slate-500" />
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold">Rifiuta in automatico gli scambi</span>
+        <span className="mt-0.5 block text-sm text-slate-500">
+          {rifiuta
+            ? 'Nessuno può chiederti di scambiare il posto nelle liste di questa classe.'
+            : 'I compagni possono chiederti di scambiare il posto: decidi tu se accettare.'}
+        </span>
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={rifiuta}
+        disabled={inCorso}
+        onChange={(e) => cambia(e.target.checked)}
+        className="mt-1 size-5 shrink-0 accent-accento"
+      />
+    </label>
   )
 }
 

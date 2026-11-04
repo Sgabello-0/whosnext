@@ -1,4 +1,4 @@
-import { BellRing, CalendarCheck, CheckCheck, Hourglass, ListChecks, Megaphone, Shuffle, Sparkles, type LucideIcon } from 'lucide-react'
+import { ArrowLeftRight, BellRing, CalendarCheck, CheckCheck, Hourglass, ListChecks, Megaphone, Shuffle, Sparkles, type LucideIcon } from 'lucide-react'
 import { formattaGiorno } from '../../lib/calendar'
 import { confrontaDaFare, confrontaMie, voceMia, vociDaFare, type InterrogazioneOsservata, type VoceDaFare, type VoceMia } from '../../lib/daFare'
 import { formattaScadenza, tempoMancante } from '../../lib/formatoDate'
@@ -25,6 +25,8 @@ function Titolo({ d, mostraClasse }: { d: InterrogazioneOsservata; mostraClasse:
 
 function testoDaFare(v: VoceDaFare): string {
   switch (v.tipo) {
+    case 'scambio':
+      return v.quante === 1 ? 'Un compagno ti chiede uno scambio di posto: rispondi' : `${v.quante} richieste di scambio di posto: rispondi`
     case 'genera':
       return 'Le preferenze sono chiuse: genera la lista'
     case 'segnalazioni':
@@ -37,6 +39,7 @@ function testoDaFare(v: VoceDaFare): string {
 }
 
 const ICONA_DA_FARE: Record<VoceDaFare['tipo'], { icona: LucideIcon; colore: 'ambra' | 'blu' | 'viola' }> = {
+  scambio: { icona: ArrowLeftRight, colore: 'viola' },
   genera: { icona: Shuffle, colore: 'ambra' },
   segnalazioni: { icona: BellRing, colore: 'viola' },
   segna: { icona: ListChecks, colore: 'blu' },

@@ -9,9 +9,19 @@ export async function svuotaEmulatori() {
 }
 
 /** Apre una nuova finestra (contesto separato = utente separato) e fa login con un account finto. */
-export async function accedi(browser: Browser, email: string, nome: string, percorso = '/'): Promise<Page> {
+export async function accedi(
+  browser: Browser,
+  email: string,
+  nome: string,
+  percorso = '/',
+  opzioni: { invitoInstalla?: boolean } = {},
+): Promise<Page> {
   // Permesso agli appunti per verificare i testi copiati con "Copia messaggio"
   const contesto = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] })
+  // L'invito a installare l'app (da telefono, fisso in basso) coprirebbe i pulsanti: nei test è già "rimandato"
+  if (!opzioni.invitoInstalla) {
+    await contesto.addInitScript(() => localStorage.setItem('installa-app-rimandato', String(Date.now())))
+  }
   const page = await contesto.newPage()
   await page.goto(percorso)
   const [popup] = await Promise.all([

@@ -21,8 +21,8 @@ test('installabile: manifest, icone e service worker', async ({ page, request })
   await expect.poll(() => page.evaluate(async () => !!(await navigator.serviceWorker.ready).active), { timeout: 20_000 }).toBe(true)
 })
 
-test('si apre anche senza connessione, con gli ultimi dati', async ({ browser }) => {
-  const anna = await accedi(browser, 'anna.verdi@studenti.ittsrimini.edu.it', 'Anna Verdi')
+test('si apre anche senza connessione, con gli ultimi dati', async ({ browser }, info) => {
+  const anna = await accedi(browser, 'anna.verdi@studenti.ittsrimini.edu.it', 'Anna Verdi', '/', { invitoInstalla: true })
   await anna.getByLabel('Nome della classe').fill('4ªB offline')
   await anna.getByRole('button', { name: 'Crea classe' }).click()
   await expect(anna.getByRole('heading', { name: '4ªB offline' })).toBeVisible()
@@ -30,17 +30,28 @@ test('si apre anche senza connessione, con gli ultimi dati', async ({ browser })
   await expect(anna.getByRole('link', { name: /4ªB offline/ })).toBeVisible()
   await expect.poll(() => anna.evaluate(async () => !!(await navigator.serviceWorker.ready).active), { timeout: 20_000 }).toBe(true)
 
-  // "Installa l'app" compare quando il browser propone l'installazione
-  await expect(anna.getByRole('heading', { name: "Installa l'app" })).toHaveCount(0)
+  // "Installa l'app": solo da cellulare, in basso dopo qualche secondo; con un tocco su Android
   await anna.evaluate(() => {
     const e = new Event('beforeinstallprompt') as Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
     e.prompt = async () => {}
     e.userChoice = Promise.resolve({ outcome: 'dismissed' })
     window.dispatchEvent(e)
   })
-  await expect(anna.getByRole('heading', { name: "Installa l'app" })).toBeVisible()
-  await anna.getByRole('button', { name: 'No, grazie' }).click()
-  await expect(anna.getByRole('heading', { name: "Installa l'app" })).toHaveCount(0)
+  const invito = anna.getByRole('region', { name: "Installa l'app" })
+  if (info.project.name === 'telefono') {
+    await expect(invito).toBeVisible()
+    await expect(invito.getByText('Funziona anche senza rete')).toBeVisible()
+    await expect(invito.getByRole('button', { name: 'Installa' })).toBeVisible()
+    await anna.screenshot({ path: info.outputPath('installa.png') })
+    await invito.getByRole('button', { name: 'Non ora' }).click()
+    await expect(invito).toHaveCount(0)
+    await anna.reload()
+    await anna.waitForTimeout(5_000)
+    await expect(invito).toHaveCount(0) // rimandato di una settimana
+  } else {
+    await anna.waitForTimeout(5_000)
+    await expect(invito).toHaveCount(0) // dal computer no
+  }
 
   // Senza connessione: la pagina arriva dalla cache e la classe dai dati salvati sul dispositivo
   await anna.context().setOffline(true)

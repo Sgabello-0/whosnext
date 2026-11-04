@@ -22,7 +22,7 @@ import { IMPOSTAZIONI_DEFAULT, type Invito, type Profilo } from './tipi'
 
 export class ErroreApp extends Error {
   constructor(
-    public codice: 'nome-non-valido' | 'codice-inesistente' | 'codice-non-disponibile' | 'solo-studenti' | 'dati-non-validi',
+    public codice: 'nome-non-valido' | 'codice-inesistente' | 'codice-non-disponibile' | 'solo-studenti' | 'dati-non-validi' | 'troppe-richieste',
     messaggio: string,
   ) {
     super(messaggio)

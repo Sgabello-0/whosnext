@@ -8,6 +8,7 @@ import {
   rifMaterie,
   rifPreferenza,
   rifPreferenze,
+  rifScambi,
   rifSegnalazioni,
 } from '../../lib/configurazione'
 import { oggiISO } from '../../lib/calendar'
@@ -15,7 +16,9 @@ import { useDocumento, useQuery, type ConId } from '../../lib/hooks'
 import { puoGestireDSA, puoModificareListe } from '../../lib/membri'
 import { useRegistra } from '../../lib/raccolta'
 import { useCalendario } from '../../lib/useCalendario'
-import type { Classe, DocLista, DocPreferenza, Interrogazione, Materia, Membro, Ruolo } from '../../lib/tipi'
+import type { Classe, DocLista, DocPreferenza, DocScambio, Interrogazione, Materia, Membro, Ruolo } from '../../lib/tipi'
+import { validita } from '../../lib/scambi'
+import { useRifiutoAutomatico } from '../interrogazione/Scambi'
 
 type ContestoClasse = {
   classId: string
@@ -26,6 +29,7 @@ type ContestoClasse = {
   puoModificare: boolean
   cal: Calendario
   numeroStudenti?: number
+  rifiutaScambi: boolean
 }
 
 /**
@@ -50,6 +54,7 @@ export function OsservaClasse({ classId, membro }: { classId: string; membro: Me
     puoModificare: puoModificareListe(membro),
     cal,
     numeroStudenti: membri.dati?.filter((m) => m.ruolo !== 'docente').length,
+    rifiutaScambi: !!membro.rifiutaScambi,
   }
   return (
     <>
@@ -93,6 +98,24 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
     inLista && c.puoModificare ? `segnalazioni/${chiave}` : null,
   )
 
+  // Richieste di scambio per la mia posizione (studenti in lista, non ancora interrogati)
+  const mioPos = lista.dati?.ordine.indexOf(c.mioUid) ?? -1
+  const segui = inLista && c.ruolo !== 'docente' && !!lista.dati && mioPos >= 0 && !lista.dati.interrogati[c.mioUid]
+  const arrivo = useQuery<DocScambio>(
+    db && segui
+      ? query(rifScambi(db, c.classId, materia.id, i.id), where('stato', '==', 'attesa'), where('aPos', '==', mioPos))
+      : null,
+    segui ? `scambi-arrivo/${chiave}/${mioPos}` : null,
+  )
+  const scambiValidi =
+    segui && lista.dati ? (arrivo.dati ?? []).filter((s) => s.da !== c.mioUid && validita(s, lista.dati!) === 'valida') : []
+  useRifiutoAutomatico(
+    { classId: c.classId, subjectId: materia.id, interrogazioneId: i.id },
+    c.mioUid,
+    c.rifiutaScambi && segui,
+    scambiValidi,
+  )
+
   useRegistra(chiave, {
     chiave,
     classId: c.classId,
@@ -125,6 +148,7 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
     risposte: preferenze.dati?.length,
     numeroStudenti: c.numeroStudenti,
     segnalazioni: segnalazioni.dati?.length,
+    scambiInArrivo: c.rifiutaScambi ? 0 : scambiValidi.length,
   })
   return null
 }

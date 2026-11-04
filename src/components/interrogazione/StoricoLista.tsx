@@ -33,6 +33,11 @@ export function StoricoLista(p: { classId: string; subjectId: string; interrogaz
         return `${chi} ha segnato ${(d.uids ?? []).map((u) => nome(u)).join(', ')} come interrogati${d.data ? ` (${formattaGiorno(d.data).toLowerCase()})` : ''}`
       case 'annullato':
         return `${chi} ha tolto il segno di interrogato a ${nome(d.uid)}`
+      case 'scambio': {
+        const [x, y] = d.uids ?? []
+        const [px, py] = d.posizioni ?? []
+        return `${nome(x)} e ${nome(y)} si sono scambiati di posto${px && py ? ` (n° ${px} ↔ n° ${py})` : ''}`
+      }
     }
   }
 

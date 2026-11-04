@@ -32,6 +32,8 @@ export type Membro = {
   richiestaPermesso: boolean
   codiceUsato: string
   entrato?: Timestamp
+  /** studenti: rifiuta in automatico le richieste di scambio */
+  rifiutaScambi?: boolean
 }
 
 export type Invito = {
@@ -89,6 +91,8 @@ export type DocLista = {
   generataDa: string
   /** id dell'ultima voce di storico */
   ultimaModifica?: string
+  /** id dell'ultimo scambio accettato */
+  scambio?: string
 }
 
 export type DocRapporto = import('./generateList').Rapporto & { generata?: Timestamp }
@@ -100,7 +104,7 @@ export type DocSegnalazione = {
 }
 
 export type DocStorico = {
-  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato'
+  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato' | 'scambio'
   chi: string
   quando?: Timestamp
   dettagli: {
@@ -109,5 +113,21 @@ export type DocStorico = {
     uids?: string[]
     uid?: string
     data?: string
+    /** scambio: posizioni (da 1) di uids[0] e uids[1] prima dello scambio */
+    posizioni?: number[]
   }
+}
+
+export type StatoScambio = 'attesa' | 'accettato' | 'rifiutato' | 'annullato'
+
+/** Richiesta di scambio: "da" (in posizione daPos) chiede la posizione aPos (indici da 0). */
+export type DocScambio = {
+  da: string
+  daPos: number
+  aPos: number
+  stato: StatoScambio
+  creato?: Timestamp
+  aggiornato?: Timestamp
+  /** chi ha risposto (accettato o rifiutato) */
+  a: string | null
 }

@@ -106,6 +106,13 @@ describe('vociDaFare', () => {
     expect(vociDaFare(d, new Date(2026, 10, 4, 9, 0))).toEqual([{ tipo: 'segnalazioni', quante: 2 }])
   })
 
+  it('richieste di scambio in arrivo, per tutti', () => {
+    expect(vociDaFare(interr({ stato: 'lista', scambiInArrivo: 2, lista: lista(['a', 'io']) }), ADESSO)).toEqual([
+      { tipo: 'scambio', quante: 2 },
+    ])
+    expect(vociDaFare(interr({ stato: 'lista', scambiInArrivo: 0, lista: lista(['a', 'io']) }), ADESSO)).toEqual([])
+  })
+
   it('niente per gli studenti', () => {
     expect(vociDaFare(interr({ scadenza: IERI }), ADESSO)).toEqual([])
     expect(vociDaFare(interr({ stato: 'lista', segnalazioni: 1, lista: lista(['a']) }), ADESSO)).toEqual([])

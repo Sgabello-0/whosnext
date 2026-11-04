@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   linkAssoluto,
+  messaggioScambio,
   linkWhatsApp,
   messaggioInvito,
   messaggioPromemoria,
@@ -58,5 +59,15 @@ describe('messaggi', () => {
 
   it('link di WhatsApp con il testo codificato', () => {
     expect(linkWhatsApp('Ciao a tutti & 3ªB')).toBe('https://wa.me/?text=Ciao%20a%20tutti%20%26%203%C2%AAB')
+  })
+})
+
+describe('messaggioScambio', () => {
+  it('saluta per nome e indica le due posizioni', () => {
+    const t = messaggioScambio({ nome: 'Carla Blu', materia: 'Storia', interrogazione: 'Orale', mia: 3, sua: 1, link: 'https://x/y' })
+    expect(t).toMatch(/^Ciao Carla, /)
+    expect(t).toContain('*Storia – Orale*')
+    expect(t).toContain('io sono il n° 3, tu il n° 1')
+    expect(t).toContain('https://x/y')
   })
 })

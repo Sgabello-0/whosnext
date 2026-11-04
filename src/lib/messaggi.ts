@@ -53,3 +53,18 @@ export function testoLista(o: { materia: string; interrogazione: string; righe: 
 export function linkWhatsApp(testo: string): string {
   return `https://wa.me/?text=${encodeURIComponent(testo)}`
 }
+
+/** Per avvisare il compagno a cui si è chiesto lo scambio. */
+export function messaggioScambio(o: {
+  nome: string
+  materia: string
+  interrogazione: string
+  mia: number
+  sua: number
+  link: string
+}): string {
+  return [
+    `Ciao ${o.nome.split(' ')[0]}, su WhosNext ti ho chiesto di scambiarci il posto per *${o.materia} – ${o.interrogazione}*: io sono il n° ${o.mia}, tu il n° ${o.sua}.`,
+    `Puoi accettare o rifiutare qui: ${o.link}`,
+  ].join('\n')
+}

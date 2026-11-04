@@ -9,7 +9,10 @@ import { useDocumento } from '../../lib/hooks'
 import { nonInterrogati } from '../../lib/lista'
 import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/tipi'
 import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda, Soffietto } from '../ui'
-import { ArrowUpDown, ChartPie, Check, ListOrdered, PartyPopper, Undo2 } from 'lucide-react'
+import { ArrowLeftRight, ArrowUpDown, ChartPie, Check, ListOrdered, PartyPopper, Undo2 } from 'lucide-react'
+import { useConferma } from '../Conferma'
+import { annullaScambio, chiediScambio, richiestaInAttesa } from '../../lib/scambi'
+import { PannelloScambi, useRifiutoAutomatico, useScambi } from './Scambi'
 import { useAvvisi } from '../Avvisi'
 import { RiordinaLista } from './RiordinaLista'
 import { StoricoLista } from './StoricoLista'
@@ -39,12 +42,22 @@ export function ListaInterrogazione(p: Props) {
   const [riordino, setRiordino] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const avvisi = useAvvisi()
+  const conferma = useConferma()
+  const r = { classId: p.classId, subjectId: p.subjectId, interrogazioneId: p.interrogazioneId }
+  const ioMembro = p.membri.find((m) => m.uid === p.mioUid)
+  const vuota: DocLista = { ordine: [], interrogati: {}, generataDa: '' }
+  const datiLista = lista.dati ?? vuota
+  // Scambi: solo per chi è in lista, non ancora interrogato, finché la lista è in corso
+  const possoScambiare =
+    p.interrogazione.stato === 'lista' && datiLista.ordine.includes(p.mioUid) && !datiLista.interrogati[p.mioUid]
+  const scambi = useScambi(r, p.mioUid, datiLista, possoScambiare)
+  const rifiutoAutomatico = !!ioMembro?.rifiutaScambi
+  useRifiutoAutomatico(r, p.mioUid, rifiutoAutomatico, scambi.inArrivo)
 
   if (lista.errore) return <Riquadro tono="errore">{messaggioErrore(lista.errore)}</Riquadro>
   if (lista.dati === undefined) return <Caricamento />
   if (lista.dati === null) return <Riquadro tono="avviso">La lista non è ancora disponibile.</Riquadro>
 
-  const r = { classId: p.classId, subjectId: p.subjectId, interrogazioneId: p.interrogazioneId }
   const { ordine, interrogati } = lista.dati
   const perUid = new Map(p.membri.map((m) => [m.uid, m]))
   const oggi = oggiISO()
@@ -64,6 +77,26 @@ export function ListaInterrogazione(p: Props) {
       }),
     )
   const miaPosizione = ordine.indexOf(p.mioUid)
+
+  async function chiediA(uid: string) {
+    if (!db || !lista.dati) return
+    const d = db
+    const l = lista.dati
+    const chi = perUid.get(uid)?.nome ?? 'Ex membro'
+    const aPos = ordine.indexOf(uid)
+    const ok = await conferma({
+      titolo: `Chiedere lo scambio a ${chi}?`,
+      testo: `Tu passeresti dal n° ${miaPosizione + 1} al n° ${aPos + 1} (${stima(uid).toLowerCase()}). Finché ${chi} non accetta non cambia niente.`,
+      pulsante: 'Chiedi lo scambio',
+    })
+    if (!ok) return
+    try {
+      const id = await chiediScambio(d, r, p.mioUid, l, aPos, scambi.mie)
+      avvisi.mostra(`Richiesta inviata a ${chi}`, { annulla: () => annullaScambio(d, r, id) })
+    } catch (e) {
+      avvisi.errore(messaggioErrore(e))
+    }
+  }
 
   async function annullaInterrogato(uid: string) {
     if (!db) return
@@ -112,6 +145,21 @@ export function ListaInterrogazione(p: Props) {
             )}
           </div>
         </section>
+      )}
+
+      {possoScambiare && (
+        <PannelloScambi
+          r={r}
+          uid={p.mioUid}
+          lista={lista.dati}
+          membri={perUid}
+          stima={stima}
+          nomeMateria={p.nomeMateria}
+          nomeInterrogazione={p.interrogazione.nome}
+          mie={scambi.mie}
+          inArrivo={scambi.inArrivo}
+          rifiutoAutomatico={rifiutoAutomatico}
+        />
       )}
 
       {p.interrogazione.stato === 'conclusa' && (
@@ -193,6 +241,20 @@ export function ListaInterrogazione(p: Props) {
                     </p>
                     <p className="text-xs text-slate-500">{quando ? formattaGiorno(quando) : stima(uid)}</p>
                   </div>
+                  {possoScambiare && uid !== p.mioUid && !quando && !riordino && (
+                    richiestaInAttesa(scambi.mie, i, lista.dati!) ? (
+                      <Badge colore="viola">richiesta inviata</Badge>
+                    ) : m && !m.rifiutaScambi ? (
+                      <Bottone
+                        variante="piccolo"
+                        icona={ArrowLeftRight}
+                        aria-label={`Chiedi scambio a ${m.nome}`}
+                        onClick={() => chiediA(uid)}
+                      >
+                        Scambia
+                      </Bottone>
+                    ) : null
+                  )}
                   {quando && p.puoModificare && (
                     <Bottone
                       variante="piccolo"

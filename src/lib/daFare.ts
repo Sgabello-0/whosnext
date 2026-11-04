@@ -38,6 +38,8 @@ export type InterrogazioneOsservata = {
   numeroStudenti?: number
   /** solo per chi può modificare, con stato "lista" */
   segnalazioni?: number
+  /** richieste di scambio in arrivo ancora valide (studenti in lista) */
+  scambiInArrivo?: number
 }
 
 export type VoceMia =
@@ -48,6 +50,7 @@ export type VoceMia =
   | { tipo: 'docente-lista'; interrogati: number; totale: number }
 
 export type VoceDaFare =
+  | { tipo: 'scambio'; quante: number }
   | { tipo: 'genera' }
   | { tipo: 'segnalazioni'; quante: number }
   | { tipo: 'segna'; data: DataISO }
@@ -85,6 +88,7 @@ export function voceMia(d: InterrogazioneOsservata, adesso: Date): VoceMia | nul
 /** Cosa c'è da fare per chi gestisce la classe, in ordine di urgenza. */
 export function vociDaFare(d: InterrogazioneOsservata, adesso: Date): VoceDaFare[] {
   const voci: VoceDaFare[] = []
+  if (d.stato === 'lista' && d.scambiInArrivo) voci.push({ tipo: 'scambio', quante: d.scambiInArrivo })
   if (d.stato === 'raccolta' && d.staff) {
     if (d.scadenza <= adesso.getTime()) voci.push({ tipo: 'genera' })
     else if (d.risposte !== undefined && d.numeroStudenti !== undefined && d.risposte < d.numeroStudenti) {
@@ -108,7 +112,7 @@ export function vociDaFare(d: InterrogazioneOsservata, adesso: Date): VoceDaFare
   return voci
 }
 
-const PRIORITA: Record<VoceDaFare['tipo'], number> = { genera: 0, segnalazioni: 1, segna: 2, risposte: 3 }
+const PRIORITA: Record<VoceDaFare['tipo'], number> = { scambio: 0, genera: 1, segnalazioni: 2, segna: 3, risposte: 4 }
 
 /** Ordine delle voci "da fare": prima le più urgenti, poi per scadenza. */
 export function confrontaDaFare(

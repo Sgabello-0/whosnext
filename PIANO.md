@@ -24,7 +24,7 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 - [x] Calendario (giorni di scuola, feste nazionali calcolate, vacanze, lezioni extra/annullate), materie e interrogazioni; stima delle date pronta (`estimate.ts`)
 - [x] Preferenze e generazione della lista (per ora la genera il capoclasse o il vice con un pulsante dopo la scadenza; con Netlify diventerà automatica)
 - [x] Lista pubblica, riordino trascinando (anche con frecce e tastiera)
-- [ ] Scambi (con le Netlify Functions: accettare uno scambio cambia la lista di tutti, quindi lo fa il server)
+- [x] Scambi, senza server: le regole del database accettano solo lo scambio delle due posizioni, fatto da chi occupa la posizione richiesta (deciso il 04/11/2026). Basta il sì del compagno; richieste visibili solo ai due e a capo/vice; massimo 3 aperte (posti fissi `uid_0..2`); "Rifiuta in automatico" per classe; le richieste seguono la posizione
 - [x] Segnare chi è stato interrogato (proposta dei primi N, assenti in testa, "Sono stato interrogato" con conferma) e stima delle date
 - [x] Comodità: "Le mie interrogazioni" e "Da fare" nella pagina iniziale, messaggi pronti per WhatsApp, condividi la lista, guida per la classe nuova e orario a griglia, conferme con "Annulla", cessione del ruolo di capoclasse, storico delle modifiche alla lista
 - [x] App installabile (PWA), pagine caricate a pezzi, cache dei dati sul dispositivo

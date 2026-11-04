@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { USA_EMULATORI } from '../lib/firebase'
 import { Avatar } from './ui'
 import { Logo } from './Logo'
+import { InstallaApp } from './InstallaApp'
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { profilo, esci } = useAuth()
@@ -45,6 +46,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-5 pb-24 sm:gap-5 sm:pt-6">{children}</main>
+      {profilo && <InstallaApp />}
     </div>
   )
 }

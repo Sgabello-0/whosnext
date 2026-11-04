@@ -222,9 +222,10 @@ service cloud.firestore {
           // Sé stessi: nome e foto; i docenti anche la richiesta di permesso
           (
             u == request.auth.uid
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'foto', 'richiestaPermesso'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'foto', 'richiestaPermesso', 'rifiutaScambi'])
             && testo(request.resource.data.nome, 100)
             && fotoValida(request.resource.data.get('foto', null))
+            && request.resource.data.get('rifiutaScambi', false) is bool
             && (
               request.resource.data.richiestaPermesso == resource.data.richiestaPermesso
               || (resource.data.ruolo == 'docente' && request.resource.data.richiestaPermesso is bool && resource.data.permessoModifica == false)
@@ -434,7 +435,44 @@ service cloud.firestore {
               && request.resource.data.ordine.toSet() == resource.data.ordine.toSet()
               && request.resource.data.interrogati is map
               && request.resource.data.ordine.toSet().hasAll(request.resource.data.interrogati.keys());
+            // Scambio: chi riceve la richiesta la accetta e scambia SOLO le due posizioni
+            allow update: if documento == 'current' && isMembro(c) && scambioAccettato();
             allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
+
+            function scambioAccettato() {
+              let id = request.resource.data.get('scambio', null);
+              let io = request.auth.uid;
+              let vecchio = resource.data.ordine;
+              let nuovo = request.resource.data.ordine;
+              return id is string
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'scambio', 'ultimaModifica', 'aggiornato', 'aggiornatoDa'])
+                && request.resource.data.get('ultimaModifica', null) != resource.data.get('ultimaModifica', null)
+                && voceStoricoNuova(request.resource.data.get('ultimaModifica', null))
+                && request.resource.data.aggiornato == request.time
+                && request.resource.data.aggiornatoDa == io
+                && get(interrogazionePath(c, s, i)).data.stato == 'lista'
+                && scambioCoerente(get(scambioPath(id)).data, getAfter(scambioPath(id)).data, io, vecchio, nuovo);
+            }
+
+            function scambioCoerente(prima, dopo, io, vecchio, nuovo) {
+              return prima.stato == 'attesa' && dopo.stato == 'accettato'
+                && vecchio[prima.daPos] == prima.da && vecchio[prima.aPos] == io
+                && nuovo is list && nuovo.size() == vecchio.size()
+                && nuovo[prima.daPos] == io && nuovo[prima.aPos] == prima.da
+                // tutti gli altri restano dove sono
+                && nuovo.removeAll([io, prima.da]) == vecchio.removeAll([io, prima.da])
+                && !(io in resource.data.interrogati) && !(prima.da in resource.data.interrogati);
+            }
+          }
+
+          function scambioPath(id) {
+            return /databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/scambi/$(id);
+          }
+          // In questo batch la richiesta id passa da "attesa" ad "accettato"
+          function scambioInCorso(id) {
+            return id is string && id != ''
+              && get(scambioPath(id)).data.stato == 'attesa'
+              && getAfter(scambioPath(id)).data.stato == 'accettato';
           }
 
           // ───── Storico delle modifiche alla lista ─────
@@ -456,7 +494,83 @@ service cloud.firestore {
               && request.resource.data.dettagli is map
               // la voce va insieme a una modifica della lista che la indica
               && getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('ultimaModifica', null) == voce;
+            // Scambio accettato: la voce va insieme alla lista con il nuovo "scambio"
+            allow create: if isMembro(c)
+              && request.resource.data.keys().hasOnly(['tipo', 'chi', 'quando', 'dettagli'])
+              && request.resource.data.tipo == 'scambio'
+              && request.resource.data.chi == request.auth.uid
+              && request.resource.data.quando == request.time
+              && request.resource.data.dettagli is map
+              && getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('ultimaModifica', null) == voce
+              && scambioInCorso(getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('scambio', ''));
             allow update: if false;
+            allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
+          }
+
+          // ───── Scambi ─────
+          // scambi/{da}_{0|1|2} → { da, daPos, aPos, stato, creato, aggiornato, a }
+          // "da" (in posizione daPos) chiede la posizione aPos: decide chi la occupa ADESSO
+          // (la richiesta segue la posizione). Al massimo 3 richieste aperte a testa (3 posti fissi).
+          // Le vedono solo chi chiede, chi occupa la posizione richiesta, capo e vice.
+
+          match /scambi/{id} {
+            function lista() {
+              return get(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data;
+            }
+            function destinatario() {
+              return lista().ordine[resource.data.aPos];
+            }
+            function nuovaRichiesta(d) {
+              let l = lista();
+              return d.keys().hasOnly(['da', 'daPos', 'aPos', 'stato', 'creato', 'aggiornato', 'a'])
+                && d.da == request.auth.uid
+                && id in [d.da + '_0', d.da + '_1', d.da + '_2']
+                && d.stato == 'attesa'
+                && d.creato == request.time
+                && d.aggiornato == request.time
+                && d.a == null
+                && d.daPos is int && d.aPos is int && d.daPos != d.aPos
+                && d.daPos >= 0 && d.aPos >= 0
+                && d.daPos < l.ordine.size() && d.aPos < l.ordine.size()
+                && l.ordine[d.daPos] == request.auth.uid
+                && !(request.auth.uid in l.interrogati)
+                && !(l.ordine[d.aPos] in l.interrogati)
+                && get(interrogazionePath(c, s, i)).data.stato == 'lista'
+                && get(membroPath(c, l.ordine[d.aPos])).data.get('rifiutaScambi', false) != true;
+            }
+            function risposta(stato) {
+              return resource.data.stato == 'attesa'
+                && request.resource.data.stato == stato
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'aggiornato', 'a'])
+                && request.resource.data.aggiornato == request.time;
+            }
+
+            allow read: if isMembro(c) && (
+              resource.data.da == request.auth.uid
+              || resource.data.get('a', null) == request.auth.uid
+              || isCapoOVice(c)
+              || (resource.data.stato == 'attesa' && destinatario() == request.auth.uid)
+            );
+            allow create: if isMembro(c) && nuovaRichiesta(request.resource.data);
+            allow update: if isMembro(c) && (
+              // un posto libero (richiesta chiusa) si riusa per una richiesta nuova
+              (resource.data.stato != 'attesa' && nuovaRichiesta(request.resource.data))
+              // chi ha chiesto (o capo e vice) annulla
+              || (
+                (resource.data.da == request.auth.uid || isCapoOVice(c))
+                && risposta('annullato') && request.resource.data.a == resource.data.a
+              )
+              // chi occupa la posizione richiesta rifiuta…
+              || (destinatario() == request.auth.uid && risposta('rifiutato') && request.resource.data.a == request.auth.uid)
+              // …o accetta, scambiando le posizioni nello stesso batch
+              || (
+                destinatario() == request.auth.uid && risposta('accettato') && request.resource.data.a == request.auth.uid
+                // la lista cambia nello stesso batch e indica proprio questa richiesta
+                && getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('scambio', null) == id
+                && getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('ultimaModifica', null)
+                  != lista().get('ultimaModifica', null)
+              )
+            );
             allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
           }
 

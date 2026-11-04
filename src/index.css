@@ -10,6 +10,11 @@
   :root { color-scheme: dark; }
 }
 
+@keyframes sali {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 body {
   @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
