@@ -11,9 +11,9 @@ const CHIAVI_GOOGLE = createRemoteJWKSet(
 )
 
 export async function uidDalToken(token: string, o: { chiavi?: JWTVerifyGetKey; progetto?: string } = {}): Promise<string> {
-  const emulatore = !o.chiavi && !!process.env.FIREBASE_AUTH_EMULATOR_HOST
+  // con l'emulatore i token non sono firmati: solo se anche il database è quello finto (mai in produzione)
+  const emulatore = !o.chiavi && !!process.env.FIREBASE_AUTH_EMULATOR_HOST && !!process.env.FIRESTORE_EMULATOR_HOST
   const progetto = o.progetto ?? (emulatore ? (process.env.GCLOUD_PROJECT ?? 'demo-whosnext') : PROGETTO)
-  // con l'emulatore i token non sono firmati
   const dati = emulatore
     ? decodeJwt(token)
     : (

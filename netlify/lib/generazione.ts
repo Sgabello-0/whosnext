@@ -59,8 +59,13 @@ export async function generaScadute(db: Firestore, adesso: Date): Promise<Rif[]>
     .get()
   const fatte: Rif[] = []
   for (const d of scadute.docs) {
-    const esito = await generaSeScaduta(db, d.ref, adesso)
-    if (esito) fatte.push(esito.r)
+    try {
+      const esito = await generaSeScaduta(db, d.ref, adesso)
+      if (esito) fatte.push(esito.r)
+    } catch (e) {
+      // un'interrogazione con dati rovinati non deve fermare le altre
+      console.error(`Generazione non riuscita per ${d.ref.path}:`, e)
+    }
   }
   return fatte
 }

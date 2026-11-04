@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  preferenzeDa,
   dalCentro,
   dividiInFasce,
   generaLista,
@@ -214,5 +215,22 @@ describe('casi limite e garanzie', () => {
       expect(rapporto.risposte + rapporto.senzaRisposta).toBe(n)
       expect(rapporto.dsa.esatte).toBeLessThanOrEqual(rapporto.dsa.richieste)
     }
+  })
+})
+
+describe('preferenze lette dal database', () => {
+  it('dati strani o vecchi non fanno saltare niente', () => {
+    const p = preferenzeDa([
+      { id: 'a', dati: { scelta: 'boh' as never } },
+      { id: 'b', dati: { scelta: 'posizione', posizioneDSA: 'tre' as never, aggiornato: 'ieri' as never } },
+      { id: 'c', dati: { scelta: 'fine', posizioneDSA: Number.NaN } },
+      { id: 'd', dati: { scelta: 'inizio', aggiornato: { toMillis: () => 42 } } },
+    ])
+    expect(p.get('a')).toEqual({ scelta: 'indifferente', posizioneDSA: null, quando: 0 })
+    expect(p.get('b')).toEqual({ scelta: 'posizione', posizioneDSA: null, quando: 0 })
+    expect(p.get('c')).toEqual({ scelta: 'fine', posizioneDSA: null, quando: 0 })
+    expect(p.get('d')?.quando).toBe(42)
+    const { ordine } = generaLista({ studenti: ['a', 'b', 'c', 'd'], preferenze: p, dsa: new Set(['b']), seme: 1 })
+    expect([...ordine].sort()).toEqual(['a', 'b', 'c', 'd'])
   })
 })

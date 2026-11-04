@@ -14,6 +14,7 @@
 
 export type Scelta = 'inizio' | 'meta' | 'fine' | 'indifferente' | 'posizione'
 export type Fascia = 'inizio' | 'meta' | 'fine'
+const SCELTE: readonly unknown[] = ['inizio', 'meta', 'fine', 'indifferente', 'posizione']
 
 export type Preferenza = {
   scelta: Scelta
@@ -142,7 +143,7 @@ export function generaLista(opz: {
       if (dsa.has(uid) && p.posizioneDSA !== null && Number.isFinite(p.posizioneDSA)) {
         richiesteDSA.push({ uid, posizione: p.posizioneDSA, quando: p.quando })
       } else gruppi.indifferente.push(uid) // badge tolto nel frattempo
-    } else gruppi[p.scelta].push(uid)
+    } else (gruppi[p.scelta] ?? gruppi.indifferente).push(uid)
   }
 
   // 1. DSA/BES: prima chi ha chiesto prima
@@ -219,7 +220,12 @@ export function preferenzeDa(
   return new Map(
     documenti.map(({ id, dati }) => [
       id,
-      { scelta: dati.scelta, posizioneDSA: dati.posizioneDSA ?? null, quando: dati.aggiornato?.toMillis() ?? 0 },
+      {
+        // dati vecchi o scritti a mano: un valore sconosciuto vale come "non mi interessa"
+        scelta: SCELTE.includes(dati.scelta) ? dati.scelta : 'indifferente',
+        posizioneDSA: typeof dati.posizioneDSA === 'number' && Number.isFinite(dati.posizioneDSA) ? dati.posizioneDSA : null,
+        quando: typeof dati.aggiornato?.toMillis === 'function' ? dati.aggiornato.toMillis() : 0,
+      },
     ]),
   )
 }

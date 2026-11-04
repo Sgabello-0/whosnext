@@ -19,13 +19,24 @@ function idSicuro(chiave: string): string {
 }
 
 export async function avvisa(db: Firestore, postino: Postino, uid: string, chiave: string, n: Notifica): Promise<Esito> {
+  const invio = db.collection('invii').doc(idSicuro(chiave))
   try {
-    await db.collection('invii').doc(idSicuro(chiave)).create({ uid, quando: FieldValue.serverTimestamp() })
+    await invio.create({ uid, quando: FieldValue.serverTimestamp() })
   } catch (e) {
     // 6 = ALREADY_EXISTS: già mandata (anche da un'altra esecuzione nello stesso momento)
     if ((e as { code?: number }).code === 6) return 'gia-mandata'
     throw e
   }
+  try {
+    return await consegna(db, postino, uid, n)
+  } catch (e) {
+    // non consegnata (rete, servizio delle push…): si toglie il segno, così un'altra esecuzione può riprovare
+    await invio.delete().catch(() => {})
+    throw e
+  }
+}
+
+async function consegna(db: Firestore, postino: Postino, uid: string, n: Notifica): Promise<Esito> {
   const utente = await db.collection('users').doc(uid).get()
   const u = utente.data() as
     | { email?: string; fcmTokens?: string[]; impostazioni?: { notifichePush?: boolean; notificheEmail?: boolean } }
