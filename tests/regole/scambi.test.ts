@@ -271,3 +271,72 @@ describe('regole delle richieste', () => {
     await assertSucceeds(eliminaInterrogazione(dbDi(env, anna), r.classId, r.subjectId, r.interrogazioneId))
   })
 })
+
+describe('tentativi di imbrogliare con gli scambi', () => {
+  /** Scrive la richiesta "a mano", senza i controlli del sito. */
+  function scrivi(r: Rif, p: { uid: string; email: string }, id: string, dati: Record<string, unknown>) {
+    return setDoc(rifScambio(dbDi(env, p), r.classId, r.subjectId, r.interrogazioneId, id), {
+      da: p.uid, daPos: ORDINE.indexOf(p.uid), aPos: 0, stato: 'attesa', a: null,
+      creato: serverTimestamp(), aggiornato: serverTimestamp(), ...dati,
+    })
+  }
+
+  it('non si creano richieste false', async () => {
+    const r = await listaPronta()
+    // la richiesta giusta passa (controllo che il modello sia valido)
+    await assertSucceeds(scrivi(r, carla, 'carla_0', {}))
+    await env.clearFirestore()
+    const r2 = await listaPronta()
+    await assertFails(scrivi(r2, carla, 'bruno_0', { da: 'bruno', daPos: 1 })) // a nome di un altro
+    await assertFails(scrivi(r2, carla, 'carla_1', {})) // secondo posto: una sola richiesta
+    await assertFails(scrivi(r2, carla, 'carla_0', { stato: 'accettato' })) // già accettata
+    await assertFails(scrivi(r2, carla, 'carla_0', { a: 'anna' })) // risposta già scritta
+    await assertFails(scrivi(r2, carla, 'carla_0', { daPos: 3 })) // non è la sua posizione
+    await assertFails(scrivi(r2, carla, 'carla_0', { aPos: 2 })) // con sé stessa
+    await assertFails(scrivi(r2, carla, 'carla_0', { aPos: 4 })) // fuori dalla lista
+    await assertFails(scrivi(r2, carla, 'carla_0', { aPos: -1 }))
+    await assertFails(scrivi(r2, carla, 'carla_0', { aPos: 0.5 }))
+    await assertFails(scrivi(r2, carla, 'carla_0', { aPos: '0' }))
+    await assertFails(scrivi(r2, carla, 'carla_0', { creato: Timestamp.fromDate(new Date(2020, 0, 1)) })) // data finta
+    await assertFails(scrivi(r2, carla, 'carla_0', { extra: true })) // campi in più
+  })
+
+  it('le risposte le dà solo chi deve', async () => {
+    const r = await listaPronta()
+    const s = await chiedi(r, carla, 0) // Carla chiede il posto di Anna
+    const rif = (p: { uid: string; email: string }) => rifScambio(dbDi(env, p), r.classId, r.subjectId, r.interrogazioneId, s.id)
+    // chi ha chiesto non si risponde da sola
+    await assertFails(updateDoc(rif(carla), { stato: 'rifiutato', a: 'carla', aggiornato: serverTimestamp() }))
+    await assertFails(accettaSenzaControlli(r, carla, s))
+    // un terzo non risponde e non annulla
+    await assertFails(updateDoc(rif(bruno), { stato: 'rifiutato', a: 'bruno', aggiornato: serverTimestamp() }))
+    await assertFails(updateDoc(rif(bruno), { stato: 'annullato', aggiornato: serverTimestamp() }))
+    // il destinatario non può rifiutare a nome di un altro
+    await assertFails(updateDoc(rif(anna), { stato: 'rifiutato', a: 'bruno', aggiornato: serverTimestamp() }))
+    // nemmeno "accettare" senza scambiare davvero le posizioni
+    await assertFails(updateDoc(rif(anna), { stato: 'accettato', a: 'anna', aggiornato: serverTimestamp() }))
+    expect((await lista(r)).ordine).toEqual(ORDINE)
+  })
+
+  it('una richiesta in attesa non si devia verso un altro posto', async () => {
+    const r = await listaPronta()
+    const s = await chiedi(r, carla, 3) // Carla chiede il posto di Dario
+    const rif = rifScambio(dbDi(env, carla), r.classId, r.subjectId, r.interrogazioneId, s.id)
+    await assertFails(updateDoc(rif, { aPos: 0, aggiornato: serverTimestamp() }))
+    await assertFails(updateDoc(rif, { daPos: 0, aggiornato: serverTimestamp() }))
+    await assertFails(updateDoc(rif, { da: 'bruno', aggiornato: serverTimestamp() }))
+    // e una richiesta chiusa non si "riapre" con l'esito già scritto
+    await assertSucceeds(updateDoc(rif, { stato: 'annullato', aggiornato: serverTimestamp() }))
+    await assertFails(updateDoc(rif, { stato: 'accettato', a: 'dario', aggiornato: serverTimestamp() }))
+  })
+
+  it('niente richieste prima che la lista esista', async () => {
+    const r = await listaPronta()
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(rifInterrogazione(ctx.firestore() as unknown as Firestore, r.classId, r.subjectId, r.interrogazioneId), {
+        stato: 'raccolta',
+      })
+    })
+    await assertFails(scrivi(r, carla, 'carla_0', {}))
+  })
+})
