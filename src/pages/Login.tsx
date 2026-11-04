@@ -8,6 +8,7 @@ import { Bottone, Riquadro } from '../components/ui'
 import { TestoDaCopiare } from '../components/TestoDaCopiare'
 import { Logo } from '../components/Logo'
 import { RefreshCw, Hand, ListOrdered } from 'lucide-react'
+import { CREDITI } from '../lib/crediti'
 
 type Errore = MessaggioErrore & { codice?: string }
 
@@ -117,6 +118,7 @@ export default function Login() {
           </Riquadro>
         )}
       </section>
+      <p className="mt-10 text-center text-xs text-slate-400 dark:text-slate-500">{CREDITI}</p>
     </main>
   )
 }

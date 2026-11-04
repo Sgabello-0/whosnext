@@ -14,6 +14,7 @@ import type { ImpostazioniUtente, Membro } from '../lib/tipi'
 import { useAvvisi } from '../components/Avvisi'
 import { IstruzioniInstallazione, Vantaggi } from '../components/InstallaApp'
 import { Avatar, Badge, Bottone, IntestazionePagina, Scheda } from '../components/ui'
+import { CREDITI } from '../lib/crediti'
 
 const PRIVACY = 'https://github.com/Sgabello-0/whosnext/blob/main/PRIVACY.md'
 
@@ -65,6 +66,8 @@ export default function Impostazioni() {
           <ExternalLink aria-hidden className="size-3.5" />
         </a>
       </Scheda>
+
+      <p className="pt-2 text-center text-xs text-slate-400 dark:text-slate-500">WhosNext · {CREDITI}</p>
     </>
   )
 }

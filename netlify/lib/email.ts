@@ -2,6 +2,7 @@
  * Le email di WhosNext: un testo semplice (per chi non vede l'HTML) e la versione curata,
  * con logo, pulsante e piè di pagina. Solo HTML con stili in linea, che funziona anche in Gmail e Outlook.
  */
+import { CREDITI } from '../../src/lib/crediti'
 
 export type Email = {
   oggetto: string
@@ -62,7 +63,8 @@ export function htmlEmail(e: Email): string {
     <tr><td style="padding:16px 8px 0;font-size:13px;line-height:1.5;color:#64748b;text-align:center">
       Questa email è inviata in automatico: non rispondere, nessuno legge le risposte.<br>
       Ricevi questa email perché sei iscritto a WhosNext.<br>
-      Puoi disattivare le email dalle <a href="${SITO}/impostazioni" style="color:#64748b">Impostazioni</a>.
+      Puoi disattivare le email dalle <a href="${SITO}/impostazioni" style="color:#64748b">Impostazioni</a>.<br>
+      <span style="color:#94a3b8">WhosNext · ${CREDITI}</span>
     </td></tr>
   </table>
 </td></tr>
