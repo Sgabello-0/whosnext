@@ -15,8 +15,11 @@ function app(): App {
   if (process.env.FIRESTORE_EMULATOR_HOST) return initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? 'demo-whosnext' })
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
   // incollata con i "\n" letterali oppure su più righe: va bene in entrambi i modi
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+  // (anche con le virgolette del file JSON intorno)
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.trim().replace(/^"|",?$/g, '').replace(/\\n/g, '\n')
   if (!clientEmail || !privateKey) throw new Error('Mancano FIREBASE_CLIENT_EMAIL e FIREBASE_PRIVATE_KEY nelle variabili di Netlify')
+  if (!privateKey.includes('-----END PRIVATE KEY-----'))
+    throw new Error('FIREBASE_PRIVATE_KEY è tagliata: deve finire con "-----END PRIVATE KEY-----"')
   const projectId = process.env.FIREBASE_PROJECT_ID ?? 'whosnext-4b067'
   return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), projectId })
 }
