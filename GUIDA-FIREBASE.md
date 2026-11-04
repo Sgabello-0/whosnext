@@ -52,10 +52,10 @@ Firebase crea in automatico una schermata di consenso in modalità **Test**: in 
    - Nome dell'app: `WhosNext`
    - Email di assistenza utenti: il tuo Gmail
    - **Logo: lascialo vuoto** (caricare un logo obbliga a far verificare l'app da Google, con attese di settimane)
-   - Home page dell'applicazione: `https://whosnext-4b067.firebaseapp.com` (prima della pubblicazione: `https://github.com/Sgabello-0/whosnext`)
+   - Home page dell'applicazione: `https://whos-next.web.app` (prima della pubblicazione: `https://github.com/Sgabello-0/whosnext`)
    - Norme sulla privacy: `https://github.com/Sgabello-0/whosnext/blob/main/PRIVACY.md`
    - Termini di servizio: vuoto (facoltativo)
-   - Domini autorizzati: lascia quello `….firebaseapp.com` e aggiungi `github.com`
+   - Domini autorizzati: lascia quello `….firebaseapp.com` e aggiungi `github.com` e `whos-next.web.app`
    - Email del contatto sviluppatore: il tuo Gmail → **Salva**
 
    La privacy resta su GitHub: è un indirizzo pubblico e sempre aggiornato.
@@ -152,9 +152,10 @@ Serve Java (è già installato su questo computer).
 npm run deploy:sito
 ```
 
-Compila il sito con i valori del tuo `.env` e lo pubblica su **https://whosnext-4b067.firebaseapp.com** (e `whosnext-4b067.web.app`). Gratis con il piano Spark, senza carta di credito.
+Compila il sito con i valori del tuo `.env` e lo pubblica su **https://whos-next.web.app**. Gratis con il piano Spark, senza carta di credito.
 
-- Ai tester manda l'indirizzo **`.firebaseapp.com`**: è lo stesso dominio del login Google, così l'accesso funziona anche su iPhone con l'app installata.
-- I due domini sono già nei **domini autorizzati** di Authentication: non serve aggiungerli.
+- Il login usa lo stesso indirizzo del sito: nel `.env` c'è `VITE_FIREBASE_AUTH_DOMAIN=whos-next.web.app`. Così l'accesso funziona anche su iPhone con l'app installata (Safari blocca i login su domini diversi).
+- Per questo `whos-next.web.app` è stato aggiunto in tre posti: Firebase → Authentication → **Domini autorizzati**; Google Cloud → Credenziali → "Web client (auto created by Google Service)" (origine `https://whos-next.web.app` e reindirizzamento `https://whos-next.web.app/__/auth/handler`); Branding della schermata di consenso → **Domini autorizzati**.
+- I vecchi indirizzi `whosnext-4b067.web.app` e `whosnext-4b067.firebaseapp.com` mostrano solo la pagina della cartella `reindirizzamento/`: portano allo stesso percorso sul nuovo indirizzo e tolgono dal telefono la vecchia copia salvata dell'app.
 - Gli indirizzi dei tunnel di prova (`….trycloudflare.com`) si possono togliere dai domini autorizzati quando non servono più.
 - L'uso (letture e scritture del database, traffico del sito) si vede in Firebase → Firestore → **Utilizzo** e in Hosting.

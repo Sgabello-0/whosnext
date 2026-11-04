@@ -29,7 +29,7 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 - [x] Comodità: "Le mie interrogazioni" e "Da fare" nella pagina iniziale, messaggi pronti per WhatsApp, condividi la lista, guida per la classe nuova e orario a griglia, conferme con "Annulla", cessione del ruolo di capoclasse, storico delle modifiche alla lista
 - [x] App installabile (PWA), pagine caricate a pezzi, cache dei dati sul dispositivo
 - [ ] Notifiche (inbox, email, push) e job pianificato
-- [x] Sito online su Firebase Hosting (https://whosnext-4b067.firebaseapp.com): stesso dominio del login, gratis senza carta; `npm run deploy:sito`
+- [x] Sito online su Firebase Hosting (https://whos-next.web.app, login sullo stesso dominio): gratis senza carta; `npm run deploy:sito`. I vecchi indirizzi `whosnext-4b067.web.app` / `.firebaseapp.com` rimandano al nuovo (cartella `reindirizzamento/`)
 - [ ] Funzioni sul server su Netlify (solo Functions, l'hosting resta su Firebase)
 
 ## Stack (tutto gratuito)

@@ -72,12 +72,7 @@
     },
     {
       "site": "whosnext-4b067",
-      "public": "dist",
-      "ignore": [
-        "firebase.json",
-        "**/.*"
-      ],
-      "cleanUrls": true,
+      "public": "reindirizzamento",
       "rewrites": [
         {
           "source": "**",
@@ -86,51 +81,11 @@
       ],
       "headers": [
         {
-          "source": "/assets/**",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "public, max-age=31536000, immutable"
-            }
-          ]
-        },
-        {
-          "source": "**/*.@(png|svg|ico)",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "public, max-age=86400"
-            }
-          ]
-        },
-        {
-          "source": "/@(index.html|sw.js|registerSW.js|manifest.webmanifest)",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-cache"
-            }
-          ]
-        },
-        {
-          "source": "**/!(*.*)",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-cache"
-            }
-          ]
-        },
-        {
           "source": "**",
           "headers": [
             {
-              "key": "X-Content-Type-Options",
-              "value": "nosniff"
-            },
-            {
-              "key": "Referrer-Policy",
-              "value": "strict-origin-when-cross-origin"
+              "key": "Cache-Control",
+              "value": "no-cache"
             }
           ]
         }
