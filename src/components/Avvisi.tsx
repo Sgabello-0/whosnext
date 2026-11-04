@@ -76,7 +76,7 @@ function ElementoAvviso(p: { avviso: Avviso; togli: (id: number) => void; onErro
   return (
     <div
       role={avviso.tono === 'errore' ? 'alert' : 'status'}
-      className={`pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-xl px-4 py-3 text-sm shadow-lg ${
+      className={`avviso pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-xl px-4 py-3 text-sm shadow-lg ${
         avviso.tono === 'errore' ? 'bg-rose-700 text-white' : 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
       }`}
     >

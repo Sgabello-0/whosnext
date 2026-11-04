@@ -118,7 +118,7 @@ export function SceltaPreferenza(p: Props) {
                 }`}
               >
                 <Icona aria-hidden className={`mb-1.5 size-5 ${scelta ? 'text-white' : 'text-accento dark:text-blue-300'}`} />
-                {scelta && <CircleCheck aria-hidden className="absolute top-2.5 right-2.5 size-5" />}
+                {scelta && <CircleCheck aria-hidden className="pop absolute top-2.5 right-2.5 size-5" />}
                 <span className="block font-semibold">{ETICHETTA_SCELTA[s]}</span>
                 <span className={`block text-xs ${scelta ? 'text-blue-100' : 'text-slate-500'}`}>{SPIEGAZIONE_SCELTA[s]}</span>
               </button>

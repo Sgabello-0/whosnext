@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { BookOpen, CalendarDays, CalendarOff, CalendarPlus, Grid3x3, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { db } from '../lib/firebase'
@@ -52,6 +52,7 @@ export default function Configura() {
   const [parametri, setParametri] = useSearchParams()
   const sezione =
     (['materie', 'orario', 'calendario'] as const).find((x) => x === parametri.get('sezione')) ?? 'materie'
+  const animazioneScheda = useAnimazioneScheda(['materie', 'orario', 'calendario'].indexOf(sezione))
 
   if (dati.stato !== 'pronto') return <StatoClasse dati={dati} />
   if (!puoGestireDSA(dati.io)) {
@@ -82,36 +83,48 @@ export default function Configura() {
         ]}
       />
 
-      {sezione === 'materie' && (
-        <Scheda
-          titolo="Materie"
-          icona={BookOpen}
-          sottotitolo="Quelle con interrogazioni da organizzare, con i giorni di lezione."
-        >
-          {materie.errore ? (
-            <Riquadro tono="errore">{messaggioErrore(materie.errore)}</Riquadro>
-          ) : !materie.dati ? (
-            <Caricamento />
-          ) : (
-            <div className="space-y-4">
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {elencoMaterie.map((m) => (
-                  <RigaMateria key={m.id} classId={classId} materia={m} />
-                ))}
-              </ul>
-              <NuovaMateria classId={classId} />
-            </div>
-          )}
-        </Scheda>
-      )}
+      {/* cambiando scheda il contenuto scorre dal lato della scheda scelta */}
+      <div key={sezione} className={`flex flex-col gap-4 sm:gap-5 ${animazioneScheda}`}>
+        {sezione === 'materie' && (
+          <Scheda
+            titolo="Materie"
+            icona={BookOpen}
+            sottotitolo="Quelle con interrogazioni da organizzare, con i giorni di lezione."
+          >
+            {materie.errore ? (
+              <Riquadro tono="errore">{messaggioErrore(materie.errore)}</Riquadro>
+            ) : !materie.dati ? (
+              <Caricamento />
+            ) : (
+              <div className="space-y-4">
+                <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {elencoMaterie.map((m) => (
+                    <RigaMateria key={m.id} classId={classId} materia={m} />
+                  ))}
+                </ul>
+                <NuovaMateria classId={classId} />
+              </div>
+            )}
+          </Scheda>
+        )}
 
-      {sezione === 'orario' &&
-        (cal ? <OrarioSettimanale classId={classId} materie={elencoMaterie} cal={cal} /> : <Caricamento />)}
+        {sezione === 'orario' &&
+          (cal ? <OrarioSettimanale classId={classId} materie={elencoMaterie} cal={cal} /> : <Caricamento />)}
 
-      {sezione === 'calendario' &&
-        (cal ? <ConfiguraCalendario classId={classId} cal={cal} materie={elencoMaterie} /> : <Caricamento />)}
+        {sezione === 'calendario' &&
+          (cal ? <ConfiguraCalendario classId={classId} cal={cal} materie={elencoMaterie} /> : <Caricamento />)}
+      </div>
     </>
   )
+}
+
+/** Da destra se la scheda scelta è più a destra di quella di prima, da sinistra altrimenti. */
+function useAnimazioneScheda(indice: number): string {
+  const ultima = useRef({ indice, classe: '' })
+  if (ultima.current.indice !== indice) {
+    ultima.current = { indice, classe: indice > ultima.current.indice ? 'pagina-avanti' : 'pagina-indietro' }
+  }
+  return ultima.current.classe
 }
 
 // ───────────── Materie ─────────────

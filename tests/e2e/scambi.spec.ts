@@ -95,6 +95,10 @@ test('scambio di posto tra due compagni', async ({ browser }, info) => {
 
   // Anna, dalle Impostazioni (tocca la sua foto), rifiuta in automatico: nessuno può più chiederle uno scambio
   await anna.getByRole('link', { name: 'Impostazioni' }).click()
+  // le Impostazioni entrano da destra; a fine animazione non resta nessuno spostamento
+  const contenuto = anna.locator('main > div')
+  await expect(contenuto).toHaveClass(/pagina-avanti/)
+  await expect.poll(() => contenuto.evaluate((el) => getComputedStyle(el).transform)).toBe('none')
   await anna.getByRole('switch', { name: /Rifiuta in automatico gli scambi/ }).check()
   await expect(anna.getByText('Nessuno può chiederti di scambiare il posto')).toBeVisible()
   await expect(bruno.getByRole('button', { name: 'Chiedi scambio a Carla Blu' })).toBeVisible()
@@ -109,4 +113,7 @@ test('scambio di posto tra due compagni', async ({ browser }, info) => {
   await expect(anna.getByRole('radio', { name: 'Scuro' })).toBeChecked()
   await anna.screenshot({ path: info.outputPath('impostazioni-scuro.png'), fullPage: true })
   await anna.getByRole('radio', { name: 'Automatico' }).click()
+  // tornando alla home la pagina arriva da sinistra
+  await anna.getByRole('link', { name: 'Home' }).click()
+  await expect(anna.locator('main > div')).toHaveClass(/pagina-indietro/)
 })

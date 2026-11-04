@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { Link } from 'react-router'
+import { useRef, type ReactNode } from 'react'
+import { Link, useLocation } from 'react-router'
 import { LogOut, Settings } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { USA_EMULATORI } from '../lib/firebase'
@@ -7,10 +7,37 @@ import { Avatar } from './ui'
 import { Logo } from './Logo'
 import { InstallaApp } from './InstallaApp'
 
+/** Quanto è "dentro" una pagina: home 0, classe 2, materia 4, interrogazione 6; le Impostazioni sempre sopra. */
+function profondita(percorso: string): number {
+  if (percorso.startsWith('/impostazioni')) return 100
+  return percorso.split('/').filter(Boolean).length
+}
+
+/**
+ * Direzione dell'animazione per la pagina appena aperta: da destra se si va più a fondo
+ * (o nelle Impostazioni), da sinistra se si torna indietro. Nessuna al primo caricamento.
+ */
+function useDirezione(percorso: string): string {
+  const ultima = useRef<{ percorso: string; classe: string } | null>(null)
+  if (ultima.current === null) {
+    ultima.current = { percorso, classe: '' }
+  } else if (ultima.current.percorso !== percorso) {
+    const prima = profondita(ultima.current.percorso)
+    const dopo = profondita(percorso)
+    ultima.current = {
+      percorso,
+      classe: dopo > prima ? 'pagina-avanti' : dopo < prima ? 'pagina-indietro' : 'pagina-uguale',
+    }
+  }
+  return ultima.current.classe
+}
+
 export default function Layout({ children }: { children: ReactNode }) {
   const { profilo, esci } = useAuth()
+  const { pathname } = useLocation()
+  const animazione = useDirezione(pathname)
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh overflow-x-clip">
       {USA_EMULATORI && (
         <p className="bg-amber-300 px-4 py-1 text-center text-xs font-semibold text-amber-950">
           Modalità prova (emulatore): i dati sono finti e restano solo su questo computer
@@ -18,10 +45,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       )}
       <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/85 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/85">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2.5">
-          <Link
-            to="/"
-            className="flex min-w-0 items-center gap-2.5 rounded-xl py-1 pr-2 font-bold tracking-tight"
-          >
+          <Link to="/" className="flex min-w-0 items-center gap-2.5 rounded-xl py-1 pr-2 font-bold tracking-tight">
             <Logo />
             <span className="truncate text-lg">
               Whos<span className="text-accento dark:text-blue-300">Next</span>
@@ -60,7 +84,12 @@ export default function Layout({ children }: { children: ReactNode }) {
           )}
         </div>
       </header>
-      <main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pt-5 pb-24 sm:gap-5 sm:pt-6">{children}</main>
+      <main className="mx-auto max-w-3xl px-4 pt-5 pb-24 sm:pt-6">
+        {/* una pagina nuova a ogni percorso: così parte la sua animazione d'entrata */}
+        <div key={pathname} className={`flex flex-col gap-4 sm:gap-5 ${animazione}`}>
+          {children}
+        </div>
+      </main>
       {profilo && <InstallaApp />}
     </div>
   )

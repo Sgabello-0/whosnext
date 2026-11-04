@@ -133,7 +133,10 @@ export function ListaInterrogazione(p: Props) {
             aria-hidden
             className="flex size-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-white/15 text-3xl leading-none font-bold"
           >
-            {interrogati[p.mioUid] ? <Check className="size-8" /> : miaPosizione + 1}
+            {/* il numero "salta" quando cambia (scambio, riordino) */}
+            <span key={interrogati[p.mioUid] ? 'fatto' : miaPosizione} className="pop">
+              {interrogati[p.mioUid] ? <Check className="size-8" /> : miaPosizione + 1}
+            </span>
           </span>
           <div className="min-w-0 flex-1 space-y-1">
             <p className="text-lg font-bold">{`Sei il n° ${miaPosizione + 1} di ${ordine.length}`}</p>

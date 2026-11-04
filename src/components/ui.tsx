@@ -252,7 +252,9 @@ export function Soffietto(props: {
         {props.destra}
         <ChevronRight aria-hidden className="size-4 shrink-0 text-slate-400 transition group-open:rotate-90" />
       </summary>
-      <div className="mx-4 border-t border-slate-100 pt-4 pb-4 sm:mx-5 sm:pb-5 dark:border-slate-800">{props.children}</div>
+      <div className="contenuto-soffietto mx-4 border-t border-slate-100 pt-4 pb-4 sm:mx-5 sm:pb-5 dark:border-slate-800">
+        {props.children}
+      </div>
     </details>
   )
 }
