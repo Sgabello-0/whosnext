@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeftRight, Bell, CircleCheck, Mail, ExternalLink, LogOut, MonitorSmartphone, Moon, Palette, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react'
+import { ArrowLeftRight, Bell, CircleCheck, ExternalLink, LogOut, MonitorSmartphone, Moon, Palette, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react'
 import { useAuth, useProfilo } from '../lib/auth'
 import { db } from '../lib/firebase'
 import { queryMieIscrizioni, rifUtente } from '../lib/classi'
@@ -8,7 +8,7 @@ import { useDocumento, useQuery } from '../lib/hooks'
 import { tipoTelefono, useInstallazione } from '../lib/installazione'
 import { impostaRifiutaScambi } from '../lib/scambi'
 import { serverAttivo } from '../lib/avvisaServer'
-import { attivaPush, disattivaPush, impostaEmail, statoPush, type StatoPush } from '../lib/push'
+import { attivaPush, disattivaPush, statoPush, type StatoPush } from '../lib/push'
 import { impostaTema, useTema, type Tema } from '../lib/tema'
 import type { ImpostazioniUtente, Membro } from '../lib/tipi'
 import { useAvvisi } from '../components/Avvisi'
@@ -108,14 +108,12 @@ const TESTO_PUSH: Record<StatoPush, string> = {
   'non-supportate': '',
 }
 
-/** Push (su questo dispositivo) ed email: solo per le cose importanti. */
+/** Push su questo dispositivo: solo per le cose importanti. (Le email per ora no: dai domini esterni non arrivano agli indirizzi della scuola.) */
 function ImpostazioniNotifiche() {
   const profilo = useProfilo()
   const avvisi = useAvvisi()
-  const utente = useDocumento<{ impostazioni?: Partial<ImpostazioniUtente> }>(db && rifUtente(db, profilo.uid))
   const [push, setPush] = useState<StatoPush>(() => statoPush())
   const [inCorso, setInCorso] = useState(false)
-  const emailAttive = utente.dati?.impostazioni?.notificheEmail !== false
   const iPhone = tipoTelefono() === 'iphone'
 
   async function cambiaPush(attiva: boolean) {
@@ -134,15 +132,6 @@ function ImpostazioniNotifiche() {
       avvisi.errore(messaggioErrore(e))
     } finally {
       setInCorso(false)
-    }
-  }
-
-  async function cambiaEmail(attive: boolean) {
-    try {
-      await impostaEmail(profilo.uid, attive)
-      avvisi.mostra(attive ? 'Email attive' : 'Email spente')
-    } catch (e) {
-      avvisi.errore(messaggioErrore(e))
     }
   }
 
@@ -166,14 +155,6 @@ function ImpostazioniNotifiche() {
             onCambia={cambiaPush}
           />
         )}
-        <Interruttore
-          titolo="Email"
-          testo="Solo quando la lista è pronta e quando qualcuno ti chiede uno scambio, all'indirizzo della scuola."
-          icona={Mail}
-          acceso={emailAttive}
-          disattivo={utente.dati === undefined}
-          onCambia={cambiaEmail}
-        />
         <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-950/50 dark:text-slate-400">
           <p className="mb-1.5 font-medium text-slate-700 dark:text-slate-300">Ti avvisiamo solo quando:</p>
           <ul className="list-disc space-y-0.5 pl-5">

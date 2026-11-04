@@ -84,9 +84,3 @@ export async function aggiornaPush(uid: string): Promise<void> {
     /* niente */
   }
 }
-
-/** Email per le notifiche più importanti (lista pronta, richieste di scambio). */
-export async function impostaEmail(uid: string, attive: boolean): Promise<void> {
-  if (!db) return
-  await updateDoc(rifUtente(db, uid), { 'impostazioni.notificheEmail': attive, aggiornato: serverTimestamp() })
-}

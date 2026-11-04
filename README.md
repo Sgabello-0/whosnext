@@ -43,7 +43,7 @@ stima la data per ciascuno e la tiene aggiornata con vacanze, lezioni saltate e 
 - **Le mie interrogazioni**: in un colpo d'occhio, per tutte le materie, la tua posizione e la data stimata.
 - **Da fare**: cosa scegliere, entro quando, e le richieste di scambio da guardare.
 - **Scambi di posto**: chiedi a un compagno di scambiare la posizione; basta che lui accetti. Massimo una richiesta aperta alla volta, e chi non vuole essere disturbato può rifiutarle tutte in automatico.
-- **Notifiche sul telefono**: lista pronta, richiesta e risposta agli scambi, promemoria prima della scadenza e "domani probabilmente tocca a te". Per email solo le due più importanti. Tutte disattivabili.
+- **Notifiche sul telefono**: lista pronta, richiesta e risposta agli scambi, promemoria prima della scadenza e "domani probabilmente tocca a te". Solo quelle importanti, tutte disattivabili.
 - **Posizione esatta per DSA/BES**, visibile solo al capoclasse e al vice.
 
 ### Per il capoclasse e il vice
@@ -93,7 +93,8 @@ Funzioni possibili, raccolte durante lo sviluppo. Suggerimenti benvenuti nelle [
 
 ### Scuola e app
 - [ ] **Altre scuole**: domini email configurabili e un pannello per l'amministratore della scuola.
-- [ ] **Dominio dedicato** (es. `whosnext.it`) per sito ed email.
+- [ ] **Dominio dedicato** (es. `whosnext.it`) per il sito.
+- [ ] **Notifiche via email** con un indirizzo della scuola (il codice è già pronto: le email da indirizzi esterni non arrivano agli account della scuola).
 - [ ] **Versione in inglese**.
 - [ ] **Esportazione dei dati** della classe a fine anno.
 
@@ -110,13 +111,12 @@ flowchart LR
   E[Netlify Functions<br>ogni 15 minuti] -- genera liste scadute,<br>promemoria --> C
   D --> C
   D & E -- push --> F[Firebase Cloud Messaging]
-  D & E -- email --> G[Gmail SMTP]
   F --> A
 ```
 
 - **Niente server per le azioni normali**: il sito parla direttamente con Firestore e le **regole di sicurezza** decidono chi può fare cosa (anche gli scambi: le regole verificano che cambino esattamente due posizioni, e solo con il consenso di chi riceve la richiesta).
 - **Il server fa solo ciò che il telefono non può fare**: generare le liste alla scadenza anche se nessuno apre il sito, e mandare notifiche. Ogni notifica parte una sola volta, e prima di avvisare il server controlla nel database che l'azione sia davvero avvenuta.
-- **Costo zero**: Firebase (piano Spark), Netlify (piano gratuito), Gmail.
+- **Costo zero**: Firebase (piano Spark) e Netlify (piano gratuito).
 
 ## Sicurezza e privacy
 
@@ -163,7 +163,7 @@ src/components/    componenti grafici condivisi
 src/lib/           logica e accesso ai dati (generazione della lista, calendario, scambi, notifiche…)
 sw/                service worker (app offline e notifiche push)
 netlify/functions/ funzioni del server: /api/notifica e il controllo ogni 15 minuti
-netlify/lib/       logica del server (generazione automatica, testi ed email, invio)
+netlify/lib/       logica del server (generazione automatica, testi delle notifiche, invio)
 firestore.rules    regole di sicurezza del database
 tests/             test delle regole, del server e nel browser
 ```

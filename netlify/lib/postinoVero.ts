@@ -1,4 +1,4 @@
-/** Il postino vero: push con Firebase Cloud Messaging, email con Gmail (EMAIL_UTENTE + EMAIL_PASSWORD). */
+/** Il postino vero: push con Firebase Cloud Messaging; email (per ora spente) con Gmail. */
 import nodemailer from 'nodemailer'
 import { messaggistica } from './admin'
 import { htmlEmail, testoEmail, type Email } from './email'
@@ -10,7 +10,10 @@ const SITO = process.env.URL_SITO ?? 'https://whos-next.web.app'
 export function postinoVero(): Postino {
   const utente = process.env.EMAIL_UTENTE
   const password = process.env.EMAIL_PASSWORD
-  const posta = utente && password ? nodemailer.createTransport({ service: 'gmail', auth: { user: utente, pass: password } }) : null
+  // Email spente per ora: dai domini esterni (Gmail compreso) non arrivano agli indirizzi della scuola.
+  // Per riaccenderle (es. con un indirizzo della scuola): EMAIL_ATTIVE=si, EMAIL_UTENTE, EMAIL_PASSWORD su Netlify,
+  // e l'interruttore "Email" nelle Impostazioni del sito.
+  const posta = process.env.EMAIL_ATTIVE === 'si' && utente && password ? nodemailer.createTransport({ service: 'gmail', auth: { user: utente, pass: password } }) : null
 
   return {
     async push(tokens: string[], n: Notifica) {

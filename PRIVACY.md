@@ -25,7 +25,7 @@ Il capoclasse o il vice possono assegnare un'indicazione "DSA/BES" ad alcuni stu
 
 ## Perché li usiamo
 
-Esclusivamente per far funzionare il sito: mostrare le liste delle interrogazioni ai compagni di classe, calcolare l'ordine, gestire gli scambi e inviarti notifiche (in app, email e push, se le hai attivate).
+Esclusivamente per far funzionare il sito: mostrare le liste delle interrogazioni ai compagni di classe, calcolare l'ordine, gestire gli scambi e inviarti notifiche (nel sito e push sul telefono, se le hai attivate).
 
 I dati **non** vengono venduti, ceduti a terzi o usati per pubblicità o profilazione.
 
@@ -40,8 +40,7 @@ I dati **non** vengono venduti, ceduti a terzi o usati per pubblicità o profila
 I dati sono conservati tramite servizi di terze parti che agiscono come fornitori tecnici:
 - **Google Firebase** (autenticazione, database e notifiche push);
 - **Firebase Hosting** di Google (pubblicazione del sito);
-- **Netlify** (elaborazioni lato server, quando saranno attive);
-- un servizio di invio email (Brevo o Resend), solo per le notifiche email.
+- **Netlify** (elaborazioni lato server: generazione automatica delle liste e invio delle notifiche push).
 
 ## Per quanto tempo
 
