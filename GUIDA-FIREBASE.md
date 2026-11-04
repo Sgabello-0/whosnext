@@ -21,7 +21,7 @@ Tempo: circa 10 minuti. Il progetto Firebase è gratuito (piano Spark).
 ## 3. Registra l'app web e copia la configurazione
 
 1. Ingranaggio in alto a sinistra → **Impostazioni progetto** → sezione **Le tue app** → icona **`</>`** (Web).
-2. Nickname: `whosnext`. **Non** spuntare Firebase Hosting (useremo Netlify) → **Registra app**.
+2. Nickname: `whosnext`. Non serve spuntare Firebase Hosting (si attiva da solo al primo `npm run deploy:sito`) → **Registra app**.
 3. Ti mostra un blocco `const firebaseConfig = { ... }`. Nella cartella del progetto:
 
    ```sh
@@ -52,13 +52,13 @@ Firebase crea in automatico una schermata di consenso in modalità **Test**: in 
    - Nome dell'app: `WhosNext`
    - Email di assistenza utenti: il tuo Gmail
    - **Logo: lascialo vuoto** (caricare un logo obbliga a far verificare l'app da Google, con attese di settimane)
-   - Home page dell'applicazione: `https://github.com/Sgabello-0/whosnext`
+   - Home page dell'applicazione: `https://whosnext-4b067.firebaseapp.com` (prima della pubblicazione: `https://github.com/Sgabello-0/whosnext`)
    - Norme sulla privacy: `https://github.com/Sgabello-0/whosnext/blob/main/PRIVACY.md`
    - Termini di servizio: vuoto (facoltativo)
    - Domini autorizzati: lascia quello `….firebaseapp.com` e aggiungi `github.com`
    - Email del contatto sviluppatore: il tuo Gmail → **Salva**
 
-   Quando il sito sarà su Netlify, sostituisci questi due link con quelli del sito.
+   La privacy resta su GitHub: è un indirizzo pubblico e sempre aggiornato.
 5. Stato di pubblicazione: **Pubblica app** → conferma. Diventa **In produzione**.
 
 Usiamo solo nome, email e foto profilo (ambiti `openid`, `email`, `profile`), quindi Google non chiede la verifica dell'app.
@@ -146,6 +146,15 @@ Serve Java (è già installato su questo computer).
 
 > Il **primo** accesso dopo aver avviato l'emulatore a volte resta fermo dopo "Sign in with Google.com" (la finestra finta scarica uno script da Google che la prima volta può bloccarsi). Chiudi la finestra e clicca di nuovo **Accedi con Google**: dalla seconda volta funziona.
 
-## Dopo il deploy su Netlify
+## Pubblicare il sito (Firebase Hosting)
 
-Quando il sito sarà pubblicato (ad esempio `whosnext.netlify.app`), aggiungi quell'indirizzo in **Firebase → Authentication → Impostazioni → Domini autorizzati** e copia le stesse variabili `VITE_*` in **Netlify → Site configuration → Environment variables**.
+```sh
+npm run deploy:sito
+```
+
+Compila il sito con i valori del tuo `.env` e lo pubblica su **https://whosnext-4b067.firebaseapp.com** (e `whosnext-4b067.web.app`). Gratis con il piano Spark, senza carta di credito.
+
+- Ai tester manda l'indirizzo **`.firebaseapp.com`**: è lo stesso dominio del login Google, così l'accesso funziona anche su iPhone con l'app installata.
+- I due domini sono già nei **domini autorizzati** di Authentication: non serve aggiungerli.
+- Gli indirizzi dei tunnel di prova (`….trycloudflare.com`) si possono togliere dai domini autorizzati quando non servono più.
+- L'uso (letture e scritture del database, traffico del sito) si vede in Firebase → Firestore → **Utilizzo** e in Hosting.

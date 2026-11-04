@@ -29,13 +29,15 @@ Piano per il sito della classe, anno scolastico 2026-2027 (fino al 06/06/2027).
 - [x] Comodità: "Le mie interrogazioni" e "Da fare" nella pagina iniziale, messaggi pronti per WhatsApp, condividi la lista, guida per la classe nuova e orario a griglia, conferme con "Annulla", cessione del ruolo di capoclasse, storico delle modifiche alla lista
 - [x] App installabile (PWA), pagine caricate a pezzi, cache dei dati sul dispositivo
 - [ ] Notifiche (inbox, email, push) e job pianificato
-- [ ] Deploy su Netlify
+- [x] Sito online su Firebase Hosting (https://whosnext-4b067.firebaseapp.com): stesso dominio del login, gratis senza carta; `npm run deploy:sito`
+- [ ] Funzioni sul server su Netlify (solo Functions, l'hosting resta su Firebase)
 
 ## Stack (tutto gratuito)
 
 - **Frontend**: React + Vite + TypeScript, Tailwind, `@dnd-kit` per il trascinamento, installabile come PWA (serve per le notifiche push su iPhone).
 - **Login e database**: Firebase (piano Spark): Auth con Google, Firestore in tempo reale.
-- **Hosting e logica protetta**: Netlify + Netlify Functions con `firebase-admin`, per generare la lista, accettare gli scambi (in transazione) e inviare email e push.
+- **Hosting**: Firebase Hosting (deciso il 04/11/2026 al posto di Netlify: stesso progetto, login sullo stesso dominio, gratis senza carta).
+- **Logica protetta**: Netlify Functions con `firebase-admin`, per generare la lista, accettare gli scambi (in transazione) e inviare email e push.
 - **Email**: Brevo o Resend, piano gratuito. **Push**: Firebase Cloud Messaging.
 - **Job pianificato**: Netlify Scheduled Function ogni ora, per le scadenze delle preferenze, la generazione delle liste e i promemoria.
 

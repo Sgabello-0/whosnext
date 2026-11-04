@@ -17,7 +17,8 @@
     "test:regole": "firebase emulators:exec --only firestore --project demo-whosnext \"vitest run --config vitest.rules.config.ts\"",
     "dev:emu": "firebase emulators:exec --only auth,firestore --project demo-whosnext --ui \"vite --mode emulator\"",
     "test:e2e": "firebase emulators:exec --only auth,firestore --project demo-whosnext \"playwright test\"",
-    "deploy:regole": "firebase deploy --only firestore:rules,firestore:indexes"
+    "deploy:regole": "firebase deploy --only firestore:rules,firestore:indexes",
+    "deploy:sito": "npm run build && firebase deploy --only hosting"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

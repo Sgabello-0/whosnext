@@ -39,7 +39,8 @@ I dati **non** vengono venduti, ceduti a terzi o usati per pubblicità o profila
 
 I dati sono conservati tramite servizi di terze parti che agiscono come fornitori tecnici:
 - **Google Firebase** (autenticazione, database e notifiche push);
-- **Netlify** (pubblicazione del sito ed elaborazioni lato server);
+- **Firebase Hosting** di Google (pubblicazione del sito);
+- **Netlify** (elaborazioni lato server, quando saranno attive);
 - un servizio di invio email (Brevo o Resend), solo per le notifiche email.
 
 ## Per quanto tempo

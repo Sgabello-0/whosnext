@@ -17,7 +17,8 @@ Avanzamento dettagliato in [PIANO.md](PIANO.md#avanzamento).
 - ✅ Riordino della lista, chi è stato interrogato, "Sono stato interrogato"
 - ✅ Comodità: "Le mie interrogazioni" e "Da fare", messaggi per WhatsApp, guida della classe nuova, orario a griglia, conferme con "Annulla", cessione del ruolo, storico della lista
 - ✅ App installabile (PWA) e apertura veloce anche offline (cache dei file e dei dati sul dispositivo)
-- ⏳ Prossimo passo: Netlify (pubblicazione, funzioni sul server) per scambi, notifiche e generazione automatica
+- ✅ Online su Firebase Hosting: **https://whosnext-4b067.firebaseapp.com** (anche `whosnext-4b067.web.app`)
+- ⏳ Prossimo passo: funzioni sul server (Netlify Functions, gratis) per scambi, notifiche e generazione automatica
 
 ## Sviluppo
 
@@ -46,7 +47,7 @@ Le icone dell'app (`public/pwa-*.png`, `public/apple-touch-icon.png`) si rigener
 
 ```sh
 npm run deploy:regole  # pubblica firestore.rules e gli indici (serve npx firebase login)
-npm run build          # build di produzione in dist/ (Netlify la fa da solo)
+npm run deploy:sito    # compila (con i valori di .env) e pubblica il sito su Firebase Hosting
 ```
 
 ## Struttura
@@ -60,4 +61,4 @@ tests/regole/   test delle regole (emulatore)
 tests/e2e/      test nel browser (Playwright)
 ```
 
-Stack: React + Vite + TypeScript, Tailwind CSS, Firebase (Auth + Firestore), Netlify (hosting + Functions).
+Stack: React + Vite + TypeScript, Tailwind CSS, Firebase (Auth + Firestore + Hosting), in futuro Netlify Functions per la logica sul server.
