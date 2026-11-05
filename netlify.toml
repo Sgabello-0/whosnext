@@ -3,6 +3,9 @@
 [build]
   command = "echo 'niente da compilare: solo funzioni'"
   publish = "netlify/sito"
+  # Ogni pubblicazione costa crediti (piano gratuito): si pubblica solo se cambia il codice del server.
+  # Exit 0 = salta. L'elenco dei file di src/ usati dal server lo controlla netlify/lib/pubblicazione.test.ts.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- netlify/functions netlify/lib netlify.toml package.json src/lib/calendar.ts src/lib/codici.ts src/lib/crediti.ts src/lib/estimate.ts src/lib/formatoDate.ts src/lib/generateList.ts src/lib/lista.ts src/lib/messaggi.ts ':(exclude)netlify/**/*.test.ts'"
 
 [build.environment]
   # Node 24: Firebase Admin carica "jose" (solo ESM) con require(), che su Node 22 delle funzioni non va
