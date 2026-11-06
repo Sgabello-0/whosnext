@@ -2,9 +2,10 @@
  * "Le mie interrogazioni" e "Da fare": dai dati di ogni interrogazione osservata
  * decide cosa mostrare allo studente e cosa deve fare chi gestisce la classe. Logica pura.
  */
-import { oggiISO, type Calendario, type DataISO } from './calendar'
-import { stimaInterrogazione, testoStima, type Stima } from './estimate'
-import { nonInterrogati, ultimaLezione } from './lista'
+import { momentoLocale, oggiISO, type Calendario, type DataISO } from './calendar'
+import { testoStima, type Stima } from './estimate'
+import { programmaLista } from './programma'
+import { ultimaLezione } from './lista'
 import type { Scelta } from './generateList'
 import type { Ruolo, StatoInterrogazione } from './tipi'
 
@@ -30,9 +31,16 @@ export type InterrogazioneOsservata = {
   /** capo, vice o docente con permesso */
   puoModificare: boolean
   /** undefined = non ancora letta (o non serve); null = nessuna preferenza */
-  miaScelta?: { scelta: Scelta; posizioneDSA: number | null } | null
+  miaScelta?: { scelta: Scelta; dataDSA: string | null } | null
+  /** giorno di creazione (non conta per le date) */
+  creata?: DataISO | null
   /** solo con stato "lista": undefined finché non arriva */
-  lista?: { ordine: string[]; interrogati: Record<string, string>; generata: DataISO | null } | null
+  lista?: {
+    ordine: string[]
+    fissi?: Record<string, string>
+    interrogati: Record<string, string>
+    generata: DataISO | null
+  } | null
   /** solo per capo e vice con stato "raccolta" */
   risposte?: number
   numeroStudenti?: number
@@ -44,9 +52,10 @@ export type InterrogazioneOsservata = {
 
 export type VoceMia =
   | { tipo: 'da-scegliere'; scadenza: number }
-  | { tipo: 'scelta'; scelta: Scelta; posizioneDSA: number | null; scadenza: number }
+  | { tipo: 'scelta'; scelta: Scelta; dataDSA: string | null; scadenza: number }
   | { tipo: 'attesa-lista' }
-  | { tipo: 'in-lista'; posizione: number; totale: number; stima: Stima; testo: string }
+  /** posizione null = data fissa (DSA/BES) */
+  | { tipo: 'in-lista'; posizione: number | null; totale: number; stima: Stima; testo: string }
   | { tipo: 'docente-lista'; interrogati: number; totale: number }
 
 export type VoceDaFare =
@@ -58,31 +67,40 @@ export type VoceDaFare =
 
 /** Cosa vede lo studente (o il docente) per questa interrogazione; null se niente. */
 export function voceMia(d: InterrogazioneOsservata, adesso: Date): VoceMia | null {
-  const oggi = oggiISO(adesso)
   if (d.stato === 'raccolta') {
     if (d.ruolo === 'docente' || d.miaScelta === undefined) return null
     if (d.scadenza <= adesso.getTime()) return { tipo: 'attesa-lista' }
     if (d.miaScelta === null) return { tipo: 'da-scegliere', scadenza: d.scadenza }
-    return { tipo: 'scelta', scelta: d.miaScelta.scelta, posizioneDSA: d.miaScelta.posizioneDSA, scadenza: d.scadenza }
+    return { tipo: 'scelta', scelta: d.miaScelta.scelta, dataDSA: d.miaScelta.dataDSA, scadenza: d.scadenza }
   }
   if (d.stato !== 'lista' || !d.lista) return null
   const { ordine, interrogati } = d.lista
+  const fissi = d.lista.fissi ?? {}
+  const tutti = [...ordine, ...Object.keys(fissi)]
   if (d.ruolo === 'docente') {
-    return { tipo: 'docente-lista', interrogati: ordine.filter((u) => interrogati[u]).length, totale: ordine.length }
+    return { tipo: 'docente-lista', interrogati: tutti.filter((u) => interrogati[u]).length, totale: tutti.length }
   }
   const posizione = ordine.indexOf(d.mioUid)
-  if (posizione < 0 || interrogati[d.mioUid]) return null
-  const mancanti = nonInterrogati(ordine, interrogati)
-  const stima = stimaInterrogazione({
-    k: mancanti.indexOf(d.mioUid),
+  if ((posizione < 0 && !(d.mioUid in fissi)) || interrogati[d.mioUid]) return null
+  const { stime } = programmaLista({
+    ordine,
+    fissi,
+    interrogati,
     perLezione: d.perLezione,
     giorni: d.giorni,
     subjectId: d.subjectId,
     cal: d.cal,
-    da: oggi,
-    giaInterrogatiDa: Object.values(interrogati).filter((x) => x === oggi).length,
+    adesso: momentoLocale(adesso),
+    creata: d.creata,
   })
-  return { tipo: 'in-lista', posizione: posizione + 1, totale: ordine.length, stima, testo: testoStima(stima) }
+  const stima = stime.get(d.mioUid) ?? { tipo: 'non-disponibile', prossimaLezione: null }
+  return {
+    tipo: 'in-lista',
+    posizione: posizione >= 0 ? posizione + 1 : null,
+    totale: ordine.length,
+    stima,
+    testo: testoStima(stima),
+  }
 }
 
 /** Cosa c'è da fare per chi gestisce la classe, in ordine di urgenza. */
@@ -104,7 +122,7 @@ export function vociDaFare(d: InterrogazioneOsservata, adesso: Date): VoceDaFare
       lezione &&
       (!generata || lezione >= generata) &&
       !qualcunoQuelGiorno &&
-      nonInterrogati(ordine, interrogati).length > 0
+      [...ordine, ...Object.keys(d.lista.fissi ?? {})].some((u) => !interrogati[u])
     ) {
       voci.push({ tipo: 'segna', data: lezione })
     }
@@ -130,7 +148,7 @@ export function pesoMia(v: VoceMia, d: InterrogazioneOsservata): [number, number
     case 'in-lista':
       if (v.stima.tipo === 'data') return [1, v.stima.data]
       if (v.stima.tipo === 'lezioni') return [2, v.stima.tra]
-      return [3, v.posizione]
+      return [3, v.posizione ?? 0]
     case 'scelta':
       return [4, v.scadenza]
     case 'attesa-lista':

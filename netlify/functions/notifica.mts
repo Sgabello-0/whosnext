@@ -1,27 +1,17 @@
 /**
  * Il sito chiama questo indirizzo subito dopo un'azione che merita un avviso:
  * POST /api/notifica { tipo, classId, subjectId, interrogazioneId, id? } con il token di Firebase.
+ * tipo: 'nuova-interrogazione' | 'lista-pronta' | 'scambio-richiesta' (id = richiesta).
  * Il server controlla nel database che l'azione sia davvero avvenuta, e da chi, prima di avvisare.
  */
 import type { Config } from '@netlify/functions'
 import { database } from '../lib/admin'
-import { avvisaEsitoScambio, avvisaListaPronta, avvisaRichiestaScambio } from '../lib/eventi'
+import { risposta } from '../lib/http'
+import { avvisaListaPronta, avvisaNuovaInterrogazione, avvisaRichiestaScambio } from '../lib/eventi'
 import { postinoVero } from '../lib/postinoVero'
 import { uidDalToken } from '../lib/token'
 
-const ORIGINI = (process.env.ORIGINI_PERMESSE ?? 'https://whos-next.web.app,http://localhost:5173').split(',')
 const ID = /^[A-Za-z0-9_-]{1,128}$/
-
-function risposta(stato: number, corpo: unknown, origine: string | null): Response {
-  const intestazioni: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (origine && ORIGINI.includes(origine)) {
-    intestazioni['Access-Control-Allow-Origin'] = origine
-    intestazioni['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
-    intestazioni['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-    intestazioni['Vary'] = 'Origin'
-  }
-  return new Response(stato === 204 ? null : JSON.stringify(corpo), { status: stato, headers: intestazioni })
-}
 
 export default async function notifica(req: Request) {
   const origine = req.headers.get('origin')
@@ -50,11 +40,9 @@ export default async function notifica(req: Request) {
   const postino = postinoVero()
   let esito: unknown
   if (tipo === 'lista-pronta') esito = await avvisaListaPronta(db, postino, r, new Date())
-  else if ((tipo === 'scambio-richiesta' || tipo === 'scambio-esito') && typeof id === 'string' && ID.test(id)) {
-    esito =
-      tipo === 'scambio-richiesta'
-        ? await avvisaRichiestaScambio(db, postino, r, id, uid)
-        : await avvisaEsitoScambio(db, postino, r, id, uid)
+  else if (tipo === 'nuova-interrogazione') esito = await avvisaNuovaInterrogazione(db, postino, r, uid, new Date())
+  else if (tipo === 'scambio-richiesta' && typeof id === 'string' && ID.test(id)) {
+    esito = await avvisaRichiestaScambio(db, postino, r, id, uid)
   } else return risposta(400, { errore: 'tipo sconosciuto' }, origine)
   return risposta(200, { esito }, origine)
 }

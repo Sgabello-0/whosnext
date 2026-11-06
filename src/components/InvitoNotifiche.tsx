@@ -63,8 +63,8 @@ export function InvitoNotifiche() {
       </span>
       <div className="min-w-0 flex-1 space-y-3">
         <div>
-          <p className="font-semibold">Vuoi ricevere un avviso quando la lista è pubblicata?</p>
-          <p className="text-sm text-slate-600 dark:text-slate-400">Anche per le richieste di scambio e la sera prima dell'interrogazione prevista. Nient'altro.</p>
+          <p className="font-semibold">Vuoi ricevere un avviso quando la lista è generata?</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Anche quando c'è una nuova interrogazione, per le richieste di scambio e la sera prima dell'interrogazione. Nient'altro.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Bottone variante="primario" disabled={inCorso} onClick={attiva}>

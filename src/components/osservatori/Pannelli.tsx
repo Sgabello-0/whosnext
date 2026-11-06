@@ -4,7 +4,7 @@ import { confrontaDaFare, confrontaMie, voceMia, vociDaFare, type Interrogazione
 import { formattaScadenza, tempoMancante } from '../../lib/formatoDate'
 import { percorsoInterrogazione } from '../../lib/messaggi'
 import { useInterrogazioniOsservate } from '../../lib/raccolta'
-import { ETICHETTA_SCELTA } from '../../lib/testiPreferenze'
+import { descriviScelta } from '../../lib/testiPreferenze'
 import { useAdesso } from '../../lib/useAdesso'
 import { Pallino, RigaLink, Scheda, Vuoto } from '../ui'
 
@@ -86,7 +86,7 @@ function DescrizioneMia({ v, adesso }: { v: VoceMia; adesso: Date }) {
     case 'scelta':
       return (
         <>
-          Hai scelto: {v.scelta === 'posizione' ? `posizione n° ${v.posizioneDSA}` : ETICHETTA_SCELTA[v.scelta].toLowerCase()}
+          Hai scelto: {descriviScelta(v)}
           {' · '}lista dopo {formattaScadenza(new Date(v.scadenza))}
         </>
       )
@@ -95,10 +95,7 @@ function DescrizioneMia({ v, adesso }: { v: VoceMia; adesso: Date }) {
     case 'in-lista':
       return (
         <>
-          <strong>
-            n° {v.posizione} di {v.totale}
-          </strong>{' '}
-          · {v.testo}
+          <strong>{v.posizione === null ? 'Data fissa' : `n° ${v.posizione} di ${v.totale}`}</strong> · {v.testo}
         </>
       )
     case 'docente-lista':
@@ -114,7 +111,7 @@ function DescrizioneMia({ v, adesso }: { v: VoceMia; adesso: Date }) {
 function SimboloMia({ v }: { v: VoceMia }) {
   switch (v.tipo) {
     case 'in-lista':
-      return <Pallino colore="pieno">{v.posizione}°</Pallino>
+      return v.posizione === null ? <Pallino icona={CalendarCheck} colore="pieno" /> : <Pallino colore="pieno">{v.posizione}°</Pallino>
     case 'da-scegliere':
       return <Pallino icona={Hourglass} colore="ambra" />
     case 'scelta':

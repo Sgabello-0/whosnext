@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { ArrowLeftRight, Bell, CircleCheck, ExternalLink, LogOut, MonitorSmartphone, Moon, Palette, ShieldCheck, Smartphone, Sun, UserRound } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { getDoc } from 'firebase/firestore'
+import { ArrowLeftRight, Bell, CircleCheck, ExternalLink, LogOut, MessageSquareText, MonitorSmartphone, Moon, Palette, Send, ShieldCheck, Smartphone, Sparkles, Sun, UserRound } from 'lucide-react'
 import { useAuth, useProfilo } from '../lib/auth'
 import { db } from '../lib/firebase'
-import { queryMieIscrizioni, rifUtente } from '../lib/classi'
+import { mostraMioDSA, queryMieIscrizioni, rifDSAMembro, rifUtente } from '../lib/classi'
+import { feedbackAttivo, inviaFeedback, MAX_FEEDBACK } from '../lib/feedback'
 import { messaggioErrore } from '../lib/errori'
 import { useDocumento, useQuery } from '../lib/hooks'
 import { tipoTelefono, useInstallazione } from '../lib/installazione'
@@ -13,7 +15,7 @@ import { impostaTema, useTema, type Tema } from '../lib/tema'
 import type { ImpostazioniUtente, Membro } from '../lib/tipi'
 import { useAvvisi } from '../components/Avvisi'
 import { IstruzioniInstallazione, Vantaggi } from '../components/InstallaApp'
-import { Avatar, Badge, Bottone, IntestazionePagina, Scheda } from '../components/ui'
+import { Avatar, Badge, Bottone, CLASSE_INPUT, IntestazionePagina, Scheda } from '../components/ui'
 import { CREDITI } from '../lib/crediti'
 
 const PRIVACY = 'https://github.com/Sgabello-0/whosnext/blob/main/PRIVACY.md'
@@ -48,13 +50,15 @@ export default function Impostazioni() {
       {/* finché il server delle notifiche non è collegato, gli interruttori non servirebbero a niente */}
       {profilo.tipo === 'studente' && serverAttivo && <ImpostazioniNotifiche />}
       {profilo.tipo === 'studente' && <ImpostazioneScambi />}
+      {profilo.tipo === 'studente' && <ImpostazioneDSA />}
       <ImpostazioneTema />
       <AppSulTelefono />
+      {feedbackAttivo && <Feedback />}
 
       <Scheda titolo="Privacy" icona={ShieldCheck}>
         <p className="text-sm text-slate-600 dark:text-slate-400">
           WhosNext usa solo nome, email e foto del tuo account della scuola. I compagni vedono il tuo nome e la tua posizione nelle
-          liste; il badge DSA/BES lo vedono solo capoclasse e vice.
+          liste; il badge DSA/BES lo vedono capoclasse e vice e, se lo lasci visibile, i compagni.
         </p>
         <a
           href={PRIVACY}
@@ -158,10 +162,10 @@ function ImpostazioniNotifiche() {
         <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-950/50 dark:text-slate-400">
           <p className="mb-1.5 font-medium text-slate-700 dark:text-slate-300">Ricevi una notifica solo quando:</p>
           <ul className="list-disc space-y-0.5 pl-5">
-            <li>la lista è pubblicata, con la tua posizione</li>
-            <li>ricevi una richiesta di scambio o una risposta alla tua</li>
-            <li>la scadenza per indicare la preferenza è vicina</li>
-            <li>la sera prima dell'interrogazione prevista</li>
+            <li>c'è una nuova interrogazione: scegli il posto</li>
+            <li>la lista è generata, con la tua posizione</li>
+            <li>domani sei interrogato (la sera prima)</li>
+            <li>un compagno ti richiede uno scambio</li>
           </ul>
         </div>
       </div>
@@ -224,6 +228,130 @@ function ImpostazioneScambi() {
           className="mt-1 size-5 shrink-0 accent-accento"
         />
       </label>
+    </Scheda>
+  )
+}
+
+/**
+ * Badge DSA/BES: lo studente decide se mostrarlo ai compagni (in tutte le classi in cui ce l'ha).
+ * Capoclasse e vice lo vedono sempre. Compare solo a chi ha il badge.
+ */
+function ImpostazioneDSA() {
+  const profilo = useProfilo()
+  const avvisi = useAvvisi()
+  const iscrizioni = useQuery<Membro>(db && queryMieIscrizioni(db, profilo.uid), `iscrizioni/${profilo.uid}`)
+  // classId → visibile, solo per le classi in cui ho il badge
+  const [badge, setBadge] = useState<Map<string, boolean> | null>(null)
+  const [inCorso, setInCorso] = useState(false)
+  const classi = (iscrizioni.dati ?? []).filter((m) => m.ruolo !== 'docente').map((m) => m.percorso.split('/')[1]!)
+  const chiave = classi.join()
+
+  useEffect(() => {
+    if (!db || !iscrizioni.dati) return
+    const d = db
+    let attivo = true
+    Promise.all(chiave.split(',').filter(Boolean).map(async (c) => [c, await getDoc(rifDSAMembro(d, c, profilo.uid))] as const))
+      .then((risultati) => {
+        if (!attivo) return
+        setBadge(new Map(risultati.filter(([, s]) => s.exists()).map(([c, s]) => [c, s.data()?.visibile === true])))
+      })
+      .catch(() => attivo && setBadge(new Map()))
+    return () => {
+      attivo = false
+    }
+  }, [chiave, iscrizioni.dati, profilo.uid])
+
+  if (!badge || badge.size === 0) return null
+  const visibile = [...badge.values()].every(Boolean)
+
+  async function cambia(mostra: boolean) {
+    if (!db || !badge) return
+    const d = db
+    const conBadge = [...badge.keys()]
+    const prima = badge
+    // l'interruttore si sposta subito; torna com'era se il salvataggio non riesce
+    setBadge(new Map(conBadge.map((c) => [c, mostra])))
+    setInCorso(true)
+    try {
+      await mostraMioDSA(d, conBadge, profilo.uid, mostra)
+      avvisi.mostra(mostra ? 'Il badge DSA/BES ora è visibile ai compagni' : 'Il badge DSA/BES ora è nascosto ai compagni', {
+        annulla: async () => {
+          await mostraMioDSA(d, conBadge, profilo.uid, !mostra)
+          setBadge(new Map(conBadge.map((c) => [c, !mostra])))
+        },
+      })
+    } catch (e) {
+      setBadge(prima)
+      avvisi.errore(messaggioErrore(e))
+    } finally {
+      setInCorso(false)
+    }
+  }
+
+  return (
+    <Scheda titolo="Badge DSA/BES" icona={Sparkles}>
+      <Interruttore
+        titolo="Mostra il badge ai compagni"
+        testo={
+          visibile
+            ? 'I compagni vedono il badge accanto al tuo nome. Capoclasse e vice lo vedono sempre.'
+            : 'Il badge lo vedono solo capoclasse e vice. Nella lista compari comunque nel giorno che hai scelto.'
+        }
+        icona={Sparkles}
+        acceso={visibile}
+        disattivo={inCorso}
+        onCambia={cambia}
+      />
+    </Scheda>
+  )
+}
+
+/** Un messaggio per chi ha creato WhosNext: problemi, idee, suggerimenti. */
+function Feedback() {
+  const avvisi = useAvvisi()
+  const [testo, setTesto] = useState('')
+  const [inCorso, setInCorso] = useState(false)
+  const [errore, setErrore] = useState<string | null>(null)
+
+  async function invia(e: FormEvent) {
+    e.preventDefault()
+    setInCorso(true)
+    setErrore(null)
+    try {
+      await inviaFeedback(testo)
+      setTesto('')
+      avvisi.mostra('Feedback inviato: grazie!')
+    } catch (err) {
+      setErrore(messaggioErrore(err))
+    } finally {
+      setInCorso(false)
+    }
+  }
+
+  return (
+    <Scheda titolo="Feedback" icona={MessageSquareText} sottotitolo="Un problema, un'idea, qualcosa da migliorare? Scrivilo qui.">
+      <form onSubmit={invia} className="space-y-3">
+        <label className="block text-sm">
+          <span className="sr-only">Il tuo feedback</span>
+          <textarea
+            value={testo}
+            onChange={(e) => setTesto(e.target.value)}
+            maxLength={MAX_FEEDBACK}
+            rows={4}
+            placeholder="Scrivi qui il tuo messaggio…"
+            className={`${CLASSE_INPUT} resize-y`}
+          />
+        </label>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-slate-600 dark:text-slate-400">
+            Insieme al messaggio arrivano il tuo nome e la tua email. {testo.length}/{MAX_FEEDBACK}
+          </span>
+          <Bottone type="submit" icona={Send} disabled={inCorso || testo.trim().length < 3}>
+            {inCorso ? 'Invio…' : 'Invia'}
+          </Bottone>
+        </div>
+        {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
+      </form>
     </Scheda>
   )
 }

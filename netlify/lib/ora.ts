@@ -1,5 +1,5 @@
 /** Date e ore in Italia (il server gira in UTC). */
-import { aggiungiGiorni, type DataISO } from '../../src/lib/calendar'
+import { aggiungiGiorni, type DataISO, type Momento } from '../../src/lib/calendar'
 
 const FUSO = 'Europe/Rome'
 
@@ -38,4 +38,9 @@ export function scadenzaItalia(d: Date): string {
 /** "20:00" in ora italiana. */
 export function oraMinutiItalia(d: Date): string {
   return new Intl.DateTimeFormat('it-IT', { timeZone: FUSO, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d)
+}
+
+/** Giorno e ora in Italia, per il calendario della scuola. */
+export function momentoItalia(d: Date): Momento {
+  return { oggi: dataItalia(d), ora: oraMinutiItalia(d) }
 }

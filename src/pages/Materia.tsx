@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router'
 import { CalendarDays, CheckCheck, ClipboardList, Hourglass, ListOrdered, Plus } from 'lucide-react'
 import { orderBy, query } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { avvisaServer } from '../lib/avvisaServer'
 import { creaInterrogazione, rifInterrogazioni, rifMateria } from '../lib/configurazione'
 import { messaggioErrore } from '../lib/errori'
 import { formattaScadenza } from '../lib/formatoDate'
@@ -69,6 +70,7 @@ export default function Materia() {
                 onAnnulla={() => setNuova(false)}
                 onSalva={async (d) => {
                   const id = await creaInterrogazione(db!, classId, subjectId, d, dati.io.uid)
+                  avvisaServer('nuova-interrogazione', { classId, subjectId, interrogazioneId: id })
                   avvisi.mostra('Interrogazione creata: ora tutti possono scegliere la preferenza')
                   navigate(`/classe/${classId}/materia/${subjectId}/interrogazione/${id}`)
                 }}

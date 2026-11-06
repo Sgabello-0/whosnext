@@ -1,5 +1,5 @@
 /**
- * Dopo un'azione che merita una notifica (scambio chiesto o risposto, lista generata a mano)
+ * Dopo un'azione che merita una notifica (interrogazione creata, lista generata a mano, scambio chiesto)
  * il sito lo dice al server, che controlla e avvisa. Se il server non è configurato non fa niente;
  * se non risponde pazienza: l'azione è comunque fatta.
  */
@@ -11,7 +11,7 @@ export const serverAttivo = !!URL_NOTIFICHE
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
 
-export function avvisaServer(tipo: 'lista-pronta' | 'scambio-richiesta' | 'scambio-esito', r: Rif, id?: string): void {
+export function avvisaServer(tipo: 'nuova-interrogazione' | 'lista-pronta' | 'scambio-richiesta', r: Rif, id?: string): void {
   const utente = auth?.currentUser
   if (!URL_NOTIFICHE || !utente) return
   void (async () => {

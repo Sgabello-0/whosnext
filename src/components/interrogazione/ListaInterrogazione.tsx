@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { db } from '../../lib/firebase'
-import { formattaGiorno, oggiISO, type Calendario } from '../../lib/calendar'
+import { formattaGiorno, momentoLocale, oggiISO, type Calendario } from '../../lib/calendar'
 import { rifLista, rifRapporto } from '../../lib/configurazione'
 import { messaggioErrore } from '../../lib/errori'
-import { stimaInterrogazione, testoStima } from '../../lib/estimate'
+import { testoStima } from '../../lib/estimate'
+import { programmaLista } from '../../lib/programma'
+import { useAdesso } from '../../lib/useAdesso'
 import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { useDocumento } from '../../lib/hooks'
-import { nonInterrogati } from '../../lib/lista'
 import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/tipi'
 import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda, Soffietto } from '../ui'
-import { ArrowLeftRight, ArrowUpDown, ChartPie, Check, ListOrdered, PartyPopper, Undo2 } from 'lucide-react'
+import { ArrowLeftRight, CalendarCheck, ChartPie, Check, ListOrdered, PartyPopper, Pencil, Undo2 } from 'lucide-react'
 import { useConferma } from '../Conferma'
 import { annullaScambio, chiediScambio, richiestaInAttesa, validita } from '../../lib/scambi'
 import { PannelloScambi, useRifiutoAutomatico, useScambi } from './Scambi'
@@ -34,6 +35,8 @@ type Props = {
   staff: boolean
   /** capo, vice e docenti con permesso: riordinano e segnano gli interrogati */
   puoModificare: boolean
+  /** uid con il badge DSA/BES visibile a chi guarda */
+  dsa: Set<string>
   nomeMateria: string
 }
 
@@ -44,6 +47,8 @@ export function ListaInterrogazione(p: Props) {
   const [errore, setErrore] = useState<string | null>(null)
   const avvisi = useAvvisi()
   const conferma = useConferma()
+  // si aggiorna da solo: all'ora di uscita chi non è stato interrogato slitta alla lezione dopo
+  const adesso = useAdesso()
   const r = { classId: p.classId, subjectId: p.subjectId, interrogazioneId: p.interrogazioneId }
   const ioMembro = p.membri.find((m) => m.uid === p.mioUid)
   const vuota: DocLista = { ordine: [], interrogati: {}, generataDa: '' }
@@ -60,24 +65,31 @@ export function ListaInterrogazione(p: Props) {
   if (lista.dati === null) return <Riquadro tono="avviso">La lista non è ancora disponibile.</Riquadro>
 
   const { ordine, interrogati } = lista.dati
+  const fissi = lista.dati.fissi ?? {}
   const perUid = new Map(p.membri.map((m) => [m.uid, m]))
-  const oggi = oggiISO()
-  // k = posizione tra i non ancora interrogati
-  const mancanti = nonInterrogati(ordine, interrogati)
-  const interrogatiOggi = Object.values(interrogati).filter((d) => d === oggi).length
-  const stima = (uid: string) =>
-    testoStima(
-      stimaInterrogazione({
-        k: mancanti.indexOf(uid),
-        perLezione: p.interrogazione.perLezione,
-        giorni: p.interrogazione.giorni,
-        subjectId: p.subjectId,
-        cal: p.cal,
-        da: oggi,
-        giaInterrogatiDa: interrogatiOggi,
-      }),
-    )
+  const programma = programmaLista({
+    ordine,
+    fissi,
+    interrogati,
+    perLezione: p.interrogazione.perLezione,
+    giorni: p.interrogazione.giorni,
+    subjectId: p.subjectId,
+    cal: p.cal,
+    adesso: momentoLocale(adesso),
+    creata: p.interrogazione.creato ? oggiISO(p.interrogazione.creato.toDate()) : null,
+  })
+  const stimaDi = (uid: string) => programma.stime.get(uid) ?? null
+  const stima = (uid: string) => {
+    const s = stimaDi(uid)
+    return s ? testoStima(s) : 'Stima non disponibile'
+  }
+  const totale = programma.righe.length
+  const fatti = programma.righe.filter((x) => x.interrogato).length
   const miaPosizione = ordine.indexOf(p.mioUid)
+  const miaData = fissi[p.mioUid]
+  const miaStima = stimaDi(p.mioUid)
+  // DSA/BES: la data effettiva (se la lezione scelta è passata senza interrogazione, quella dopo)
+  const dataEffettiva = miaStima?.tipo === 'data' ? miaStima.data : null
 
   async function chiediA(uid: string) {
     if (!db || !lista.dati) return
@@ -122,7 +134,7 @@ export function ListaInterrogazione(p: Props) {
 
   return (
     <>
-      {miaPosizione >= 0 && (
+      {(miaPosizione >= 0 || miaData) && (
         <section
           role="status"
           className={`flex gap-4 rounded-2xl p-4 shadow-sm sm:p-5 ${
@@ -137,18 +149,36 @@ export function ListaInterrogazione(p: Props) {
           >
             {/* il numero "salta" quando cambia (scambio, riordino) */}
             <span key={interrogati[p.mioUid] ? 'fatto' : miaPosizione} className="pop">
-              {interrogati[p.mioUid] ? <Check className="size-8" /> : miaPosizione + 1}
+              {interrogati[p.mioUid] ? (
+                <Check className="size-8" />
+              ) : miaData ? (
+                <CalendarCheck className="size-8" />
+              ) : (
+                miaPosizione + 1
+              )}
             </span>
           </span>
           <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-lg font-bold">{`Sei il n° ${miaPosizione + 1} di ${ordine.length}`}</p>
+            <p className="text-lg font-bold">
+              {miaData
+                ? interrogati[p.mioUid]
+                  ? 'Data scelta'
+                  : `Interrogazione ${dataEffettiva ? formattaGiorno(dataEffettiva).toLowerCase() : 'da fissare'}`
+                : `Sei il n° ${miaPosizione + 1} di ${ordine.length}`}
+            </p>
             {interrogati[p.mioUid] ? (
               <p className="text-emerald-50">
                 Sei stato interrogato {formattaGiorno(interrogati[p.mioUid]!).toLowerCase()}.
               </p>
             ) : (
               <div className="space-y-3">
-                <p className="text-blue-50">{stima(p.mioUid)}</p>
+                <p className="text-blue-50">
+                  {miaData
+                    ? dataEffettiva && dataEffettiva !== miaData
+                      ? `Avevi scelto ${formattaGiorno(miaData).toLowerCase()}: non sei stato interrogato, quindi passi alla lezione successiva.`
+                      : 'Hai scelto tu la data (DSA/BES): resta fissa anche se la lista cambia.'
+                    : stima(p.mioUid)}
+                </p>
                 {/* chi modifica le liste si segna da solo nella scheda qui sotto */}
                 {!p.puoModificare && <SonoStatoInterrogato r={r} uid={p.mioUid} />}
               </div>
@@ -182,10 +212,11 @@ export function ListaInterrogazione(p: Props) {
         <>
           <Segnalazioni r={r} membri={perUid} mioUid={p.mioUid} />
           <SegnaInterrogati
-            key={`${mancanti.slice(0, 10).join()}|${p.interrogazione.perLezione}`}
+            key={`${ordine.filter((u) => !interrogati[u]).slice(0, 10).join()}|${Object.keys(fissi).filter((u) => !interrogati[u]).join()}|${p.interrogazione.perLezione}`}
             r={r}
             interrogazione={p.interrogazione}
             ordine={ordine}
+            fissi={fissi}
             interrogati={interrogati}
             membri={perUid}
             cal={p.cal}
@@ -198,6 +229,7 @@ export function ListaInterrogazione(p: Props) {
         <RiordinaLista
           r={r}
           ordine={ordine}
+          fissi={fissi}
           interrogati={interrogati}
           membri={perUid}
           mioUid={p.mioUid}
@@ -207,11 +239,11 @@ export function ListaInterrogazione(p: Props) {
         <Scheda
           titolo="Lista"
           icona={ListOrdered}
-          sottotitolo={`${ordine.length - mancanti.length} su ${ordine.length} interrogati`}
+          sottotitolo={`${fatti} su ${totale} interrogati`}
           azioni={
-            p.puoModificare ? (
-              <Bottone variante="piccolo" icona={ArrowUpDown} onClick={() => setRiordino(true)}>
-                Riordina
+            p.puoModificare && ordine.length > 1 ? (
+              <Bottone variante="piccolo" icona={Pencil} aria-label="Modifica la lista" onClick={() => setRiordino(true)}>
+                Modifica
               </Bottone>
             ) : undefined
           }
@@ -222,10 +254,11 @@ export function ListaInterrogazione(p: Props) {
             </div>
           )}
           <ol className="divide-y divide-slate-100 dark:divide-slate-800" aria-label="Ordine delle interrogazioni">
-            {ordine.map((uid, i) => {
+            {programma.righe.map(({ uid, numero, fissa }) => {
               const m = perUid.get(uid)
               const io = uid === p.mioUid
               const quando = interrogati[uid]
+              const i = numero === null ? -1 : numero - 1
               return (
                 <li
                   key={uid}
@@ -238,7 +271,13 @@ export function ListaInterrogazione(p: Props) {
                         : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                     }`}
                   >
-                    {quando ? <Check aria-label="interrogato" className="size-4" /> : i + 1}
+                    {quando ? (
+                      <Check aria-label="interrogato" className="size-4" />
+                    ) : fissa ? (
+                      <CalendarCheck aria-label="data fissa" className="size-4" />
+                    ) : (
+                      numero
+                    )}
                   </span>
                   <Avatar nome={m?.nome ?? '?'} foto={m?.foto ?? null} />
                   <div className="min-w-0 flex-1">
@@ -247,11 +286,13 @@ export function ListaInterrogazione(p: Props) {
                         {m?.nome ?? 'Ex membro'}
                       </span>
                       {io && <Badge>tu</Badge>}
+                      {p.dsa.has(uid) && <Badge colore="ambra">DSA/BES</Badge>}
+                      {fissa && !quando && <Badge colore="viola">data fissa</Badge>}
                       {quando && <Badge colore="verde">interrogato</Badge>}
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-400">{quando ? formattaGiorno(quando) : stima(uid)}</p>
                   </div>
-                  {possoScambiare && uid !== p.mioUid && !quando && !riordino && (
+                  {possoScambiare && numero !== null && uid !== p.mioUid && !quando && !riordino && (
                     richiestaInAttesa(scambi.mie, i, lista.dati!) ? (
                       <Badge colore="viola">richiesta inviata</Badge>
                     ) : m && !m.rifiutaScambi ? (
@@ -287,7 +328,8 @@ export function ListaInterrogazione(p: Props) {
                 materia: p.nomeMateria,
                 interrogazione: p.interrogazione.nome,
                 link: linkAssoluto(percorsoInterrogazione(p.classId, p.subjectId, p.interrogazioneId)),
-                righe: ordine.map((uid) => ({
+                righe: programma.righe.map(({ uid, numero }) => ({
+                  numero,
                   nome: perUid.get(uid)?.nome ?? 'Ex membro',
                   interrogato: !!interrogati[uid],
                   nota: interrogati[uid] ? `interrogato ${formattaGiorno(interrogati[uid]!)}` : stima(uid),
@@ -324,7 +366,11 @@ function RapportoSoddisfazione(p: Props) {
         {riga('Inizio ottenuto', r.inizio.ottenute, r.inizio.richieste)}
         {riga('Metà ottenuta', r.meta.ottenute, r.meta.richieste)}
         {riga('Fine ottenuta', r.fine.ottenute, r.fine.richieste)}
-        {riga('DSA/BES alla posizione esatta', r.dsa.esatte, r.dsa.richieste)}
+        {r.dsa.richieste > 0 && (
+          <li>
+            DSA/BES con la data scelta: <strong>{r.dsa.richieste}</strong>
+          </li>
+        )}
         <li className="text-xs text-slate-600 dark:text-slate-400">
           Seme del sorteggio: {r.seme}. Il rapporto si riferisce alla lista appena generata, prima di eventuali
           riordini.

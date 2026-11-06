@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import {
+  collection,
   doc,
   getDoc,
   getDocs,
@@ -75,7 +76,7 @@ describe('preferenze', () => {
     await assertSucceeds(salvaPreferenza(dbDi(env, bruno), r, 'bruno', 'fine'))
     await assertSucceeds(salvaPreferenza(dbDi(env, bruno), r, 'bruno', 'indifferente'))
     const d = (await getDoc(rifPreferenza(dbDi(env, bruno), r.classId, r.subjectId, r.interrogazioneId, 'bruno'))).data()
-    expect(d).toMatchObject({ scelta: 'indifferente', posizioneDSA: null })
+    expect(d).toMatchObject({ scelta: 'indifferente', dataDSA: null })
     await assertSucceeds(togliPreferenza(dbDi(env, bruno), r, 'bruno'))
   })
 
@@ -90,21 +91,28 @@ describe('preferenze', () => {
     await assertFails(salvaPreferenza(dbDi(env, bianchi), r, 'bianchi', 'fine'))
   })
 
-  it('la posizione esatta solo con il badge DSA/BES', async () => {
+  it('il giorno scelto solo con il badge DSA/BES', async () => {
     const r = await interrogazioneAperta()
-    await assertSucceeds(salvaPreferenza(dbDi(env, carla), r, 'carla', 'posizione', 1))
-    await assertFails(salvaPreferenza(dbDi(env, bruno), r, 'bruno', 'posizione', 1))
+    await assertSucceeds(salvaPreferenza(dbDi(env, carla), r, 'carla', 'data', '2026-11-10'))
+    await assertFails(salvaPreferenza(dbDi(env, bruno), r, 'bruno', 'data', '2026-11-10'))
     // valori non validi scritti direttamente
     const rif = rifPreferenza(dbDi(env, carla), r.classId, r.subjectId, r.interrogazioneId, 'carla')
-    await assertFails(setDoc(rif, { scelta: 'posizione', posizioneDSA: 0, aggiornato: serverTimestamp() }))
-    await assertFails(setDoc(rif, { scelta: 'posizione', posizioneDSA: '1', aggiornato: serverTimestamp() }))
-    await assertFails(setDoc(rif, { scelta: 'inizio', posizioneDSA: 3, aggiornato: serverTimestamp() }))
-    await assertFails(setDoc(rif, { scelta: 'primo!', posizioneDSA: null, aggiornato: serverTimestamp() }))
+    await assertFails(setDoc(rif, { scelta: 'data', dataDSA: '10/11/2026', aggiornato: serverTimestamp() }))
+    await assertFails(setDoc(rif, { scelta: 'data', dataDSA: null, aggiornato: serverTimestamp() }))
+    await assertFails(setDoc(rif, { scelta: 'data', dataDSA: 20261110, aggiornato: serverTimestamp() }))
+    await assertFails(setDoc(rif, { scelta: 'inizio', dataDSA: '2026-11-10', aggiornato: serverTimestamp() }))
+    await assertFails(setDoc(rif, { scelta: 'primo!', dataDSA: null, aggiornato: serverTimestamp() }))
+    // la vecchia "posizione esatta" non c'è più
+    await assertFails(setDoc(rif, { scelta: 'posizione', posizioneDSA: 1, aggiornato: serverTimestamp() }))
+    await assertSucceeds(setDoc(rif, { scelta: 'fine', dataDSA: null, aggiornato: serverTimestamp() }))
+    // la versione vecchia del sito scrive ancora posizioneDSA: null
+    await assertSucceeds(setDoc(rif, { scelta: 'fine', posizioneDSA: null, aggiornato: serverTimestamp() }))
+    await assertFails(setDoc(rif, { scelta: 'fine', posizioneDSA: 2, aggiornato: serverTimestamp() }))
   })
 
   it('ognuno vede solo la propria; capo e vice le vedono tutte; i docenti no', async () => {
     const r = await interrogazioneAperta()
-    await salvaPreferenza(dbDi(env, carla), r, 'carla', 'posizione', 2)
+    await salvaPreferenza(dbDi(env, carla), r, 'carla', 'data', '2026-11-12')
     await assertSucceeds(getDoc(rifPreferenza(dbDi(env, carla), r.classId, r.subjectId, r.interrogazioneId, 'carla')))
     await assertFails(getDoc(rifPreferenza(dbDi(env, rossi), r.classId, r.subjectId, r.interrogazioneId, 'carla')))
     await assertSucceeds(getDocs(rifPreferenze(dbDi(env, anna), r.classId, r.subjectId, r.interrogazioneId)))
@@ -126,16 +134,17 @@ describe('generazione della lista', () => {
   it('il capoclasse la genera dopo la scadenza; tutti la vedono, il rapporto solo capo e vice', async () => {
     const r = await interrogazioneAperta()
     await salvaPreferenza(dbDi(env, anna), r, 'anna', 'fine')
-    await salvaPreferenza(dbDi(env, carla), r, 'carla', 'posizione', 1)
+    await salvaPreferenza(dbDi(env, carla), r, 'carla', 'data', '2026-11-10')
     await scadenzaPassata(r)
     const ris = await assertSucceeds(generaEPubblicaLista(dbDi(env, anna), r, 'anna', 7))
-    expect(ris.ordine).toHaveLength(3) // anna, bruno, carla: il docente non c'è
-    expect(ris.ordine[0]).toBe('carla')
-    expect(ris.ordine[2]).toBe('anna')
+    expect(ris.ordine).toHaveLength(2) // anna, bruno (il docente non c'è); carla ha la data fissa
+    expect(ris.fissi).toEqual({ carla: '2026-11-10' })
+    expect(ris.ordine[1]).toBe('anna')
 
     for (const p of [anna, bruno, carla, rossi]) {
       const l = await assertSucceeds(getDoc(rifLista(dbDi(env, p), r.classId, r.subjectId, r.interrogazioneId)))
       expect(l.data()?.ordine).toEqual(ris.ordine)
+      expect(l.data()?.fissi).toEqual({ carla: '2026-11-10' })
     }
     await assertSucceeds(getDoc(rifRapporto(dbDi(env, bruno), r.classId, r.subjectId, r.interrogazioneId)))
     await assertFails(getDoc(rifRapporto(dbDi(env, carla), r.classId, r.subjectId, r.interrogazioneId)))
@@ -181,6 +190,25 @@ describe('generazione della lista', () => {
     await assertFails(updateDoc(rifInterrogazione(db, r.classId, r.subjectId, r.interrogazioneId), { stato: 'raccolta', aggiornato: serverTimestamp() }))
   })
 
+  it('una lista con la stessa persona sia in ordine sia con la data fissa non passa', async () => {
+    const r = await interrogazioneAperta()
+    await scadenzaPassata(r)
+    const db = dbDi(env, anna)
+    const prova = async (fissi: unknown) => {
+      const b = writeBatch(db)
+      const voce = doc(collection(db, rifInterrogazione(db, r.classId, r.subjectId, r.interrogazioneId).path, 'storico'))
+      b.set(voce, { tipo: 'generata', chi: 'anna', quando: serverTimestamp(), dettagli: {} })
+      b.set(rifLista(db, r.classId, r.subjectId, r.interrogazioneId), {
+        ordine: ['anna', 'bruno'], fissi, interrogati: {}, generata: serverTimestamp(), generataDa: 'anna', ultimaModifica: voce.id,
+      })
+      b.update(rifInterrogazione(db, r.classId, r.subjectId, r.interrogazioneId), { stato: 'lista', aggiornato: serverTimestamp() })
+      return b.commit()
+    }
+    await assertFails(prova({ anna: '2026-11-10' }))
+    await assertFails(prova(['carla']))
+    await assertSucceeds(prova({ carla: '2026-11-10' }))
+  })
+
   it('non si scrive la lista senza cambiare lo stato', async () => {
     const r = await interrogazioneAperta()
     await scadenzaPassata(r)
@@ -198,7 +226,7 @@ describe('eliminazione a cascata', () => {
   it('eliminando l\'interrogazione spariscono preferenze, lista e rapporto', async () => {
     const r = await interrogazioneAperta()
     await salvaPreferenza(dbDi(env, bruno), r, 'bruno', 'fine')
-    await salvaPreferenza(dbDi(env, carla), r, 'carla', 'posizione', 1)
+    await salvaPreferenza(dbDi(env, carla), r, 'carla', 'data', '2026-11-10')
     await scadenzaPassata(r)
     await generaEPubblicaLista(dbDi(env, anna), r, 'anna')
     await assertSucceeds(eliminaInterrogazione(dbDi(env, bruno), r.classId, r.subjectId, r.interrogazioneId))

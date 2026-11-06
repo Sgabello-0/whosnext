@@ -134,7 +134,8 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
     staff: c.staff,
     puoModificare: c.puoModificare,
     miaScelta:
-      mia.dati === undefined ? undefined : mia.dati === null ? null : { scelta: mia.dati.scelta, posizioneDSA: mia.dati.posizioneDSA },
+      mia.dati === undefined ? undefined : mia.dati === null ? null : { scelta: mia.dati.scelta, dataDSA: mia.dati.dataDSA ?? null },
+    creata: i.creato ? oggiISO(i.creato.toDate()) : null,
     lista:
       lista.dati === undefined
         ? undefined
@@ -142,6 +143,7 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
           ? null
           : {
               ordine: lista.dati.ordine,
+              fissi: lista.dati.fissi,
               interrogati: lista.dati.interrogati,
               generata: lista.dati.generata ? oggiISO(lista.dati.generata.toDate()) : null,
             },

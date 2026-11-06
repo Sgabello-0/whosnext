@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { getDoc, getDocs, serverTimestamp, setDoc, Timestamp, updateDoc, type Firestore } from 'firebase/firestore'
-import { creaClasse, impostaPermessoDocente, impostaVice, uniscitiConCodice } from '../../src/lib/classi'
+import { getDoc, getDocs, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore'
+import { aggiungiVoceStorico } from '../../src/lib/storico'
+import { creaClasse, impostaDSA, impostaPermessoDocente, impostaVice, uniscitiConCodice } from '../../src/lib/classi'
 import {
   creaInterrogazione,
   creaMateria,
@@ -12,7 +13,7 @@ import {
   rifSegnalazioni,
 } from '../../src/lib/configurazione'
 import { riordinaLista, segnaInterrogati, segnalaInterrogato, togliInterrogato, togliSegnalazione } from '../../src/lib/gestioneLista'
-import { generaEPubblicaLista } from '../../src/lib/preferenze'
+import { generaEPubblicaLista, salvaPreferenza } from '../../src/lib/preferenze'
 import { avviaAmbiente, dbDi, UTENTI } from './aiuti'
 
 const { anna, bruno, carla, rossi, bianchi } = UTENTI
@@ -30,7 +31,7 @@ beforeEach(async () => {
 })
 
 /** Anna capo, Bruno vice, Carla studente, Rossi docente (senza permesso), Bianchi docente con permesso; lista generata. */
-async function listaPronta() {
+async function listaPronta(o: { carlaConData?: boolean } = {}) {
   const { classId, codice } = await creaClasse(dbDi(env, anna), anna, '4ªB', () => 'AAAAAA')
   for (const p of [bruno, carla, rossi, bianchi]) await uniscitiConCodice(dbDi(env, p), p, codice)
   await impostaVice(dbDi(env, anna), classId, 'bruno', true)
@@ -44,6 +45,10 @@ async function listaPronta() {
     scadenzaPreferenze: new Date(Date.now() + 3_600_000),
   }, 'anna')
   const r = { classId, subjectId, interrogazioneId }
+  if (o.carlaConData) {
+    await impostaDSA(dbDi(env, anna), classId, 'carla', true, 'anna')
+    await salvaPreferenza(dbDi(env, carla), r, 'carla', 'data', '2026-11-10')
+  }
   await env.withSecurityRulesDisabled(async (ctx) => {
     await updateDoc(rifInterrogazione(ctx.firestore() as unknown as Firestore, classId, subjectId, interrogazioneId), {
       scadenzaPreferenze: Timestamp.fromDate(new Date(Date.now() - 60_000)),
@@ -174,5 +179,48 @@ describe('"Sono stato interrogato"', () => {
     const { r } = await listaPronta()
     await segnalaInterrogato(dbDi(env, carla), r, 'carla', '2026-11-03')
     await assertSucceeds(eliminaInterrogazione(dbDi(env, anna), r.classId, r.subjectId, r.interrogazioneId))
+  })
+})
+
+describe('data fissa (DSA/BES)', () => {
+  it('chi ha la data fissa si segna come gli altri; conclusa solo quando ci sono anche loro', async () => {
+    const { r, ordine } = await listaPronta({ carlaConData: true })
+    expect(ordine).toEqual(expect.not.arrayContaining(['carla']))
+    expect((await lista(r)).fissi).toEqual({ carla: '2026-11-10' })
+    await assertSucceeds(segnaInterrogati(dbDi(env, anna), r, ordine, '2026-11-03', 'anna'))
+    expect(await stato(r)).toBe('lista')
+    // "conclusa" scritta a mano mentre manca Carla: no
+    await assertFails(
+      updateDoc(rifInterrogazione(dbDi(env, anna), r.classId, r.subjectId, r.interrogazioneId), { stato: 'conclusa', aggiornato: serverTimestamp() }),
+    )
+    await assertSucceeds(segnaInterrogati(dbDi(env, bruno), r, ['carla'], '2026-11-10', 'bruno'))
+    expect(await stato(r)).toBe('conclusa')
+    await assertSucceeds(togliInterrogato(dbDi(env, anna), r, 'carla', 'anna'))
+    expect(await stato(r)).toBe('lista')
+  })
+
+  it('il riordino non sposta né aggiunge chi ha la data fissa, e le date fisse non si cambiano', async () => {
+    const { r, ordine } = await listaPronta({ carlaConData: true })
+    // il sito lo blocca prima di scrivere…
+    await expect(riordinaLista(dbDi(env, anna), r, [...ordine, 'carla'], 'anna')).rejects.toMatchObject({ codice: 'dati-non-validi' })
+    // …e le regole anche scrivendo direttamente (con la voce di storico, come farebbe il sito)
+    {
+      const db = dbDi(env, anna)
+      const b = writeBatch(db)
+      const voce = aggiungiVoceStorico(db, b, r, 'anna', 'riordino', {})
+      b.update(rifLista(db, r.classId, r.subjectId, r.interrogazioneId), {
+        ordine: [...ordine.slice(1), 'carla'], aggiornato: serverTimestamp(), aggiornatoDa: 'anna', ultimaModifica: voce,
+      })
+      await assertFails(b.commit())
+    }
+    await assertSucceeds(riordinaLista(dbDi(env, anna), r, [...ordine].reverse(), 'anna'))
+    const db = dbDi(env, anna)
+    await assertFails(updateDoc(rifLista(db, r.classId, r.subjectId, r.interrogazioneId), { fissi: { carla: '2026-12-01' } }))
+    expect((await lista(r)).fissi).toEqual({ carla: '2026-11-10' })
+  })
+
+  it('anche chi ha la data fissa può dire "sono stato interrogato"', async () => {
+    const { r } = await listaPronta({ carlaConData: true })
+    await assertSucceeds(segnalaInterrogato(dbDi(env, carla), r, 'carla', '2026-11-10'))
   })
 })

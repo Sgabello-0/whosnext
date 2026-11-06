@@ -38,7 +38,7 @@ const lista = (ordine: string[], interrogati: Record<string, string> = {}, gener
 describe('voceMia', () => {
   it('da scegliere finché non ho scelto e la scadenza non è passata', () => {
     expect(voceMia(interr({ miaScelta: null }), ADESSO)).toEqual({ tipo: 'da-scegliere', scadenza: DOMANI })
-    expect(voceMia(interr({ miaScelta: { scelta: 'fine', posizioneDSA: null } }), ADESSO)).toMatchObject({
+    expect(voceMia(interr({ miaScelta: { scelta: 'fine', dataDSA: null } }), ADESSO)).toMatchObject({
       tipo: 'scelta',
       scelta: 'fine',
     })

@@ -1,11 +1,10 @@
 /**
- * Ogni 15 minuti: genera le liste con le preferenze scadute (e avvisa la classe),
- * ricorda di scegliere a chi non l'ha fatto (scadenza entro 6 ore) e, la sera,
- * avvisa chi ha l'interrogazione prevista per domani.
+ * Ogni 15 minuti: genera le liste con le preferenze scadute (e avvisa la classe)
+ * e, la sera, avvisa chi ha l'interrogazione prevista per domani.
  */
 import type { Config } from '@netlify/functions'
 import { database } from '../lib/admin'
-import { avvisaListaPronta, ricordaDomani, ricordaScelte } from '../lib/eventi'
+import { avvisaListaPronta, ricordaDomani } from '../lib/eventi'
 import { generaScadute } from '../lib/generazione'
 import { postinoVero } from '../lib/postinoVero'
 
@@ -26,7 +25,6 @@ export default async function ogni15Minuti() {
   const generate = await generaScadute(db, adesso)
   let avvisi = 0
   for (const r of generate) avvisi += await passo('Avviso "lista pronta"', () => avvisaListaPronta(db, postino, r, adesso))
-  avvisi += await passo('Promemoria per scegliere', () => ricordaScelte(db, postino, adesso))
   avvisi += await passo('Avviso "domani"', () => ricordaDomani(db, postino, adesso))
   console.log(`Liste generate: ${generate.length}, notifiche mandate: ${avvisi}`)
 }

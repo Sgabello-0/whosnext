@@ -3,24 +3,24 @@
  * Logica pura: il sorteggio usa un generatore pseudocasuale con seme, così la stessa
  * lista si può ricalcolare e verificare dato il seme salvato nel rapporto.
  *
- * 1. DSA/BES: ricevono la posizione esatta; se due chiedono la stessa vince chi l'ha chiesta prima,
- *    l'altro va alla posizione libera più vicina.
- * 2. I posti rimasti si dividono in tre fasce: inizio, metà, fine.
+ * 1. DSA/BES: chi ha scelto una data non entra nell'ordine: ha la sua data fissa (vedi programma.ts).
+ * 2. I posti si dividono in tre fasce: inizio, metà, fine.
  * 3. Inizio (mescolati) dai primi posti liberi, Fine dagli ultimi, Metà dal centro della fascia centrale.
  *    Chi non entra nella sua fascia va ai posti liberi più vicini.
  * 4. "Non mi interessa" a caso nei posti rimasti; chi non ha risposto allo stesso modo, ma per ultimo.
  * 5. Rapporto di soddisfazione per il capoclasse.
  */
 
-export type Scelta = 'inizio' | 'meta' | 'fine' | 'indifferente' | 'posizione'
+export type Scelta = 'inizio' | 'meta' | 'fine' | 'indifferente' | 'data'
 export type Fascia = 'inizio' | 'meta' | 'fine'
-const SCELTE: readonly unknown[] = ['inizio', 'meta', 'fine', 'indifferente', 'posizione']
+const SCELTE: readonly unknown[] = ['inizio', 'meta', 'fine', 'indifferente', 'data']
+const RE_DATA = /^\d{4}-\d{2}-\d{2}$/
 
 export type Preferenza = {
   scelta: Scelta
-  /** solo con scelta "posizione" (studenti DSA/BES): da 1 al numero di studenti */
-  posizioneDSA: number | null
-  /** quando è stata espressa (ms): per i DSA vince chi ha chiesto prima */
+  /** solo con scelta "data" (studenti DSA/BES): il giorno scelto, AAAA-MM-GG */
+  dataDSA: string | null
+  /** quando è stata espressa (ms) */
   quando: number
 }
 
@@ -31,6 +31,7 @@ export type Rapporto = {
   risposte: number
   senzaRisposta: number
   indifferenti: number
+  /** DSA/BES con la data scelta (esatte = richieste: la data è sempre rispettata) */
   dsa: { richieste: number; esatte: number }
   inizio: RapportoFascia
   meta: RapportoFascia
@@ -39,7 +40,12 @@ export type Rapporto = {
   seme: number
 }
 
-export type Risultato = { ordine: string[]; rapporto: Rapporto }
+export type Risultato = {
+  ordine: string[]
+  /** uid → data scelta (DSA/BES): fuori dall'ordine */
+  fissi: Record<string, string>
+  rapporto: Rapporto
+}
 
 // ───────────── Numeri casuali con seme ─────────────
 
@@ -100,15 +106,6 @@ function ordinePreferito(fascia: Fascia, posti: readonly number[]): number[] {
   return dalCentro([...posti].sort((a, b) => a - b))
 }
 
-/** Posto libero più vicino a `obiettivo`; a parità di distanza quello più in alto nella lista. */
-function piuVicinoLibero(obiettivo: number, occupati: (string | null)[]): number {
-  for (let d = 0; d < occupati.length; d++) {
-    if (obiettivo - d >= 0 && occupati[obiettivo - d] === null) return obiettivo - d
-    if (obiettivo + d < occupati.length && occupati[obiettivo + d] === null) return obiettivo + d
-  }
-  throw new Error('Nessun posto libero')
-}
-
 // ───────────── Generazione ─────────────
 
 export function generaLista(opz: {
@@ -116,16 +113,22 @@ export function generaLista(opz: {
   studenti: readonly string[]
   /** preferenze per uid; quelle di chi non è più nella classe vengono ignorate */
   preferenze: ReadonlyMap<string, Preferenza>
-  /** uid con badge DSA/BES: solo loro possono chiedere una posizione esatta */
+  /** uid con badge DSA/BES: solo loro possono scegliere la data */
   dsa: ReadonlySet<string>
   seme: number
 }): Risultato {
   const { studenti, preferenze, dsa, seme } = opz
   const casuale = generatoreCasuale(seme)
-  const N = studenti.length
-  const posti: (string | null)[] = Array.from({ length: N }, () => null)
   // Ordine stabile di partenza (indipendente dall'ordine in cui arrivano gli studenti)
-  const elenco = [...new Set(studenti)].sort()
+  const tutti = [...new Set(studenti)].sort()
+  const fissi: Record<string, string> = {}
+  for (const uid of tutti) {
+    const p = preferenze.get(uid)
+    if (p?.scelta === 'data' && dsa.has(uid) && p.dataDSA !== null && RE_DATA.test(p.dataDSA)) fissi[uid] = p.dataDSA
+  }
+  const elenco = tutti.filter((u) => !(u in fissi))
+  const N = elenco.length
+  const posti: (string | null)[] = Array.from({ length: N }, () => null)
 
   const gruppi: Record<Fascia | 'indifferente' | 'senzaRisposta', string[]> = {
     inizio: [],
@@ -134,29 +137,15 @@ export function generaLista(opz: {
     indifferente: [],
     senzaRisposta: [],
   }
-  const richiesteDSA: { uid: string; posizione: number; quando: number }[] = []
-
   for (const uid of elenco) {
     const p = preferenze.get(uid)
     if (!p) gruppi.senzaRisposta.push(uid)
-    else if (p.scelta === 'posizione') {
-      if (dsa.has(uid) && p.posizioneDSA !== null && Number.isFinite(p.posizioneDSA)) {
-        richiesteDSA.push({ uid, posizione: p.posizioneDSA, quando: p.quando })
-      } else gruppi.indifferente.push(uid) // badge tolto nel frattempo
-    } else (gruppi[p.scelta] ?? gruppi.indifferente).push(uid)
+    // "data" senza badge (tolto nel frattempo) vale come "non mi interessa"
+    else if (p.scelta === 'data') gruppi.indifferente.push(uid)
+    else (gruppi[p.scelta] ?? gruppi.indifferente).push(uid)
   }
 
-  // 1. DSA/BES: prima chi ha chiesto prima
-  richiesteDSA.sort((a, b) => a.quando - b.quando || a.uid.localeCompare(b.uid))
-  let dsaEsatte = 0
-  for (const r of richiesteDSA) {
-    const obiettivo = Math.min(Math.max(Math.round(r.posizione), 1), N) - 1
-    const posto = piuVicinoLibero(obiettivo, posti)
-    posti[posto] = r.uid
-    if (posto === obiettivo) dsaEsatte++
-  }
-
-  // 2. Fasce sui posti rimasti
+  // 2. Fasce
   const liberi = () => posti.flatMap((u, i) => (u === null ? [i] : []))
   const fasce = dividiInFasce(liberi())
 
@@ -197,14 +186,16 @@ export function generaLista(opz: {
     ottenute: gruppi[f].filter((uid) => insiemi[f].has(posizione.get(uid)!)).length,
   })
 
+  const quantiFissi = Object.keys(fissi).length
   return {
     ordine,
+    fissi,
     rapporto: {
-      totale: N,
-      risposte: N - gruppi.senzaRisposta.length,
+      totale: N + quantiFissi,
+      risposte: N + quantiFissi - gruppi.senzaRisposta.length,
       senzaRisposta: gruppi.senzaRisposta.length,
       indifferenti: gruppi.indifferente.length,
-      dsa: { richieste: richiesteDSA.length, esatte: dsaEsatte },
+      dsa: { richieste: quantiFissi, esatte: quantiFissi },
       inizio: rapportoFascia('inizio'),
       meta: rapportoFascia('meta'),
       fine: rapportoFascia('fine'),
@@ -215,7 +206,7 @@ export function generaLista(opz: {
 
 /** Converte i documenti delle preferenze nel formato dell'algoritmo (va bene sia per il sito sia per il server). */
 export function preferenzeDa(
-  documenti: { id: string; dati: { scelta: Scelta; posizioneDSA?: number | null; aggiornato?: { toMillis(): number } } }[],
+  documenti: { id: string; dati: { scelta: Scelta; dataDSA?: string | null; aggiornato?: { toMillis(): number } } }[],
 ): Map<string, Preferenza> {
   return new Map(
     documenti.map(({ id, dati }) => [
@@ -223,7 +214,7 @@ export function preferenzeDa(
       {
         // dati vecchi o scritti a mano: un valore sconosciuto vale come "non mi interessa"
         scelta: SCELTE.includes(dati.scelta) ? dati.scelta : 'indifferente',
-        posizioneDSA: typeof dati.posizioneDSA === 'number' && Number.isFinite(dati.posizioneDSA) ? dati.posizioneDSA : null,
+        dataDSA: typeof dati.dataDSA === 'string' && RE_DATA.test(dati.dataDSA) ? dati.dataDSA : null,
         quando: typeof dati.aggiornato?.toMillis === 'function' ? dati.aggiornato.toMillis() : 0,
       },
     ]),

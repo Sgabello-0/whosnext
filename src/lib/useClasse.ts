@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { FirestoreError } from 'firebase/firestore'
+import { query, where, type FirestoreError } from 'firebase/firestore'
 import { useProfilo } from './auth'
 import { db } from './firebase'
 import { rifClasse, rifDSA, rifDSAMembro, rifMembri, rifMembro } from './classi'
@@ -16,7 +16,7 @@ export type DatiClasse =
       classe: ConId<Classe>
       io: ConId<Membro>
       membri: ConId<Membro>[]
-      /** uid con badge DSA/BES che l'utente può vedere (tutti per capo e vice, solo sé stessi per gli altri) */
+      /** uid con badge DSA/BES che l'utente può vedere (tutti per capo e vice; per gli altri quelli visibili e il proprio) */
       dsa: Set<string>
     }
 
@@ -32,11 +32,15 @@ export function useClasse(classId: string): DatiClasse {
   const membri = useQuery<Membro>(db && membro ? rifMembri(db, classId) : null, membro ? `membri/${classId}` : null)
   const tuttiDSA = useQuery<object>(db && staff ? rifDSA(db, classId) : null, staff ? `dsa/${classId}` : null)
   const mioDSA = useDocumento<object>(db && membro && !staff ? rifDSAMembro(db, classId, uid) : null)
+  const visibiliDSA = useQuery<object>(
+    db && membro && !staff ? query(rifDSA(db, classId), where('visibile', '==', true)) : null,
+    membro && !staff ? `dsa-visibili/${classId}` : null,
+  )
 
   const dsa = useMemo(() => {
     if (staff) return new Set((tuttiDSA.dati ?? []).map((d) => d.id))
-    return new Set(mioDSA.dati ? [uid] : [])
-  }, [staff, tuttiDSA.dati, mioDSA.dati, uid])
+    return new Set([...(visibiliDSA.dati ?? []).map((d) => d.id), ...(mioDSA.dati ? [uid] : [])])
+  }, [staff, tuttiDSA.dati, mioDSA.dati, visibiliDSA.dati, uid])
 
   const errore = io.errore ?? classe.errore ?? membri.errore
   if (errore?.code === 'permission-denied') return { stato: 'non-membro' }

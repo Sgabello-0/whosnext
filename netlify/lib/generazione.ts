@@ -30,7 +30,7 @@ export async function generaSeScaduta(db: Firestore, ref: DocumentReference, ade
     const risultato = generaLista({
       studenti: membri.docs.filter((m) => m.data().ruolo !== 'docente').map((m) => m.id),
       preferenze: preferenzeDa(
-        preferenze.docs.map((d) => ({ id: d.id, dati: d.data() as { scelta: Scelta; posizioneDSA?: number | null; aggiornato?: Timestamp } })),
+        preferenze.docs.map((d) => ({ id: d.id, dati: d.data() as { scelta: Scelta; dataDSA?: string | null; aggiornato?: Timestamp } })),
       ),
       dsa: new Set(dsa.docs.map((d) => d.id)),
       seme,
@@ -39,6 +39,7 @@ export async function generaSeScaduta(db: Firestore, ref: DocumentReference, ade
     tx.set(voce, { tipo: 'generata', chi: 'automatico', quando: FieldValue.serverTimestamp(), dettagli: { seme } })
     tx.set(ref.collection('list').doc('current'), {
       ordine: risultato.ordine,
+      fissi: risultato.fissi,
       interrogati: {},
       generata: FieldValue.serverTimestamp(),
       generataDa: 'automatico',
@@ -46,7 +47,7 @@ export async function generaSeScaduta(db: Firestore, ref: DocumentReference, ade
     })
     tx.set(ref.collection('list').doc('rapporto'), { ...risultato.rapporto, generata: FieldValue.serverTimestamp() })
     tx.update(ref, { stato: 'lista', aggiornato: FieldValue.serverTimestamp() })
-    return { r, ordine: risultato.ordine }
+    return { r, ordine: risultato.ordine, fissi: risultato.fissi }
   })
 }
 

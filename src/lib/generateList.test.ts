@@ -15,8 +15,8 @@ function studenti(n: number): string[] {
   return Array.from({ length: n }, (_, i) => `s${String(i).padStart(2, '0')}`)
 }
 
-function pref(scelta: Scelta, quando = 0, posizioneDSA: number | null = null): Preferenza {
-  return { scelta, posizioneDSA, quando }
+function pref(scelta: Scelta, quando = 0, dataDSA: string | null = null): Preferenza {
+  return { scelta, dataDSA, quando }
 }
 
 function genera(n: number, prefs: Record<string, Preferenza>, dsa: string[] = [], seme = 42) {
@@ -96,9 +96,10 @@ describe('fasce', () => {
     expect(studenti(5).map((u) => pos[u]).sort()).toEqual([4, 5, 6, 7, 8])
   })
 
-  it('con un DSA e due posti liberi, inizio e fine ottengono ciò che chiedono (caso reale)', () => {
-    const { ordine, rapporto } = genera(3, { s00: pref('posizione', 0, 1), s01: pref('inizio'), s02: pref('fine') }, ['s00'])
-    expect(ordine).toEqual(['s00', 's01', 's02'])
+  it('con un DSA (data scelta) e due posti, inizio e fine ottengono ciò che chiedono (caso reale)', () => {
+    const { ordine, fissi, rapporto } = genera(3, { s00: pref('data', 0, '2026-11-10'), s01: pref('inizio'), s02: pref('fine') }, ['s00'])
+    expect(ordine).toEqual(['s01', 's02'])
+    expect(fissi).toEqual({ s00: '2026-11-10' })
     expect(rapporto.inizio).toEqual({ richieste: 1, ottenute: 1 })
     expect(rapporto.fine).toEqual({ richieste: 1, ottenute: 1 })
   })
@@ -121,40 +122,42 @@ describe('fasce', () => {
 })
 
 describe('DSA/BES', () => {
-  it('ricevono la posizione esatta', () => {
-    const { ordine, rapporto } = genera(10, { s05: pref('posizione', 0, 1), s06: pref('posizione', 0, 10) }, ['s05', 's06'])
-    expect(ordine[0]).toBe('s05')
-    expect(ordine[9]).toBe('s06')
-    expect(rapporto.dsa).toEqual({ richieste: 2, esatte: 2 })
-  })
-
-  it('stessa posizione: vince chi l\'ha chiesta prima, l\'altro va al posto libero più vicino', () => {
-    const { ordine, rapporto } = genera(
+  it('chi sceglie una data esce dall\'ordine e tiene la sua data', () => {
+    const { ordine, fissi, rapporto } = genera(
       10,
-      { s01: pref('posizione', 200, 5), s02: pref('posizione', 100, 5) },
-      ['s01', 's02'],
+      { s05: pref('data', 0, '2026-11-10'), s06: pref('data', 0, '2026-11-12') },
+      ['s05', 's06'],
     )
-    expect(ordine[4]).toBe('s02') // ha chiesto prima
-    expect(ordine[3]).toBe('s01') // a parità di distanza, il posto più in alto
-    expect(rapporto.dsa).toEqual({ richieste: 2, esatte: 1 })
+    expect(ordine).toHaveLength(8)
+    expect(ordine).not.toContain('s05')
+    expect(ordine).not.toContain('s06')
+    expect(fissi).toEqual({ s05: '2026-11-10', s06: '2026-11-12' })
+    expect(rapporto.dsa).toEqual({ richieste: 2, esatte: 2 })
+    expect(rapporto.totale).toBe(10)
   })
 
-  it('posizioni fuori dai limiti vengono riportate dentro', () => {
-    const { ordine } = genera(5, { s00: pref('posizione', 0, 99), s01: pref('posizione', 1, 0) }, ['s00', 's01'])
-    expect(ordine[4]).toBe('s00')
-    expect(ordine[0]).toBe('s01')
+  it('due DSA possono scegliere lo stesso giorno: lo tengono entrambi', () => {
+    const { fissi } = genera(6, { s01: pref('data', 200, '2026-11-10'), s02: pref('data', 100, '2026-11-10') }, ['s01', 's02'])
+    expect(fissi).toEqual({ s01: '2026-11-10', s02: '2026-11-10' })
   })
 
-  it('le fasce si calcolano sui posti lasciati liberi dai DSA', () => {
-    // 7 posti, DSA al primo: restano 6 posti liberi (1..6) → fasce 1-2 / 3-4 / 5-6
-    const { ordine } = genera(7, { s00: pref('posizione', 0, 1), s01: pref('inizio'), s02: pref('inizio') }, ['s00'])
+  it('una data scritta male vale come "non mi interessa"', () => {
+    const { ordine, fissi, rapporto } = genera(5, { s00: pref('data', 0, '10/11/2026') }, ['s00'])
+    expect(fissi).toEqual({})
+    expect(ordine).toContain('s00')
+    expect(rapporto.indifferenti).toBe(1)
+  })
+
+  it('le fasce si calcolano solo su chi è in ordine', () => {
+    // 7 studenti, un DSA con la data: restano 6 posti → fasce 0-1 / 2-3 / 4-5
+    const { ordine } = genera(7, { s00: pref('data', 0, '2026-11-10'), s01: pref('inizio'), s02: pref('inizio') }, ['s00'])
     const pos = posizioni(ordine)
-    expect(pos.s00).toBe(0)
-    expect([pos.s01, pos.s02].sort()).toEqual([1, 2])
+    expect([pos.s01, pos.s02].sort()).toEqual([0, 1])
   })
 
-  it('chi chiede una posizione senza badge (tolto nel frattempo) è trattato come "non mi interessa"', () => {
-    const { rapporto } = genera(5, { s00: pref('posizione', 0, 1) }, [])
+  it('chi sceglie una data senza badge (tolto nel frattempo) è trattato come "non mi interessa"', () => {
+    const { fissi, rapporto } = genera(5, { s00: pref('data', 0, '2026-11-10') }, [])
+    expect(fissi).toEqual({})
     expect(rapporto.dsa.richieste).toBe(0)
     expect(rapporto.indifferenti).toBe(1)
   })
@@ -194,9 +197,9 @@ describe('casi limite e garanzie', () => {
     expect(a.ordine).toEqual(b.ordine)
   })
 
-  it('su 2000 classi casuali ognuno compare esattamente una volta e i DSA non si sovrappongono', () => {
+  it('su 2000 classi casuali ognuno compare esattamente una volta (in ordine o con la data fissa)', () => {
     const casuale = generatoreCasuale(2026)
-    const scelte: Scelta[] = ['inizio', 'meta', 'fine', 'indifferente', 'posizione']
+    const scelte: Scelta[] = ['inizio', 'meta', 'fine', 'indifferente', 'data']
     for (let prova = 0; prova < 2000; prova++) {
       const n = Math.floor(casuale() * 35)
       const tutti = studenti(n)
@@ -205,15 +208,17 @@ describe('casi limite e garanzie', () => {
       for (const u of tutti) {
         if (casuale() < 0.2) continue // non risponde
         const scelta = scelte[Math.floor(casuale() * scelte.length)]!
-        if (scelta === 'posizione' && casuale() < 0.8) dsa.add(u)
-        prefs.set(u, pref(scelta, Math.floor(casuale() * 1000), 1 + Math.floor(casuale() * (n + 2))))
+        if (scelta === 'data' && casuale() < 0.8) dsa.add(u)
+        prefs.set(u, pref(scelta, Math.floor(casuale() * 1000), `2026-11-${String(10 + Math.floor(casuale() * 20)).padStart(2, '0')}`))
       }
-      const { ordine, rapporto } = generaLista({ studenti: tutti, preferenze: prefs, dsa, seme: prova })
-      expect(ordine).toHaveLength(n)
-      expect(new Set(ordine).size).toBe(n)
-      expect([...ordine].sort()).toEqual(tutti)
+      const { ordine, fissi, rapporto } = generaLista({ studenti: tutti, preferenze: prefs, dsa, seme: prova })
+      const tuttiInLista = [...ordine, ...Object.keys(fissi)]
+      expect(tuttiInLista).toHaveLength(n)
+      expect([...tuttiInLista].sort()).toEqual(tutti)
+      // le date fisse solo a chi ha il badge e l'ha chiesta
+      for (const u of Object.keys(fissi)) expect(dsa.has(u) && prefs.get(u)?.scelta === 'data').toBe(true)
+      expect(rapporto.totale).toBe(n)
       expect(rapporto.risposte + rapporto.senzaRisposta).toBe(n)
-      expect(rapporto.dsa.esatte).toBeLessThanOrEqual(rapporto.dsa.richieste)
     }
   })
 })
@@ -222,15 +227,19 @@ describe('preferenze lette dal database', () => {
   it('dati strani o vecchi non fanno saltare niente', () => {
     const p = preferenzeDa([
       { id: 'a', dati: { scelta: 'boh' as never } },
-      { id: 'b', dati: { scelta: 'posizione', posizioneDSA: 'tre' as never, aggiornato: 'ieri' as never } },
-      { id: 'c', dati: { scelta: 'fine', posizioneDSA: Number.NaN } },
+      { id: 'b', dati: { scelta: 'data', dataDSA: 3 as never, aggiornato: 'ieri' as never } },
+      { id: 'c', dati: { scelta: 'fine', dataDSA: 'domani' } },
+      { id: 'e', dati: { scelta: 'posizione' as never, dataDSA: '2026-11-10' } },
       { id: 'd', dati: { scelta: 'inizio', aggiornato: { toMillis: () => 42 } } },
     ])
-    expect(p.get('a')).toEqual({ scelta: 'indifferente', posizioneDSA: null, quando: 0 })
-    expect(p.get('b')).toEqual({ scelta: 'posizione', posizioneDSA: null, quando: 0 })
-    expect(p.get('c')).toEqual({ scelta: 'fine', posizioneDSA: null, quando: 0 })
+    expect(p.get('a')).toEqual({ scelta: 'indifferente', dataDSA: null, quando: 0 })
+    expect(p.get('b')).toEqual({ scelta: 'data', dataDSA: null, quando: 0 })
+    expect(p.get('c')).toEqual({ scelta: 'fine', dataDSA: null, quando: 0 })
     expect(p.get('d')?.quando).toBe(42)
-    const { ordine } = generaLista({ studenti: ['a', 'b', 'c', 'd'], preferenze: p, dsa: new Set(['b']), seme: 1 })
-    expect([...ordine].sort()).toEqual(['a', 'b', 'c', 'd'])
+    // la vecchia "posizione esatta" non esiste più: vale come "non mi interessa"
+    expect(p.get('e')?.scelta).toBe('indifferente')
+    const { ordine, fissi } = generaLista({ studenti: ['a', 'b', 'c', 'd', 'e'], preferenze: p, dsa: new Set(['b', 'e']), seme: 1 })
+    expect(fissi).toEqual({})
+    expect([...ordine].sort()).toEqual(['a', 'b', 'c', 'd', 'e'])
   })
 })

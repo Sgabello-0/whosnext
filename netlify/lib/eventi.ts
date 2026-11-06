@@ -1,20 +1,30 @@
 /**
- * Chi avvisare e con quale testo: lista pronta, richieste di scambio e loro esito, promemoria.
- * Ogni avviso ha una chiave, così rifare un'operazione (o due esecuzioni insieme) non lo manda due volte.
+ * Chi avvisare e con quale testo: nuova interrogazione, lista generata, richiesta di scambio,
+ * "domani sei interrogato". Ogni avviso ha una chiave, così rifare un'operazione
+ * (o due esecuzioni insieme) non lo manda due volte.
  */
-import { Timestamp, type Firestore, type QueryDocumentSnapshot } from 'firebase-admin/firestore'
+import type { Firestore, QueryDocumentSnapshot, Timestamp } from 'firebase-admin/firestore'
 import { calendarioDa, type Calendario } from '../../src/lib/calendar'
-import { stimaInterrogazione, testoStima } from '../../src/lib/estimate'
-import { nonInterrogati } from '../../src/lib/lista'
+import { testoStima, type Stima } from '../../src/lib/estimate'
 import { percorsoInterrogazione } from '../../src/lib/messaggi'
+import { programmaLista } from '../../src/lib/programma'
 import { percorsoDi, rifDa, type Rif } from './generazione'
-import { dataItalia, domaniItalia, oraItalia, oraMinutiItalia } from './ora'
+import { dataItalia, domaniItalia, momentoItalia, oraItalia, scadenzaItalia } from './ora'
 import { avvisa, type Postino } from './postino'
-import { esitoScambio, listaPronta, richiestaScambio, ricordaScelta, toccaDomani } from './testi'
+import { listaPronta, nuovaInterrogazione, richiestaScambio, toccaDomani } from './testi'
 
 const SITO = process.env.URL_SITO ?? 'https://whos-next.web.app'
 
-type Lista = { ordine: string[]; interrogati: Record<string, string> }
+type Lista = { ordine: string[]; fissi?: Record<string, string>; interrogati: Record<string, string> }
+type DatiInterrogazione = {
+  nome: string
+  stato: string
+  giorni: number[]
+  perLezione: number | null
+  scadenzaPreferenze: Timestamp
+  creato?: Timestamp
+  creatoDa?: string
+}
 
 async function contesto(db: Firestore, r: Rif) {
   const interr = db.doc(percorsoDi(r))
@@ -25,7 +35,7 @@ async function contesto(db: Firestore, r: Rif) {
   ])
   const percorso = percorsoInterrogazione(r.classId, r.subjectId, r.interrogazioneId)
   return {
-    dati: i.data() as { nome: string; stato: string; giorni: number[]; perLezione: number | null; scadenzaPreferenze: Timestamp } | undefined,
+    dati: i.data() as DatiInterrogazione | undefined,
     materia: (materia.data()?.nome as string | undefined) ?? 'Interrogazione',
     cal: calendarioDa(cal.data() as Partial<Calendario> | undefined),
     percorso,
@@ -34,37 +44,39 @@ async function contesto(db: Firestore, r: Rif) {
   }
 }
 
-function stimatore(c: Awaited<ReturnType<typeof contesto>>, r: Rif, lista: Lista, oggi: string) {
-  const mancanti = nonInterrogati(lista.ordine, lista.interrogati)
-  const giaOggi = Object.values(lista.interrogati).filter((d) => d === oggi).length
-  return (uid: string) =>
-    stimaInterrogazione({
-      k: mancanti.indexOf(uid),
-      perLezione: c.dati?.perLezione ?? null,
-      giorni: c.dati?.giorni ?? [],
-      subjectId: r.subjectId,
-      cal: c.cal,
-      da: oggi,
-      giaInterrogatiDa: giaOggi,
-    })
+/** Le stime di tutti, come le vede il sito (ora italiana). */
+function programma(c: Awaited<ReturnType<typeof contesto>>, r: Rif, lista: Lista, adesso: Date) {
+  return programmaLista({
+    ordine: lista.ordine,
+    fissi: lista.fissi,
+    interrogati: lista.interrogati,
+    perLezione: c.dati?.perLezione ?? null,
+    giorni: c.dati?.giorni ?? [],
+    subjectId: r.subjectId,
+    cal: c.cal,
+    adesso: momentoItalia(adesso),
+    creata: c.dati?.creato ? dataItalia(c.dati.creato.toDate()) : null,
+  })
 }
 
-/** "La lista è pronta: sei il n° 3 di 25, stimata martedì 10/11" a ognuno della lista. */
+const SENZA_STIMA: Stima = { tipo: 'non-disponibile', prossimaLezione: null }
+
+/** "Lista generata: sei il n° 3 di 25, stimata martedì 10/11" a ognuno della lista. */
 export async function avvisaListaPronta(db: Firestore, postino: Postino, r: Rif, adesso: Date): Promise<number> {
   const c = await contesto(db, r)
   const lista = (await c.rifLista.get()).data() as Lista | undefined
   if (!c.dati || c.dati.stato === 'raccolta' || !lista) return 0
-  const stima = stimatore(c, r, lista, dataItalia(adesso))
+  const { righe } = programma(c, r, lista, adesso)
   let mandate = 0
-  for (const [i, uid] of lista.ordine.entries()) {
+  for (const { uid, numero, stima } of righe) {
     const n = listaPronta({
       materia: c.materia,
       nome: c.dati.nome,
       percorso: c.percorso,
       link: c.link,
-      posizione: i + 1,
+      posizione: numero,
       totale: lista.ordine.length,
-      stima: testoStima(stima(uid)),
+      stima: testoStima(stima ?? SENZA_STIMA),
     })
     try {
       if ((await avvisa(db, postino, uid, `lista/${percorsoDi(r)}/${uid}`, n)) === 'mandata') mandate++
@@ -102,40 +114,6 @@ export async function avvisaRichiestaScambio(db: Firestore, postino: Postino, r:
   return avvisa(db, postino, destinatario, `scambio/${percorsoDi(r)}/${id}/${s.creato?.toMillis()}/${destinatario}`, n)
 }
 
-/** A chi aveva chiesto lo scambio, quando l'altro risponde. Solo se a chiederlo è chi ha risposto. */
-export async function avvisaEsitoScambio(db: Firestore, postino: Postino, r: Rif, id: string, chiamante: string) {
-  const s = (await db.doc(`${percorsoDi(r)}/scambi/${id}`).get()).data() as Scambio | undefined
-  if (!s || s.a !== chiamante || (s.stato !== 'accettato' && s.stato !== 'rifiutato')) return 'non-valido'
-  const c = await contesto(db, r)
-  const lista = (await c.rifLista.get()).data() as Lista | undefined
-  if (!c.dati || !lista) return 'non-valido'
-  const n = esitoScambio({
-    materia: c.materia,
-    nome: c.dati.nome,
-    percorso: c.percorso,
-    chi: await nome(db, r.classId, chiamante),
-    accettato: s.stato === 'accettato',
-    posizione: lista.ordine.indexOf(s.da) + 1,
-  })
-  return avvisa(db, postino, s.da, `esito/${percorsoDi(r)}/${id}/${s.aggiornato?.toMillis()}`, n)
-}
-
-/** Scadenza entro 6 ore: un promemoria (uno solo) agli studenti che non hanno ancora scelto. */
-export async function ricordaScelte(db: Firestore, postino: Postino, adesso: Date): Promise<number> {
-  const entro = new Date(adesso.getTime() + 6 * 3_600_000)
-  const vicine = await db
-    .collectionGroup('interrogations')
-    .where('stato', '==', 'raccolta')
-    .where('scadenzaPreferenze', '>', Timestamp.fromDate(adesso))
-    .where('scadenzaPreferenze', '<=', Timestamp.fromDate(entro))
-    .get()
-  let mandate = 0
-  for (const d of vicine.docs) {
-    mandate += await ognuna(d.ref.path, () => promemoriaScelta(db, postino, d))
-  }
-  return mandate
-}
-
 /** Un errore in un'interrogazione (dati rovinati, invio fallito) si registra e non ferma le altre. */
 async function ognuna(percorso: string, fai: () => Promise<number>): Promise<number> {
   try {
@@ -146,31 +124,7 @@ async function ognuna(percorso: string, fai: () => Promise<number>): Promise<num
   }
 }
 
-async function promemoriaScelta(db: Firestore, postino: Postino, d: QueryDocumentSnapshot): Promise<number> {
-  let mandate = 0
-  const r = rifDa(d.ref.path)
-  const dati = d.data() as { nome: string; scadenzaPreferenze: Timestamp }
-  const [membri, preferenze, materia] = await Promise.all([
-    db.collection(`classes/${r.classId}/members`).get(),
-    d.ref.collection('preferences').get(),
-    db.doc(`classes/${r.classId}/subjects/${r.subjectId}`).get(),
-  ])
-  const hanno = new Set(preferenze.docs.map((p) => p.id))
-  const scadenza = dati.scadenzaPreferenze.toDate()
-  for (const m of membri.docs) {
-    if (m.data().ruolo === 'docente' || hanno.has(m.id)) continue
-    const n = ricordaScelta({
-      materia: (materia.data()?.nome as string | undefined) ?? 'Interrogazione',
-      nome: dati.nome,
-      percorso: percorsoInterrogazione(r.classId, r.subjectId, r.interrogazioneId),
-      ora: oraMinutiItalia(scadenza),
-    })
-    if ((await avvisa(db, postino, m.id, `scegli/${d.ref.path}/${scadenza.getTime()}/${m.id}`, n)) === 'mandata') mandate++
-  }
-  return mandate
-}
-
-/** La sera (dalle 18 alle 22, ora italiana): "Interrogazione prevista per domani" a chi ha la data stimata domani. */
+/** La sera (dalle 18 alle 22, ora italiana): "Domani sei interrogato" a chi ha la data stimata domani. */
 export async function ricordaDomani(db: Firestore, postino: Postino, adesso: Date): Promise<number> {
   const ora = oraItalia(adesso)
   if (ora < 18 || ora >= 22) return 0
@@ -187,18 +141,50 @@ async function avvisoDomani(db: Firestore, postino: Postino, d: QueryDocumentSna
   const c = await contesto(db, r)
   const lista = (await c.rifLista.get()).data() as Lista | undefined
   if (!c.dati || !lista) return 0
-  const stima = stimatore(c, r, lista, dataItalia(adesso))
-  for (const uid of nonInterrogati(lista.ordine, lista.interrogati)) {
-    const s = stima(uid)
-    if (s.tipo !== 'data' || s.data !== domani) continue
+  for (const { uid, numero, stima } of programma(c, r, lista, adesso).righe) {
+    if (stima?.tipo !== 'data' || stima.data !== domani) continue
     const n = toccaDomani({
       materia: c.materia,
       nome: c.dati.nome,
       percorso: c.percorso,
       giorno: domani,
-      posizione: lista.ordine.indexOf(uid) + 1,
+      posizione: numero,
     })
     if ((await avvisa(db, postino, uid, `domani/${d.ref.path}/${uid}/${domani}`, n)) === 'mandata') mandate++
+  }
+  return mandate
+}
+
+/**
+ * "Nuova interrogazione: scegli il posto" a tutti gli studenti della classe (tranne chi l'ha creata).
+ * Solo se a chiederlo è chi l'ha creata, mentre le preferenze sono ancora aperte.
+ */
+export async function avvisaNuovaInterrogazione(db: Firestore, postino: Postino, r: Rif, chiamante: string, adesso: Date) {
+  const c = await contesto(db, r)
+  if (!c.dati || c.dati.stato !== 'raccolta' || c.dati.creatoDa !== chiamante) return 'non-valido'
+  const scadenza = c.dati.scadenzaPreferenze.toDate()
+  if (scadenza <= adesso) return 'non-valido'
+  const [membri, dsa] = await Promise.all([
+    db.collection(`classes/${r.classId}/members`).get(),
+    db.collection(`classes/${r.classId}/dsa`).get(),
+  ])
+  const conDSA = new Set(dsa.docs.map((d) => d.id))
+  let mandate = 0
+  for (const m of membri.docs) {
+    if (m.data().ruolo === 'docente' || m.id === chiamante) continue
+    const n = nuovaInterrogazione({
+      materia: c.materia,
+      nome: c.dati.nome,
+      percorso: c.percorso,
+      link: c.link,
+      scadenza: scadenzaItalia(scadenza),
+      dsa: conDSA.has(m.id),
+    })
+    try {
+      if ((await avvisa(db, postino, m.id, `nuova/${percorsoDi(r)}/${m.id}`, n)) === 'mandata') mandate++
+    } catch (e) {
+      console.error(`Avviso "nuova interrogazione" non consegnato a ${m.id}:`, e)
+    }
   }
   return mandate
 }

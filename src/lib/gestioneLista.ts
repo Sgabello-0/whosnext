@@ -73,7 +73,7 @@ export async function segnaInterrogati(db: Firestore, r: Rif, uids: string[], da
     ...campi,
   )
   for (const u of uids) batch.delete(rifSegnalazione(db, r.classId, r.subjectId, r.interrogazioneId, u))
-  if (stato === 'lista' && tuttiInterrogati(lista.ordine, interrogati)) {
+  if (stato === 'lista' && tuttiInterrogati(lista.ordine, interrogati, lista.fissi)) {
     batch.update(interrogazioneDi(db, r), { stato: 'conclusa', aggiornato: serverTimestamp() })
   }
   await batch.commit()

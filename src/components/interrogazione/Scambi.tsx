@@ -7,7 +7,6 @@ import { messaggioErrore } from '../../lib/errori'
 import { useQuery } from '../../lib/hooks'
 import { linkAssoluto, linkWhatsApp, messaggioScambio, percorsoInterrogazione } from '../../lib/messaggi'
 import { accettaScambio, annullaScambio, rifiutaScambio, validita, type Scambio } from '../../lib/scambi'
-import { avvisaServer } from '../../lib/avvisaServer'
 import type { DocLista, DocScambio, Membro } from '../../lib/tipi'
 import { useAvvisi } from '../Avvisi'
 import { useConferma } from '../Conferma'
@@ -46,10 +45,7 @@ export function useRifiutoAutomatico(r: Rif, uid: string, attivo: boolean, inArr
       const k = `${s.id}/${s.creato?.toMillis()}`
       if (fatti.current.has(k)) continue
       fatti.current.add(k)
-      rifiutaScambio(db, r, s.id, uid).then(
-        () => avvisaServer('scambio-esito', r, s.id),
-        () => fatti.current.delete(k),
-      )
+      rifiutaScambio(db, r, s.id, uid).catch(() => fatti.current.delete(k))
     }
   }, [attivo, inArrivo, r, uid])
 }
@@ -105,10 +101,7 @@ export function PannelloScambi(p: {
     if (ok) {
       await esegui(
         s.id,
-        async () => {
-          await accettaScambio(d, p.r, s, p.uid, p.lista)
-          avvisaServer('scambio-esito', p.r, s.id)
-        },
+        () => accettaScambio(d, p.r, s, p.uid, p.lista),
         `Scambio completato: ora sei il n° ${s.daPos + 1}`,
       )
     }
@@ -140,10 +133,7 @@ export function PannelloScambi(p: {
                   db &&
                   esegui(
                     s.id,
-                    async () => {
-                      await rifiutaScambio(db!, p.r, s.id, p.uid)
-                      avvisaServer('scambio-esito', p.r, s.id)
-                    },
+                    () => rifiutaScambio(db!, p.r, s.id, p.uid),
                     `Hai rifiutato lo scambio con ${nome(s.da)}`,
                   )
                 }

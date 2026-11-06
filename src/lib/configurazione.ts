@@ -15,7 +15,7 @@ import {
   type DocumentReference,
   type Firestore,
 } from 'firebase/firestore'
-import { erroreCalendario, GIORNI_LEZIONE, type Calendario } from './calendar'
+import { erroreCalendario, GIORNI_LEZIONE, usciteDefault, type Calendario } from './calendar'
 import { ErroreApp } from './classi'
 
 export const rifCalendario = (db: Firestore, classId: string) => doc(db, 'classes', classId, 'calendar', 'settings')
@@ -107,6 +107,7 @@ export async function salvaCalendario(db: Firestore, classId: string, cal: Calen
     giorniScolastici: cal.giorniScolastici.map(Boolean),
     eccezioni: cal.eccezioni,
     fineAnno: cal.fineAnno,
+    uscite: cal.uscite ?? usciteDefault(),
     aggiornato: serverTimestamp(),
   })
 }

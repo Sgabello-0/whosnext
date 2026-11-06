@@ -3,7 +3,7 @@
  * qui si controlla che l'elenco contenga tutti i file da cui dipendono le funzioni,
  * così una modifica al server non resta mai senza pubblicazione.
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -29,7 +29,9 @@ describe('pubblicazione del server su Netlify', () => {
     expect(riga, 'manca la riga "ignore" in netlify.toml').toBeTruthy()
     const elenco = riga![1]!.split(/\s+/).filter((p) => !p.startsWith("':("))
     const usati = new Set<string>()
-    for (const f of ['netlify/functions/notifica.mts', 'netlify/functions/ogni-15-minuti.mts']) for (const d of dipendenze(f)) usati.add(d)
+    const funzioni = readdirSync(join(RADICE, 'netlify/functions')).filter((f) => /\.m?[tj]s$/.test(f))
+    expect(funzioni.length).toBeGreaterThanOrEqual(3)
+    for (const f of funzioni) for (const d of dipendenze(`netlify/functions/${f}`)) usati.add(d)
     const scoperti = [...usati].filter((f) => !elenco.some((p) => f === p || f.startsWith(`${p}/`)))
     expect(scoperti, 'file del server non elencati in netlify.toml (ignore)').toEqual([])
   })

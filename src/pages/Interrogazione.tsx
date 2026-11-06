@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { CalendarDays, Clock, Eye, Pencil, Trash2, Users } from 'lucide-react'
 import { db } from '../lib/firebase'
-import { NOMI_GIORNI_BREVI } from '../lib/calendar'
+import { momentoLocale, NOMI_GIORNI_BREVI, oggiISO } from '../lib/calendar'
+import { dateDisponibili } from '../lib/programma'
 import { aggiornaInterrogazione, eliminaInterrogazione, rifInterrogazione, rifMateria } from '../lib/configurazione'
 import { messaggioErrore } from '../lib/errori'
 import { formattaScadenza, tempoMancante } from '../lib/formatoDate'
@@ -135,7 +136,20 @@ export default function Interrogazione() {
           interrogazioneId={interrogazioneId}
           uid={io.uid}
           dsa={dati.dsa.has(io.uid)}
-          numeroStudenti={studenti.length}
+          dateDSA={
+            cal && dati.dsa.has(io.uid)
+              ? dateDisponibili({
+                  giorni: i.giorni,
+                  subjectId,
+                  cal,
+                  adesso: momentoLocale(adesso),
+                  creata: i.creato ? oggiISO(i.creato.toDate()) : null,
+                  scadenza: momentoLocale(scadenza),
+                  perLezione: i.perLezione,
+                  numeroStudenti: studenti.length,
+                })
+              : []
+          }
           aperta={!scaduta}
         />
       )}
@@ -168,6 +182,7 @@ export default function Interrogazione() {
           cal={cal}
           staff={staff}
           puoModificare={puoModificareListe(io)}
+          dsa={dati.dsa}
           nomeMateria={materia.dati.nome}
         />
       )}

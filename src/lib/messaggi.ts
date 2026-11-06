@@ -41,11 +41,16 @@ export function messaggioPromemoria(o: {
   return righe.join('\n')
 }
 
-export type RigaLista = { nome: string; nota: string; interrogato: boolean }
+/** numero: posizione in lista (null per chi ha la data fissa; se manca, l'indice della riga) */
+export type RigaLista = { nome: string; nota: string; interrogato: boolean; numero?: number | null }
 
 /** La lista come testo: "1. Carla Blu — Stimata: Martedì 03/11". */
 export function testoLista(o: { materia: string; interrogazione: string; righe: RigaLista[]; link: string }): string {
-  const elenco = o.righe.map((r, i) => (r.interrogato ? `${i + 1}. ~${r.nome}~ (${r.nota})` : `${i + 1}. ${r.nome} — ${r.nota}`))
+  const elenco = o.righe.map((r, i) => {
+    // chi ha la data fissa (numero null) non ha un numero in lista
+    const n = r.numero === null ? '•' : `${r.numero ?? i + 1}.`
+    return r.interrogato ? `${n} ~${r.nome}~ (${r.nota})` : `${n} ${r.nome} — ${r.nota}`
+  })
   return [`*${o.materia} – ${o.interrogazione}*`, ...elenco, '', `Posizioni e date aggiornate: ${o.link}`].join('\n')
 }
 

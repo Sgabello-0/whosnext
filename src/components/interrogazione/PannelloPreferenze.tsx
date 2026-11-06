@@ -1,5 +1,6 @@
 import { avvisaServer, serverAttivo } from '../../lib/avvisaServer'
 import { useState } from 'react'
+import { formattaGiorno } from '../../lib/calendar'
 import { db } from '../../lib/firebase'
 import { rifPreferenze } from '../../lib/configurazione'
 import { messaggioErrore } from '../../lib/errori'
@@ -15,7 +16,7 @@ import { linkAssoluto, messaggioPromemoria, percorsoInterrogazione } from '../..
 import { useAvvisi } from '../Avvisi'
 import { useConferma } from '../Conferma'
 
-const ORDINE_SCELTE: Scelta[] = ['inizio', 'meta', 'fine', 'indifferente', 'posizione']
+const ORDINE_SCELTE: Scelta[] = ['inizio', 'meta', 'fine', 'indifferente', 'data']
 
 /** Per capoclasse e vice: chi ha risposto, cosa ha scelto, e il pulsante per generare la lista. */
 export function PannelloPreferenze(p: {
@@ -82,7 +83,7 @@ export function PannelloPreferenze(p: {
               <li key={s}>
                 <strong>{ETICHETTA_SCELTA[s]}</strong> ({chi.length}):{' '}
                 {chi
-                  .map((d) => (s === 'posizione' ? `${nome(d.id)} (n° ${d.posizioneDSA})` : nome(d.id)))
+                  .map((d) => (s === 'data' && d.dataDSA ? `${nome(d.id)} (${formattaGiorno(d.dataDSA).toLowerCase()})` : nome(d.id)))
                   .sort((a, b) => a.localeCompare(b, 'it'))
                   .join(', ')}
               </li>

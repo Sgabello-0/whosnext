@@ -16,6 +16,10 @@ import {
   haLezione,
   motivoNoScuola,
   oggiISO,
+  oraUscita,
+  oraValida,
+  primoGiornoUtile,
+  usciteDefault,
   pasqua,
   prossimeLezioni,
   senzaEccezione,
@@ -156,13 +160,46 @@ describe('lezioni di una materia', () => {
   })
 })
 
+describe('ora di uscita e primo giorno utile', () => {
+  const cal = { ...CALENDARIO_DEFAULT, uscite: ['14:00', '13:10', '14:00', '14:00', '12:00', '14:00', '14:00'] }
+  it('ogni giorno ha la sua ora (14:00 se manca)', () => {
+    expect(oraUscita('2026-11-03', cal)).toBe('13:10') // martedì
+    expect(oraUscita('2026-11-06', cal)).toBe('12:00') // venerdì
+    expect(oraUscita('2026-11-03', CALENDARIO_DEFAULT)).toBe('14:00')
+  })
+  it('oggi conta fino all\'ora di uscita (esclusa), poi si passa a domani', () => {
+    expect(primoGiornoUtile({ oggi: '2026-11-03', ora: '13:09' }, cal)).toBe('2026-11-03')
+    expect(primoGiornoUtile({ oggi: '2026-11-03', ora: '13:10' }, cal)).toBe('2026-11-04')
+    expect(primoGiornoUtile({ oggi: '2026-11-03', ora: '23:59' }, cal)).toBe('2026-11-04')
+    expect(primoGiornoUtile({ oggi: '2026-11-03', ora: '00:00' }, cal)).toBe('2026-11-03')
+  })
+  it('il giorno di creazione non conta mai', () => {
+    expect(primoGiornoUtile({ oggi: '2026-11-03', ora: '08:00' }, cal, '2026-11-03')).toBe('2026-11-04')
+    // creata ieri: oggi conta
+    expect(primoGiornoUtile({ oggi: '2026-11-03', ora: '08:00' }, cal, '2026-11-02')).toBe('2026-11-03')
+    // dati strani: ignorati
+    expect(primoGiornoUtile({ oggi: '2026-11-03', ora: '08:00' }, cal, 'boh')).toBe('2026-11-03')
+  })
+  it('validazione degli orari', () => {
+    expect(oraValida('07:05')).toBe(true)
+    for (const o of ['7:05', '24:00', '12:60', '', null, 1400]) expect(oraValida(o)).toBe(false)
+    expect(erroreCalendario({ ...cal, uscite: ['14:00'] })).toMatch(/uscita/)
+    expect(erroreCalendario(cal)).toBeNull()
+  })
+})
+
 describe('calendarioDa', () => {
   it('se il documento non c\'è propone il calendario iniziale (con le vacanze regionali)', () => {
     expect(calendarioDa(null)).toEqual(calendarioIniziale())
     expect(calendarioDa(null).eccezioni).toHaveLength(3)
   })
   it('corregge i campi non validi', () => {
-    expect(calendarioDa({ giorniScolastici: [true], fineAnno: 'boh' })).toEqual(CALENDARIO_DEFAULT)
+    expect(calendarioDa({ giorniScolastici: [true], fineAnno: 'boh' })).toEqual({ ...CALENDARIO_DEFAULT, uscite: usciteDefault() })
+    // orari di uscita: quelli scritti male tornano alle 14:00, una lista sbagliata si rifà da capo
+    expect(calendarioDa({ uscite: ['13:00', '25:00', 'x', '12:10', '14:00', '', '14:00'] }).uscite).toEqual([
+      '13:00', '14:00', '14:00', '12:10', '14:00', '14:00', '14:00',
+    ])
+    expect(calendarioDa({ uscite: ['13:00'] }).uscite).toEqual(usciteDefault())
   })
   it('mantiene i campi validi', () => {
     const c = calendarioDa({ giorniScolastici: [true, true, true, true, true, true, false], fineAnno: '2027-06-10' })

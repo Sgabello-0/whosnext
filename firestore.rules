@@ -285,29 +285,42 @@ service cloud.firestore {
       }
 
       // ───── Badge DSA/BES ─────
-      // dsa/{uid} esiste se lo studente ha il badge. Lo vedono solo capo, vice e il diretto interessato.
+      // dsa/{uid} → { impostatoDa, quando, visibile } esiste se lo studente ha il badge.
+      // Lo vedono capo, vice e il diretto interessato; tutta la classe se lo studente lo lascia visibile.
 
       match /dsa/{u} {
-        allow read: if isMembro(c) && (u == request.auth.uid || mioRuolo(c) in ['capo', 'vice']);
+        allow read: if isMembro(c) && (
+          u == request.auth.uid
+          || mioRuolo(c) in ['capo', 'vice']
+          || resource.data.get('visibile', false) == true
+        );
         allow create: if isCapoOVice(c)
           && get(membroPath(c, u)).data.ruolo in ['capo', 'vice', 'studente']
-          && request.resource.data.keys().hasOnly(['impostatoDa', 'quando'])
+          && request.resource.data.keys().hasOnly(['impostatoDa', 'quando', 'visibile'])
           && request.resource.data.impostatoDa == request.auth.uid
-          && request.resource.data.quando == request.time;
-        allow update: if false;
-        // Capo e vice tolgono il badge; il diretto interessato può toglierlo a sé stesso (ad esempio uscendo dalla classe).
-        allow delete: if isCapoOVice(c) || (isMembro(c) && u == request.auth.uid);
+          && request.resource.data.quando == request.time
+          && request.resource.data.get('visibile', false) is bool;
+        // Solo il diretto interessato decide se mostrarlo
+        allow update: if isMembro(c) && u == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['visibile'])
+          && request.resource.data.visibile is bool;
+        // Lo tolgono solo capo e vice. Il diretto interessato non può toglierselo (solo nasconderlo ai compagni):
+        // sparisce con lui solo quando esce dalla classe, nello stesso batch in cui si cancella il suo documento di membro.
+        allow delete: if isCapoOVice(c)
+          || (isMembro(c) && u == request.auth.uid && !existsAfter(membroPath(c, u)))
+          || eliminazioneClasse(c);
       }
 
       // ───── Calendario ─────
-      // calendar/settings → { giorniScolastici[7], eccezioni[], fineAnno, aggiornato }
+      // calendar/settings → { giorniScolastici[7], eccezioni[], fineAnno, uscite[7] ("HH:MM"), aggiornato }
       // Le singole eccezioni le controlla il sito: le regole non possono scorrere le liste.
 
       match /calendar/{documento} {
         allow read: if isMembro(c);
         allow create, update: if isCapoOVice(c) && documento == 'settings'
-          && request.resource.data.keys().hasOnly(['giorniScolastici', 'eccezioni', 'fineAnno', 'aggiornato'])
+          && request.resource.data.keys().hasOnly(['giorniScolastici', 'eccezioni', 'fineAnno', 'uscite', 'aggiornato'])
           && request.resource.data.giorniScolastici is list && request.resource.data.giorniScolastici.size() == 7
+          && (!('uscite' in request.resource.data) || (request.resource.data.uscite is list && request.resource.data.uscite.size() == 7))
           && request.resource.data.eccezioni is list && request.resource.data.eccezioni.size() <= 300
           && dataISO(request.resource.data.fineAnno)
           && request.resource.data.aggiornato == request.time;
@@ -356,6 +369,7 @@ service cloud.firestore {
               ) == (
                 getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.interrogati.size()
                 == getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.ordine.size()
+                  + getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('fissi', {}).size()
               )
             ) || (
               isCapoOVice(c)
@@ -377,7 +391,7 @@ service cloud.firestore {
           allow delete: if isCapoOVice(c);
 
           // ───── Preferenze ─────
-          // preferences/{uid} → { scelta, posizioneDSA, aggiornato }
+          // preferences/{uid} → { scelta, dataDSA, aggiornato }
           // Ognuno vede la propria; capo e vice le vedono tutte (servono per generare la lista).
 
           match /preferences/{u} {
@@ -391,14 +405,16 @@ service cloud.firestore {
             allow create, update: if isMembro(c) && u == request.auth.uid
               && mioRuolo(c) in ['capo', 'vice', 'studente']
               && aperta()
-              && request.resource.data.keys().hasOnly(['scelta', 'posizioneDSA', 'aggiornato'])
+              // posizioneDSA: solo null, come la scrive la versione vecchia del sito (ancora aperta su qualche telefono)
+              && request.resource.data.keys().hasOnly(['scelta', 'dataDSA', 'posizioneDSA', 'aggiornato'])
+              && request.resource.data.get('posizioneDSA', null) == null
               && request.resource.data.aggiornato == request.time
               && (
-                (request.resource.data.scelta in ['inizio', 'meta', 'fine', 'indifferente'] && request.resource.data.posizioneDSA == null)
+                (request.resource.data.scelta in ['inizio', 'meta', 'fine', 'indifferente'] && request.resource.data.get('dataDSA', null) == null)
+                // DSA/BES: il giorno dell'interrogazione
                 || (
-                  request.resource.data.scelta == 'posizione'
-                  && request.resource.data.posizioneDSA is int
-                  && request.resource.data.posizioneDSA >= 1 && request.resource.data.posizioneDSA <= 200
+                  request.resource.data.scelta == 'data'
+                  && dataISO(request.resource.data.get('dataDSA', null))
                   && exists(dsaPath(c, u))
                 )
               );
@@ -407,7 +423,8 @@ service cloud.firestore {
           }
 
           // ───── Lista ─────
-          // list/current → { ordine[uid], interrogati{uid: data}, generata, generataDa } (la vedono tutti)
+          // list/current → { ordine[uid], fissi{uid: data}, interrogati{uid: data}, generata, generataDa } (la vedono tutti)
+          // fissi: DSA/BES con la data scelta, fuori dall'ordine
           // list/rapporto → rapporto di soddisfazione (solo capo e vice)
 
           match /list/{documento} {
@@ -418,9 +435,11 @@ service cloud.firestore {
               && (
                 (
                   documento == 'current'
-                  && request.resource.data.keys().hasOnly(['ordine', 'interrogati', 'generata', 'generataDa', 'ultimaModifica'])
+                  && request.resource.data.keys().hasOnly(['ordine', 'fissi', 'interrogati', 'generata', 'generataDa', 'ultimaModifica'])
                   && voceStoricoNuova(request.resource.data.get('ultimaModifica', null))
                   && request.resource.data.ordine is list && request.resource.data.ordine.size() <= 200
+                  && request.resource.data.get('fissi', {}) is map && request.resource.data.get('fissi', {}).size() <= 200
+                  && request.resource.data.ordine.toSet().intersection(request.resource.data.get('fissi', {}).keys().toSet()).size() == 0
                   && request.resource.data.interrogati is map && request.resource.data.interrogati.size() == 0
                   && request.resource.data.generata == request.time
                   && request.resource.data.generataDa == request.auth.uid
@@ -439,7 +458,8 @@ service cloud.firestore {
               && request.resource.data.ordine.size() == resource.data.ordine.size()
               && request.resource.data.ordine.toSet() == resource.data.ordine.toSet()
               && request.resource.data.interrogati is map
-              && request.resource.data.ordine.toSet().hasAll(request.resource.data.interrogati.keys());
+              && request.resource.data.ordine.toSet().union(request.resource.data.get('fissi', {}).keys().toSet())
+                .hasAll(request.resource.data.interrogati.keys());
             // Scambio: chi riceve la richiesta la accetta e scambia SOLO le due posizioni
             allow update: if documento == 'current' && isMembro(c) && scambioAccettato();
             allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
@@ -589,7 +609,7 @@ service cloud.firestore {
             allow get: if isMembro(c) && (u == request.auth.uid || puoModificareListe(c));
             allow list: if puoModificareListe(c);
             allow create: if isMembro(c) && u == request.auth.uid
-              && u in lista().ordine
+              && (u in lista().ordine || u in lista().get('fissi', {}))
               && !(u in lista().interrogati)
               && request.resource.data.keys().hasOnly(['data', 'quando'])
               && dataISO(request.resource.data.data)

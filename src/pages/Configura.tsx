@@ -8,8 +8,12 @@ import {
   festeTra,
   formattaData,
   formattaGiorno,
+  NOMI_GIORNI,
+  NOMI_GIORNI_BREVI,
   oggiISO,
+  oraValida,
   senzaEccezione,
+  usciteDefault,
   vacanzeRegionaliMancanti,
   type Calendario,
   type Eccezione,
@@ -319,6 +323,8 @@ function ConfiguraCalendario({
             <p className="text-xs text-slate-600 dark:text-slate-400">Le lezioni di una materia contano solo nei giorni di scuola.</p>
           </div>
 
+          <OrariUscita cal={cal} salva={salva} />
+
           <FineAnno cal={cal} salva={salva} />
         </div>
       </Scheda>
@@ -398,6 +404,50 @@ function ConfiguraCalendario({
         </ul>
       </Soffietto>
     </>
+  )
+}
+
+/** A che ora si esce, giorno per giorno: da quell'ora chi non è stato interrogato passa alla lezione dopo. */
+function OrariUscita({
+  cal,
+  salva,
+}: {
+  cal: Calendario
+  salva: (c: Calendario, avviso?: string, annulla?: Calendario) => Promise<boolean>
+}) {
+  const salvate = cal.uscite ?? usciteDefault()
+  const [orari, setOrari] = useState(salvate)
+  const giorni = cal.giorniScolastici.flatMap((on, i) => (on ? [i] : []))
+  const cambiati = orari.some((o, i) => o !== salvate[i])
+  const validi = orari.every(oraValida)
+  return (
+    <fieldset className="space-y-2">
+      <legend className="mb-2 text-sm font-medium">Ora di uscita</legend>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {giorni.map((g) => (
+          <label key={g} className="flex items-center gap-2 text-sm">
+            <span className="w-10 shrink-0 text-slate-600 dark:text-slate-400">{NOMI_GIORNI_BREVI[g]}</span>
+            <input
+              type="time"
+              value={orari[g] ?? ''}
+              aria-label={`Ora di uscita ${NOMI_GIORNI[g]!.toLowerCase()}`}
+              onChange={(e) => setOrari((o) => o.map((x, i) => (i === g ? e.target.value : x)))}
+              className={`${CLASSE_INPUT} min-w-0 py-1.5`}
+            />
+          </label>
+        ))}
+      </div>
+      <p className="text-xs text-slate-600 dark:text-slate-400">
+        Da quell'ora la lezione del giorno conta come fatta: chi non è stato interrogato passa alla lezione successiva.
+      </p>
+      <Bottone
+        variante="secondario"
+        disabled={!cambiati || !validi}
+        onClick={() => salva({ ...cal, uscite: orari }, 'Orari di uscita salvati', cal)}
+      >
+        Salva orari
+      </Bottone>
+    </fieldset>
   )
 }
 

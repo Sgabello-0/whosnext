@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Timestamp } from 'firebase-admin/firestore'
 import { database } from '../../netlify/lib/admin'
-import { avvisaEsitoScambio, avvisaListaPronta, avvisaRichiestaScambio, ricordaDomani, ricordaScelte } from '../../netlify/lib/eventi'
+import { avvisaListaPronta, avvisaNuovaInterrogazione, avvisaRichiestaScambio, ricordaDomani } from '../../netlify/lib/eventi'
 import { generaScadute } from '../../netlify/lib/generazione'
 import { htmlEmail, testoEmail } from '../../netlify/lib/email'
 import type { Postino } from '../../netlify/lib/postino'
@@ -107,7 +107,7 @@ describe('avvisi', () => {
     expect(await avvisaListaPronta(db, p, R, LUNEDI_SERA)).toBe(3)
     expect(push.map((x) => x.tokens)).toEqual([['token-anna'], ['token-carla', 'scaduto']]) // Bruno ha spento le push
     expect(push[0]!.n).toMatchObject({
-      titolo: 'Storia – Orale: lista pubblicata',
+      titolo: 'Lista generata: Storia – Orale',
       testo: 'Sei il n° 1 di 3. Stimata: Martedì 10/11.',
       percorso: '/classe/c1/materia/s1/interrogazione/i1',
     })
@@ -123,7 +123,7 @@ describe('avvisi', () => {
     expect(push).toHaveLength(2)
   })
 
-  it('scambi: la richiesta a chi occupa la posizione, l\'esito a chi l\'ha chiesta; solo se a chiamare è la persona giusta', async () => {
+  it('scambi: la richiesta a chi occupa la posizione, solo se a chiamare è chi l\'ha fatta', async () => {
     await conLista()
     const rifS = db.doc(`${INTERR}/scambi/carla_0`)
     await rifS.set({ da: 'carla', daPos: 2, aPos: 0, stato: 'attesa', a: null, creato: Timestamp.now(), aggiornato: Timestamp.now() })
@@ -133,31 +133,29 @@ describe('avvisi', () => {
     expect(await avvisaRichiestaScambio(db, p, R, 'carla_0', 'carla')).toBe('gia-mandata')
     expect(push).toHaveLength(1)
     expect(push[0]!.tokens).toEqual(['token-anna'])
-    expect(push[0]!.n.titolo).toBe('Richiesta di scambio da Carla')
+    expect(push[0]!.n.titolo).toBe('Carla richiede uno scambio')
     expect(push[0]!.n.testo).toContain('passeresti dal n° 1 al n° 3')
     expect(email).toHaveLength(1)
-
-    expect(await avvisaEsitoScambio(db, p, R, 'carla_0', 'anna')).toBe('non-valido') // non ha ancora risposto
-    await rifS.update({ stato: 'rifiutato', a: 'anna', aggiornato: Timestamp.now() })
-    expect(await avvisaEsitoScambio(db, p, R, 'carla_0', 'carla')).toBe('non-valido')
-    expect(await avvisaEsitoScambio(db, p, R, 'carla_0', 'anna')).toBe('mandata')
-    expect(push[1]).toMatchObject({ tokens: ['token-carla'], n: { titolo: 'Scambio rifiutato da Anna' } })
-    expect(email).toHaveLength(1) // l'esito solo come push
+    // una richiesta già chiusa non si avvisa
+    await rifS.update({ stato: 'rifiutato', a: 'anna', aggiornato: Timestamp.now(), creato: Timestamp.now() })
+    expect(await avvisaRichiestaScambio(db, p, R, 'carla_0', 'carla')).toBe('non-valido')
   })
 
-  it('promemoria per scegliere: a chi non ha scelto, se la scadenza è entro 6 ore', async () => {
-    const tra3ore = new Date(Date.now() + 3 * 3_600_000)
-    await classe({ scadenzaPreferenze: Timestamp.fromDate(tra3ore) })
-    await db.doc(`${INTERR}/preferences/anna`).set({ scelta: 'fine', posizioneDSA: null, aggiornato: Timestamp.now() })
-    const { p, push } = postinoFinto()
-    expect(await ricordaScelte(db, p, new Date())).toBe(2) // Bruno e Carla (non il docente, non Anna)
+  it('nuova interrogazione: a tutti gli studenti tranne chi l\'ha creata, una volta sola', async () => {
+    const tra2giorni = new Date(Date.now() + 2 * 24 * 3_600_000)
+    await classe({ scadenzaPreferenze: Timestamp.fromDate(tra2giorni), creatoDa: 'anna', creato: Timestamp.now() })
+    await db.doc('classes/c1/dsa/carla').set({ impostatoDa: 'anna', visibile: true })
+    const { p, push, email } = postinoFinto()
+    expect(await avvisaNuovaInterrogazione(db, p, R, 'anna', new Date())).toBe(2) // Bruno e Carla (non il docente, non Anna)
     expect(push.map((x) => x.tokens[0])).toEqual(['token-bruno', 'token-carla'])
-    expect(push[0]!.n.titolo).toMatch(/^Preferenza da indicare entro le \d{2}:\d{2}$/)
-    expect(await ricordaScelte(db, p, new Date())).toBe(0)
-    // troppo presto: niente
-    await svuota()
-    await classe({ scadenzaPreferenze: Timestamp.fromDate(new Date(Date.now() + 24 * 3_600_000)) })
-    expect(await ricordaScelte(db, postinoFinto().p, new Date())).toBe(0)
+    expect(push[0]!.n.titolo).toBe('Nuova interrogazione: Storia – Orale')
+    expect(push[0]!.n.testo).toMatch(/^Scegli il posto entro \w{3} \d{2}\/\d{2} alle \d{2}:\d{2}: inizio, metà o fine\.$/)
+    // Carla ha il badge DSA/BES: sceglie il giorno
+    expect(push[1]!.n.testo).toMatch(/^Scegli il giorno entro /)
+    expect(email).toHaveLength(2)
+    expect(email[0]!.testo).toContain('Scegli: https://whos-next.web.app/classe/c1/materia/s1/interrogazione/i1')
+    expect(await avvisaNuovaInterrogazione(db, p, R, 'anna', new Date())).toBe(0)
+    expect(push).toHaveLength(2)
   })
 
   it('"domani tocca a te": la sera, solo a chi ha la data stimata domani', async () => {
@@ -167,7 +165,7 @@ describe('avvisi', () => {
     expect(await ricordaDomani(db, p, LUNEDI_SERA)).toBe(1)
     expect(push[0]).toMatchObject({
       tokens: ['token-anna'],
-      n: { titolo: 'Interrogazione prevista per domani', testo: 'Storia – Orale (martedì 10/11): sei il n° 1.' },
+      n: { titolo: 'Domani sei interrogato', testo: 'Storia – Orale (martedì 10/11): sei il n° 1.' },
     })
     expect(await ricordaDomani(db, p, new Date('2026-11-09T19:30:00Z'))).toBe(0) // già avvisata
   })

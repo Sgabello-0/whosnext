@@ -27,6 +27,7 @@ import {
   rifClasse,
   rifDSA,
   rifDSAMembro,
+  mostraMioDSA,
   rifInvito,
   rifMembri,
   rifMembro,
@@ -365,18 +366,59 @@ describe('badge DSA/BES', () => {
     await assertFails(impostaDSA(dbDi(env, anna), classId, 'carla', true, 'bruno'))
   })
 
-  it('il badge lo vedono solo capo, vice e il diretto interessato', async () => {
+  it('visibile: lo vede tutta la classe (anche i docenti); chi è fuori no', async () => {
     const { classId } = await classeDiProva()
     await impostaDSA(dbDi(env, anna), classId, 'carla', true, 'anna')
-    await impostaVice(dbDi(env, anna), classId, 'bruno', true)
     await assertSucceeds(getDocs(rifDSA(dbDi(env, anna), classId)))
-    await assertSucceeds(getDocs(rifDSA(dbDi(env, bruno), classId)))
     await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, carla), classId, 'carla')))
-    await impostaVice(dbDi(env, anna), classId, 'bruno', false)
+    await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, bruno), classId, 'carla')))
+    await assertSucceeds(getDocs(query(rifDSA(dbDi(env, bruno), classId), where('visibile', '==', true))))
+    await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, rossi), classId, 'carla')))
+    await assertFails(getDoc(rifDSAMembro(dbDi(env, bianchi), classId, 'carla')))
+    // senza filtro uno studente non può elencarli tutti (anche quelli nascosti)
+    await assertFails(getDocs(rifDSA(dbDi(env, bruno), classId)))
+  })
+
+  it('nascosto dal diretto interessato: lo vedono solo capo, vice e lui', async () => {
+    const { classId } = await classeDiProva()
+    await impostaDSA(dbDi(env, anna), classId, 'carla', true, 'anna')
+    await assertSucceeds(mostraMioDSA(dbDi(env, carla), [classId], 'carla', false))
     await assertFails(getDoc(rifDSAMembro(dbDi(env, bruno), classId, 'carla')))
-    await assertFails(getDocs(rifDSA(dbDi(env, carla), classId)))
-    await impostaPermessoDocente(dbDi(env, anna), classId, 'rossi', true)
-    await assertFails(getDocs(rifDSA(dbDi(env, rossi), classId)))
+    await assertFails(getDoc(rifDSAMembro(dbDi(env, rossi), classId, 'carla')))
+    expect((await getDocs(query(rifDSA(dbDi(env, bruno), classId), where('visibile', '==', true)))).size).toBe(0)
+    await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, carla), classId, 'carla')))
+    await assertSucceeds(getDocs(rifDSA(dbDi(env, anna), classId)))
+    await impostaVice(dbDi(env, anna), classId, 'bruno', true)
+    await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, bruno), classId, 'carla')))
+    // e lo rimostra
+    await assertSucceeds(mostraMioDSA(dbDi(env, carla), [classId], 'carla', true))
+    await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, rossi), classId, 'carla')))
+  })
+
+  it('solo il diretto interessato lo mostra o nasconde, e cambia solo quello', async () => {
+    const { classId } = await classeDiProva()
+    await impostaDSA(dbDi(env, anna), classId, 'carla', true, 'anna')
+    await assertFails(mostraMioDSA(dbDi(env, bruno), [classId], 'carla', false))
+    await assertFails(mostraMioDSA(dbDi(env, anna), [classId], 'carla', false))
+    const mio = rifDSAMembro(dbDi(env, carla), classId, 'carla')
+    await assertFails(updateDoc(mio, { visibile: 'no' }))
+    await assertFails(updateDoc(mio, { impostatoDa: 'carla' }))
+    await assertFails(updateDoc(mio, { visibile: false, altro: 1 }))
+    // un badge che non c'è non si crea così
+    await assertFails(mostraMioDSA(dbDi(env, bruno), [classId], 'bruno', true))
+    // capo e vice non lo creano con campi strani
+    await assertFails(setDoc(rifDSAMembro(dbDi(env, anna), classId, 'bruno'), { impostatoDa: 'anna', quando: serverTimestamp(), visibile: 'sì' }))
+  })
+
+  it('lo studente non può togliersi il badge da solo (solo nasconderlo)', async () => {
+    const { classId } = await classeDiProva()
+    await impostaDSA(dbDi(env, anna), classId, 'carla', true, 'anna')
+    await assertFails(deleteDoc(rifDSAMembro(dbDi(env, carla), classId, 'carla')))
+    await assertFails(impostaDSA(dbDi(env, carla), classId, 'carla', false, 'carla'))
+    // né quello di un compagno
+    await assertFails(deleteDoc(rifDSAMembro(dbDi(env, bruno), classId, 'carla')))
+    expect((await getDoc(rifDSAMembro(dbDi(env, anna), classId, 'carla'))).exists()).toBe(true)
+    await assertSucceeds(mostraMioDSA(dbDi(env, carla), [classId], 'carla', false))
   })
 
   it('chi esce dalla classe perde anche il badge', async () => {

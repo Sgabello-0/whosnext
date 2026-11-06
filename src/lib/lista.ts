@@ -9,15 +9,24 @@ export function nonInterrogati(ordine: readonly string[], interrogati: Readonly<
 }
 
 /**
- * "Interrogati previsti" in una lezione: i primi N non ancora interrogati.
- * Senza numero per lezione si propone solo il primo.
+ * "Interrogati previsti" nella lezione del giorno `data`: prima chi ha la data fissa fino a quel giorno
+ * (DSA/BES, non ancora interrogati), poi i primi non interrogati della lista nei posti rimasti.
+ * Senza numero per lezione si propone un solo posto.
  */
 export function propostaLezione(
   ordine: readonly string[],
   interrogati: Readonly<Record<string, string>>,
   perLezione: number | null,
+  fissi: Readonly<Record<string, string>> = {},
+  data: DataISO | null = null,
 ): string[] {
-  return nonInterrogati(ordine, interrogati).slice(0, Math.max(1, perLezione ?? 1))
+  const conData = Object.entries(fissi)
+    .filter(([u, d]) => !interrogati[u] && data !== null && d <= data)
+    .sort(([ua, a], [ub, b]) => a.localeCompare(b) || ua.localeCompare(ub))
+    .map(([u]) => u)
+  const posti = Math.max(perLezione ?? 1, 1)
+  const altri = Math.max(conData.length > 0 ? 0 : 1, posti - conData.length)
+  return [...conData, ...nonInterrogati(ordine, interrogati).filter((u) => !(u in fissi)).slice(0, altri)]
 }
 
 /** Sposta un elemento da una posizione a un'altra (come trascinandolo). */
@@ -53,9 +62,19 @@ export function ultimaLezione(
   return null
 }
 
-/** true quando tutti sono stati interrogati. */
-export function tuttiInterrogati(ordine: readonly string[], interrogati: Readonly<Record<string, string>>): boolean {
-  return ordine.length > 0 && ordine.every((u) => !!interrogati[u])
+/** true quando tutti sono stati interrogati (anche chi ha la data fissa). */
+export function tuttiInterrogati(
+  ordine: readonly string[],
+  interrogati: Readonly<Record<string, string>>,
+  fissi: Readonly<Record<string, string>> = {},
+): boolean {
+  const tutti = [...ordine, ...Object.keys(fissi)]
+  return tutti.length > 0 && tutti.every((u) => !!interrogati[u])
+}
+
+/** Manda una persona in fondo alla lista. */
+export function mandaInFondo<T>(elenco: readonly T[], i: number): T[] {
+  return sposta(elenco, i, elenco.length - 1)
 }
 
 /**

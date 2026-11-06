@@ -211,10 +211,18 @@ export async function impostaVice(db: Firestore, classId: string, uid: string, v
 /** Capo o vice danno o tolgono il badge DSA/BES. */
 export async function impostaDSA(db: Firestore, classId: string, uid: string, attivo: boolean, mioUid: string): Promise<void> {
   if (attivo) {
-    await setDoc(rifDSAMembro(db, classId, uid), { impostatoDa: mioUid, quando: serverTimestamp() })
+    // visibile alla classe: lo studente può nasconderlo dalle Impostazioni
+    await setDoc(rifDSAMembro(db, classId, uid), { impostatoDa: mioUid, quando: serverTimestamp(), visibile: true })
   } else {
     await deleteDoc(rifDSAMembro(db, classId, uid))
   }
+}
+
+/** Lo studente mostra o nasconde ai compagni il proprio badge DSA/BES, in tutte le classi in cui ce l'ha. */
+export async function mostraMioDSA(db: Firestore, classi: string[], uid: string, visibile: boolean): Promise<void> {
+  const batch = writeBatch(db)
+  for (const c of classi) batch.update(rifDSAMembro(db, c, uid), { visibile })
+  await batch.commit()
 }
 
 /** Un docente chiede (o ritira la richiesta di) permesso di modifica. */

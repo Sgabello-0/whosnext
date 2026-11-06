@@ -11,6 +11,7 @@ import {
   writeBatch,
   type Firestore,
 } from 'firebase/firestore'
+import { dataValida } from './calendar'
 import { ErroreApp, rifDSA, rifMembri } from './classi'
 import { rifInterrogazione, rifLista, rifPreferenza, rifPreferenze, rifRapporto } from './configurazione'
 import { generaLista, preferenzeDa, semeCasuale, type Risultato, type Scelta } from './generateList'
@@ -24,14 +25,14 @@ export async function salvaPreferenza(
   r: Rif,
   uid: string,
   scelta: Scelta,
-  posizioneDSA: number | null = null,
+  dataDSA: string | null = null,
 ): Promise<void> {
-  if (scelta === 'posizione' && (posizioneDSA === null || !Number.isInteger(posizioneDSA) || posizioneDSA < 1)) {
-    throw new ErroreApp('dati-non-validi', 'Scegli la posizione.')
+  if (scelta === 'data' && (dataDSA === null || !dataValida(dataDSA))) {
+    throw new ErroreApp('dati-non-validi', 'Scegli la data.')
   }
   await setDoc(rifPreferenza(db, r.classId, r.subjectId, r.interrogazioneId, uid), {
     scelta,
-    posizioneDSA: scelta === 'posizione' ? posizioneDSA : null,
+    dataDSA: scelta === 'data' ? dataDSA : null,
     aggiornato: serverTimestamp(),
   })
 }
@@ -78,6 +79,7 @@ export async function generaEPubblicaLista(
   const voce = aggiungiVoceStorico(db, batch, r, mioUid, 'generata', { seme })
   batch.set(rifLista(db, r.classId, r.subjectId, r.interrogazioneId), {
     ordine: risultato.ordine,
+    fissi: risultato.fissi,
     interrogati: {},
     generata: serverTimestamp(),
     generataDa: mioUid,

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { orderBy, query } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { avvisaServer } from '../lib/avvisaServer'
 import { creaInterrogazione, rifInterrogazioni, rifMaterie } from '../lib/configurazione'
 import { percorsoInterrogazione } from '../lib/messaggi'
 import { messaggioErrore } from '../lib/errori'
@@ -136,6 +137,7 @@ function NuovaInterrogazione(p: { classId: string; materie: ConId<Materia>[]; mi
           onAnnulla={p.onAnnulla}
           onSalva={async (d) => {
             const id = await creaInterrogazione(db!, p.classId, materia.id, d, p.mioUid)
+            avvisaServer('nuova-interrogazione', { classId: p.classId, subjectId: materia.id, interrogazioneId: id })
             avvisi.mostra('Interrogazione creata: ora tutti possono scegliere la preferenza')
             navigate(percorsoInterrogazione(p.classId, materia.id, id))
           }}

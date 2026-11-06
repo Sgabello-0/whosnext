@@ -167,11 +167,12 @@ Il server (cartella `netlify/`) genera le liste alla scadenza e manda le notific
 1. **Chiave per le push**: Firebase → ⚙ Impostazioni progetto → **Cloud Messaging** → *Configurazione web* → *Certificati push web* → **Genera coppia di chiavi**. Copia la chiave pubblica in `.env` come `VITE_FIREBASE_VAPID_KEY` (non è segreta).
 2. **Account di servizio** (questo sì è segreto): Impostazioni progetto → **Account di servizio** → **Genera nuova chiave privata**. Si scarica un file JSON: non va mai su GitHub né in chat.
 3. **Email (per ora spente)**: le email da indirizzi esterni (anche Gmail) non arrivano agli account della scuola. Il codice è pronto: con un indirizzo della scuola che possa inviare via SMTP, su Netlify si aggiungono `EMAIL_ATTIVE=si`, `EMAIL_UTENTE` e ★ `EMAIL_PASSWORD`, e nel sito si rimette l'interruttore "Email" nelle Impostazioni.
-4. **Netlify**: *Add new project* → *Import an existing project* → GitHub → `whosnext` → lascia le impostazioni (le legge da `netlify.toml`) → **Deploy**.
-5. Netlify → *Project configuration* → **Environment variables** → aggiungi (ambito *Functions*, segna come segrete quelle con ★):
+4. **Feedback**: i messaggi inviati dalle Impostazioni partono da `EMAIL_UTENTE` (con ★ `EMAIL_PASSWORD`, la password per le app di Gmail) e arrivano a `FEEDBACK_A` (il tuo indirizzo personale). Senza `FEEDBACK_A` arrivano allo stesso `EMAIL_UTENTE`; senza posta configurata restano comunque salvati nel database (raccolta `feedback`, visibile dalla console di Firebase). Non serve `EMAIL_ATTIVE`.
+5. **Netlify**: *Add new project* → *Import an existing project* → GitHub → `whosnext` → lascia le impostazioni (le legge da `netlify.toml`) → **Deploy**.
+6. Netlify → *Project configuration* → **Environment variables** → aggiungi (ambito *Functions*, segna come segrete quelle con ★):
    - `FIREBASE_CLIENT_EMAIL` = il valore di `client_email` nel file JSON
    - ★ `FIREBASE_PRIVATE_KEY` = il valore di `private_key`: tutto quello che c'è tra le virgolette, una riga sola piena di `\n`, da `-----BEGIN PRIVATE KEY-----` fino a `-----END PRIVATE KEY-----\n`. **Attenzione:** non finisce con `==`, quelli sono a metà; se nei log delle funzioni compare "FIREBASE_PRIVATE_KEY è tagliata", ricopiala intera.
-6. *Deploys* → **Trigger deploy** (le variabili valgono dal deploy successivo). Poi cancella il file JSON dal computer.
-7. Nel `.env` del sito: `VITE_URL_NOTIFICHE=https://<nome-progetto>.netlify.app/api/notifica`, poi `npm run deploy:sito`.
+7. *Deploys* → **Trigger deploy** (le variabili valgono dal deploy successivo). Poi cancella il file JSON dal computer.
+8. Nel `.env` del sito: `VITE_URL_NOTIFICHE=https://<nome-progetto>.netlify.app/api/notifica`, poi `npm run deploy:sito`.
 
 Le notifiche già mandate sono in Firestore → `invii` (una per chiave: non partono mai due volte). I log del server sono su Netlify → *Logs* → *Functions*.

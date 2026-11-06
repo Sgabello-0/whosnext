@@ -22,6 +22,50 @@ export type Calendario = {
   eccezioni: Eccezione[]
   /** ultimo giorno di lezione */
   fineAnno: DataISO
+  /**
+   * 7 orari "HH:MM", da lunedì a domenica: a che ora finiscono le lezioni.
+   * Da quell'ora la lezione del giorno è passata (chi non è stato interrogato slitta). Di default le 14:00.
+   */
+  uscite?: string[]
+}
+
+export const USCITA_DEFAULT = '14:00'
+const RE_ORA = /^([01]\d|2[0-3]):[0-5]\d$/
+
+export function oraValida(ora: unknown): ora is string {
+  return typeof ora === 'string' && RE_ORA.test(ora)
+}
+
+export function usciteDefault(): string[] {
+  return Array.from({ length: 7 }, () => USCITA_DEFAULT)
+}
+
+/** A che ora finiscono le lezioni in quel giorno. */
+export function oraUscita(iso: DataISO, cal: Calendario): string {
+  const ora = cal.uscite?.[giornoSettimana(iso)]
+  return oraValida(ora) ? ora : USCITA_DEFAULT
+}
+
+/** "HH:MM" dell'ora locale del dispositivo. */
+export function oraMinuti(adesso: Date = new Date()): string {
+  return `${String(adesso.getHours()).padStart(2, '0')}:${String(adesso.getMinutes()).padStart(2, '0')}`
+}
+
+/** Un momento nel calendario della scuola: giorno e ora (in Italia). */
+export type Momento = { oggi: DataISO; ora: string }
+
+export function momentoLocale(adesso: Date = new Date()): Momento {
+  return { oggi: oggiISO(adesso), ora: oraMinuti(adesso) }
+}
+
+/**
+ * Il primo giorno di cui contano ancora le lezioni: oggi fino all'ora di uscita, poi domani.
+ * Con `creata` (giorno in cui è stata creata l'interrogazione) quel giorno non conta mai.
+ */
+export function primoGiornoUtile(m: Momento, cal: Calendario, creata?: DataISO | null): DataISO {
+  let da = m.ora >= oraUscita(m.oggi, cal) ? aggiungiGiorni(m.oggi, 1) : m.oggi
+  if (creata && dataValida(creata) && da <= creata) da = aggiungiGiorni(creata, 1)
+  return da
 }
 
 export const FINE_ANNO_DEFAULT: DataISO = '2027-06-06'
@@ -220,6 +264,10 @@ export function calendarioDa(dati: Partial<Calendario> | null | undefined): Cale
       Array.isArray(giorni) && giorni.length === 7 ? giorni.map(Boolean) : [...CALENDARIO_DEFAULT.giorniScolastici],
     eccezioni: Array.isArray(dati?.eccezioni) ? dati.eccezioni : [],
     fineAnno: dati?.fineAnno && dataValida(dati.fineAnno) ? dati.fineAnno : FINE_ANNO_DEFAULT,
+    uscite:
+      Array.isArray(dati?.uscite) && dati.uscite.length === 7
+        ? dati.uscite.map((o) => (oraValida(o) ? o : USCITA_DEFAULT))
+        : usciteDefault(),
   }
 }
 
@@ -243,6 +291,7 @@ export function erroreCalendario(cal: Calendario): string | null {
   if (cal.giorniScolastici.length !== 7) return 'Giorni della settimana non validi.'
   if (!dataValida(cal.fineAnno)) return "Data di fine anno non valida."
   if (cal.eccezioni.length > 300) return 'Troppe eccezioni nel calendario (massimo 300).'
+  if (cal.uscite && (cal.uscite.length !== 7 || !cal.uscite.every(oraValida))) return 'Orari di uscita non validi.'
   for (const e of cal.eccezioni) {
     const errore = erroreEccezione(e)
     if (errore) return errore

@@ -78,13 +78,16 @@ export type Interrogazione = {
 
 export type DocPreferenza = {
   scelta: import('./generateList').Scelta
-  posizioneDSA: number | null
+  /** solo con scelta "data" (DSA/BES): AAAA-MM-GG */
+  dataDSA: string | null
   aggiornato?: Timestamp
 }
 
 export type DocLista = {
-  /** uid in ordine di interrogazione */
+  /** uid in ordine di interrogazione (senza chi ha la data fissa) */
   ordine: string[]
+  /** DSA/BES: uid → data scelta (AAAA-MM-GG); fuori dall'ordine */
+  fissi?: Record<string, string>
   /** uid → data (AAAA-MM-GG) in cui è stato interrogato */
   interrogati: Record<string, string>
   generata?: Timestamp

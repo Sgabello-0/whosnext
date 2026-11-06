@@ -1,14 +1,17 @@
 /**
  * Casi difficili per il server: esecuzioni in contemporanea, dati strani, confini di orario,
- * e l'indirizzo /api/notifica (controlli su origine, token, dati e iscrizione alla classe).
+ * date fisse DSA/BES, e gli indirizzi /api/notifica e /api/feedback
+ * (controlli su origine, token, dati e iscrizione alla classe).
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { Timestamp } from 'firebase-admin/firestore'
 import { database } from '../../netlify/lib/admin'
-import { avvisaEsitoScambio, avvisaListaPronta, ricordaDomani, ricordaScelte } from '../../netlify/lib/eventi'
+import { avvisaListaPronta, avvisaNuovaInterrogazione, ricordaDomani } from '../../netlify/lib/eventi'
+import { riceviFeedback, type MessaggioFeedback } from '../../netlify/lib/feedback'
 import { generaScadute } from '../../netlify/lib/generazione'
 import { avvisa, type Postino } from '../../netlify/lib/postino'
 import type { Notifica } from '../../netlify/lib/testi'
+import feedback from '../../netlify/functions/feedback.mjs'
 import notifica from '../../netlify/functions/notifica.mjs'
 
 const db = database()
@@ -68,9 +71,14 @@ const TRE: Record<string, Membro> = {
   carla: { ruolo: 'studente', nome: 'Carla Blu' },
 }
 
-async function conLista(ordine: string[], extra: Record<string, unknown> = {}, interrogati: Record<string, string> = {}) {
+async function conLista(
+  ordine: string[],
+  extra: Record<string, unknown> = {},
+  interrogati: Record<string, string> = {},
+  fissi: Record<string, string> = {},
+) {
   await classe(TRE, { stato: 'lista', ...extra })
-  await db.doc(`${INTERR}/list/current`).set({ ordine, interrogati, generataDa: 'anna' })
+  await db.doc(`${INTERR}/list/current`).set({ ordine, fissi, interrogati, generataDa: 'anna' })
 }
 
 beforeEach(svuota)
@@ -94,15 +102,18 @@ describe('generazione automatica: casi difficili', () => {
     expect(await avvisaListaPronta(db, postinoFinto().p, R, new Date())).toBe(0)
   })
 
-  it('la posizione esatta DSA vale anche quando genera il server; chi è uscito non c\'è', async () => {
+  it('il giorno scelto dai DSA vale anche quando genera il server; chi è uscito non c\'è', async () => {
     await classe(TRE)
-    await db.doc(`${CLASSE}/dsa/carla`).set({ da: 'anna' })
-    await db.doc(`${INTERR}/preferences/carla`).set({ scelta: 'posizione', posizioneDSA: 1, aggiornato: Timestamp.now() })
-    await db.doc(`${INTERR}/preferences/uscito`).set({ scelta: 'inizio', posizioneDSA: null, aggiornato: Timestamp.now() })
+    await db.doc(`${CLASSE}/dsa/carla`).set({ impostatoDa: 'anna', visibile: true })
+    await db.doc(`${INTERR}/preferences/carla`).set({ scelta: 'data', dataDSA: '2026-11-12', aggiornato: Timestamp.now() })
+    await db.doc(`${INTERR}/preferences/uscito`).set({ scelta: 'inizio', dataDSA: null, aggiornato: Timestamp.now() })
+    // Bruno chiede una data senza badge: non vale
+    await db.doc(`${INTERR}/preferences/bruno`).set({ scelta: 'data', dataDSA: '2026-11-10', aggiornato: Timestamp.now() })
     await generaScadute(db, new Date())
-    const ordine = (await db.doc(`${INTERR}/list/current`).get()).data()!.ordine
-    expect(ordine[0]).toBe('carla')
-    expect(ordine).not.toContain('uscito')
+    const lista = (await db.doc(`${INTERR}/list/current`).get()).data()!
+    expect(lista.fissi).toEqual({ carla: '2026-11-12' })
+    expect([...lista.ordine].sort()).toEqual(['anna', 'bruno'])
+    expect(lista.ordine).not.toContain('uscito')
   })
 
   it('una preferenza con un valore sconosciuto non blocca la generazione (conta come "non mi interessa")', async () => {
@@ -147,19 +158,16 @@ describe('avvisi: casi difficili', () => {
     expect(push).toHaveLength(0)
   })
 
-  it('esito accettato: a chi l\'aveva chiesto, con la posizione nuova', async () => {
-    await conLista(['anna', 'bruno', 'carla'])
-    // Carla (n° 3) ha chiesto il n° 1 ad Anna, che ha accettato: la lista è già scambiata
-    await db.doc(`${INTERR}/list/current`).update({ ordine: ['carla', 'bruno', 'anna'] })
-    await db.doc(`${INTERR}/scambi/carla_0`).set({
-      da: 'carla', daPos: 2, aPos: 0, stato: 'accettato', a: 'anna', creato: Timestamp.now(), aggiornato: Timestamp.now(),
-    })
+  it('lista generata con una data fissa: a chi ce l\'ha, la data al posto del numero', async () => {
+    // Carla ha scelto giovedì 12/11; Anna e Bruno in ordine (1 per lezione, martedì e giovedì)
+    await conLista(['anna', 'bruno'], {}, {}, { carla: '2026-11-12' })
     const { p, push } = postinoFinto()
-    expect(await avvisaEsitoScambio(db, p, R, 'carla_0', 'anna')).toBe('mandata')
-    expect(push[0]).toMatchObject({
-      tokens: ['token-carla'],
-      n: { titolo: 'Scambio accettato da Anna', testo: 'Storia – Orale: ora sei il n° 1.' },
-    })
+    expect(await avvisaListaPronta(db, p, R, LUNEDI_SERA)).toBe(3)
+    const per = Object.fromEntries(push.map((x) => [x.tokens[0], x.n.testo]))
+    expect(per['token-anna']).toBe('Sei il n° 1 di 2. Stimata: Martedì 10/11.')
+    expect(per['token-carla']).toBe('Hai la data che hai scelto. Stimata: Giovedì 12/11.')
+    // giovedì è di Carla: Bruno passa a martedì 17/11
+    expect(per['token-bruno']).toBe('Sei il n° 2 di 2. Stimata: Martedì 17/11.')
   })
 
   it('chi ha spento le push non le riceve, ma l\'avviso conta come gestito', async () => {
@@ -188,29 +196,55 @@ describe('avvisi: casi difficili', () => {
     expect(push).toHaveLength(1)
   })
 
-  it('promemoria: anche a chi ha tolto la preferenza; mai dopo la scadenza o a liste fatte', async () => {
-    const tra2ore = Timestamp.fromDate(new Date(Date.now() + 2 * 3_600_000))
-    await classe(TRE, { scadenzaPreferenze: tra2ore })
-    await db.doc(`${INTERR}/preferences/anna`).set({ scelta: 'fine', posizioneDSA: null, aggiornato: Timestamp.now() })
-    await db.doc(`${INTERR}/preferences/bruno`).set({ scelta: 'inizio', posizioneDSA: null, aggiornato: Timestamp.now() })
-    await db.doc(`${INTERR}/preferences/bruno`).delete() // ci ha ripensato
+  it('nuova interrogazione: solo se a chiederlo è chi l\'ha creata, finché le preferenze sono aperte', async () => {
+    const tra1ora = Timestamp.fromDate(new Date(Date.now() + 3_600_000))
+    await classe({ ...TRE, rossi: { ruolo: 'docente', nome: 'Prof Rossi' } }, { scadenzaPreferenze: tra1ora, creatoDa: 'anna' })
     const { p, push } = postinoFinto()
-    expect(await ricordaScelte(db, p, new Date())).toBe(2)
-    expect(push.map((x) => x.tokens[0]).sort()).toEqual(['token-bruno', 'token-carla'])
-    // scaduta da poco: niente promemoria
-    await svuota()
-    await classe(TRE, { scadenzaPreferenze: Timestamp.fromDate(new Date(Date.now() - 1000)) })
-    expect(await ricordaScelte(db, p, new Date())).toBe(0)
+    expect(await avvisaNuovaInterrogazione(db, p, R, 'bruno', new Date())).toBe('non-valido')
+    expect(await avvisaNuovaInterrogazione(db, p, { ...R, interrogazioneId: 'nessuna' }, 'anna', new Date())).toBe('non-valido')
+    // scaduta: niente
+    expect(await avvisaNuovaInterrogazione(db, p, R, 'anna', new Date(Date.now() + 2 * 3_600_000))).toBe('non-valido')
+    expect(push).toHaveLength(0)
+    expect(await avvisaNuovaInterrogazione(db, p, R, 'anna', new Date())).toBe(2)
+    expect(push.map((x) => x.tokens[0]).sort()).toEqual(['token-bruno', 'token-carla']) // il docente no
+    // già in lista: niente
+    await db.doc(INTERR).update({ stato: 'lista' })
+    expect(await avvisaNuovaInterrogazione(db, p, R, 'anna', new Date())).toBe('non-valido')
   })
 
-  it('promemoria: la scadenza cambiata riapre il promemoria (una volta per scadenza)', async () => {
-    const tra2ore = new Date(Date.now() + 2 * 3_600_000)
-    await classe(TRE, { scadenzaPreferenze: Timestamp.fromDate(tra2ore) })
-    const { p } = postinoFinto()
-    expect(await ricordaScelte(db, p, new Date())).toBe(3)
-    expect(await ricordaScelte(db, p, new Date())).toBe(0)
-    await db.doc(INTERR).update({ scadenzaPreferenze: Timestamp.fromDate(new Date(tra2ore.getTime() + 3_600_000)) })
-    expect(await ricordaScelte(db, p, new Date())).toBe(3)
+  it('"domani": all\'ora di uscita chi non è stato interrogato slitta, e lo avvisa per la lezione dopo', async () => {
+    // martedì e mercoledì; martedì 10/11 sera: Anna (n° 1) non è stata interrogata → tocca a lei mercoledì
+    await conLista(['anna', 'bruno', 'carla'], { giorni: [1, 2] })
+    const { p, push } = postinoFinto()
+    expect(await ricordaDomani(db, p, new Date('2026-11-10T18:00:00Z'))).toBe(1)
+    expect(push[0]).toMatchObject({ tokens: ['token-anna'], n: { testo: 'Storia – Orale (mercoledì 11/11): sei il n° 1.' } })
+  })
+
+  it('"domani": chi ha la data fissa domani è avvisato, e gli altri si spostano', async () => {
+    // lunedì sera: domani martedì 10/11 è il giorno scelto da Carla; con 1 per lezione Anna passa a giovedì
+    await conLista(['anna', 'bruno'], {}, {}, { carla: '2026-11-10' })
+    const { p, push } = postinoFinto()
+    expect(await ricordaDomani(db, p, LUNEDI_SERA)).toBe(1)
+    expect(push[0]).toMatchObject({
+      tokens: ['token-carla'],
+      n: { titolo: 'Domani sei interrogato', testo: 'Storia – Orale (martedì 10/11): è la data che hai scelto.' },
+    })
+  })
+
+  it('"domani": la data fissa non rispettata passa alla lezione dopo', async () => {
+    // Carla aveva scelto martedì 10/11 ma non è stata interrogata: mercoledì sera, domani giovedì 12/11 tocca a lei
+    await conLista(['anna', 'bruno'], {}, { anna: '2026-11-10' }, { carla: '2026-11-10' })
+    const { p, push } = postinoFinto()
+    expect(await ricordaDomani(db, p, new Date('2026-11-11T18:00:00Z'))).toBe(1)
+    expect(push[0]!.tokens).toEqual(['token-carla'])
+  })
+
+  it('"domani": il giorno in cui è stata creata l\'interrogazione non conta', async () => {
+    // creata e generata martedì 10/11 mattina: la prima lezione è mercoledì 11/11 (martedì e mercoledì)
+    await conLista(['anna', 'bruno'], { giorni: [1, 2], creato: Timestamp.fromDate(new Date('2026-11-10T07:00:00Z')) })
+    const { p, push } = postinoFinto()
+    expect(await ricordaDomani(db, p, new Date('2026-11-10T18:00:00Z'))).toBe(1)
+    expect(push[0]!.tokens).toEqual(['token-anna'])
   })
 
   it('"domani": salta chi è già stato interrogato e avvisa il successivo', async () => {
@@ -266,9 +300,9 @@ describe('/api/notifica', () => {
   function b64(o: unknown) {
     return Buffer.from(JSON.stringify(o)).toString('base64url')
   }
-  function tokenFinto(uid: string, aud = process.env.GCLOUD_PROJECT ?? 'demo-whosnext') {
+  function tokenFinto(uid: string, aud = process.env.GCLOUD_PROJECT ?? 'demo-whosnext', email = `${uid}@studenti.ittsrimini.edu.it`) {
     const adesso = Math.floor(Date.now() / 1000)
-    return `${b64({ alg: 'none', typ: 'JWT' })}.${b64({ sub: uid, aud, iat: adesso, auth_time: adesso, exp: adesso + 3600 })}.`
+    return `${b64({ alg: 'none', typ: 'JWT' })}.${b64({ sub: uid, aud, iat: adesso, auth_time: adesso, exp: adesso + 3600, email, name: `Nome ${uid}` })}.`
   }
   function richiesta(o: { metodo?: string; origine?: string | null; token?: string | null; corpo?: unknown; testo?: string }) {
     const h = new Headers({ 'Content-Type': 'application/json' })
@@ -308,6 +342,8 @@ describe('/api/notifica', () => {
     expect((await notifica(richiesta({ token: t, corpo: { ...CORPO, classId: 7 } }))).status).toBe(400)
     expect((await notifica(richiesta({ token: t, corpo: { ...CORPO, tipo: 'bomba' } }))).status).toBe(400)
     expect((await notifica(richiesta({ token: t, corpo: { ...CORPO, tipo: 'scambio-richiesta' } }))).status).toBe(400) // manca id
+    // l'esito degli scambi non si notifica più
+    expect((await notifica(richiesta({ token: t, corpo: { ...CORPO, tipo: 'scambio-esito', id: 'carla_0' } }))).status).toBe(400)
   })
 
   it('solo i membri della classe', async () => {
@@ -325,6 +361,14 @@ describe('/api/notifica', () => {
     expect(await r2.json()).toEqual({ esito: 0 })
   })
 
+  it('nuova interrogazione: chi l\'ha creata avvisa la classe, una volta sola; gli altri no', async () => {
+    await classe(TRE, { scadenzaPreferenze: Timestamp.fromDate(new Date(Date.now() + 3_600_000)), creatoDa: 'anna' }, { token: false })
+    const corpo = { ...CORPO, tipo: 'nuova-interrogazione' }
+    expect(await (await notifica(richiesta({ token: tokenFinto('bruno'), corpo }))).json()).toEqual({ esito: 'non-valido' })
+    expect(await (await notifica(richiesta({ token: tokenFinto('anna'), corpo }))).json()).toEqual({ esito: 2 })
+    expect(await (await notifica(richiesta({ token: tokenFinto('anna'), corpo }))).json()).toEqual({ esito: 0 })
+  })
+
   it('richiesta di scambio fatta passare per un altro: non parte', async () => {
     await classe(TRE, { stato: 'lista' }, { token: false })
     await db.doc(`${INTERR}/list/current`).set({ ordine: ['anna', 'bruno', 'carla'], interrogati: {}, generataDa: 'anna' })
@@ -333,5 +377,120 @@ describe('/api/notifica', () => {
     })
     const r = await notifica(richiesta({ token: tokenFinto('bruno'), corpo: { ...CORPO, tipo: 'scambio-richiesta', id: 'carla_0' } }))
     expect(await r.json()).toEqual({ esito: 'non-valido' })
+  })
+})
+
+describe('feedback', () => {
+  const ORIGINE = 'https://whos-next.web.app'
+  let precedente: string | undefined
+  beforeAll(() => {
+    precedente = process.env.FIREBASE_AUTH_EMULATOR_HOST
+    process.env.FIREBASE_AUTH_EMULATOR_HOST = '127.0.0.1:9099'
+  })
+  afterAll(() => {
+    if (precedente === undefined) delete process.env.FIREBASE_AUTH_EMULATOR_HOST
+    else process.env.FIREBASE_AUTH_EMULATOR_HOST = precedente
+  })
+  const chi = { uid: 'anna', email: 'anna.verdi@studenti.ittsrimini.edu.it', nome: 'Anna Verdi' }
+  const adesso = new Date('2026-11-09T18:00:00Z')
+
+  function postaFinta(o: { rotta?: boolean; spenta?: boolean } = {}) {
+    const mandate: MessaggioFeedback[] = []
+    return {
+      mandate,
+      invia: async (m: MessaggioFeedback) => {
+        if (o.rotta) throw new Error('Gmail non risponde')
+        if (o.spenta) return false
+        mandate.push(m)
+        return true
+      },
+    }
+  }
+
+  it('si salva e arriva per email con nome, email (per rispondere) e pagina', async () => {
+    const { invia, mandate } = postaFinta()
+    expect(await riceviFeedback(db, invia, chi, { testo: '  Bella app!\nMa il tema scuro…  ', pagina: '/impostazioni' }, adesso)).toBe('inviato')
+    expect(mandate).toHaveLength(1)
+    expect(mandate[0]!.oggetto).toBe('Feedback su WhosNext da Anna Verdi')
+    expect(mandate[0]!.rispondiA).toBe(chi.email)
+    expect(mandate[0]!.testo).toMatch(/^Bella app!\nMa il tema scuro…\n/)
+    expect(mandate[0]!.testo).toContain('Da: Anna Verdi <anna.verdi@studenti.ittsrimini.edu.it>')
+    expect(mandate[0]!.testo).toContain('Pagina: /impostazioni')
+    const salvati = await db.collection('feedback').get()
+    expect(salvati.size).toBe(1)
+    expect(salvati.docs[0]!.data()).toMatchObject({ uid: 'anna', testo: 'Bella app!\nMa il tema scuro…', inviato: true })
+  })
+
+  it('se l\'email non parte (o non è configurata) resta salvato', async () => {
+    expect(await riceviFeedback(db, postaFinta({ rotta: true }).invia, chi, { testo: 'Ciao ciao' }, adesso)).toBe('salvato')
+    expect(await riceviFeedback(db, postaFinta({ spenta: true }).invia, chi, { testo: 'Ciao ciao' }, adesso)).toBe('salvato')
+    const salvati = await db.collection('feedback').get()
+    expect(salvati.docs.map((d) => d.data().inviato)).toEqual([false, false])
+  })
+
+  it('testi vuoti, troppo lunghi o strani: no; pagine strane si ignorano', async () => {
+    const { invia, mandate } = postaFinta()
+    for (const corpo of [null, {}, { testo: '' }, { testo: '  a ' }, { testo: 7 }, { testo: 'x'.repeat(2001) }, 'testo']) {
+      expect(await riceviFeedback(db, invia, chi, corpo, adesso)).toBe('non-valido')
+    }
+    expect(await riceviFeedback(db, invia, chi, { testo: 'ok\u0000\u0007 va', pagina: 'https://cattivo.example' }, adesso)).toBe('inviato')
+    expect(mandate[0]!.testo).toMatch(/^ok va\n/)
+    expect(mandate[0]!.testo).not.toContain('Pagina:')
+  })
+
+  it('solo account della scuola', async () => {
+    const { invia } = postaFinta()
+    expect(await riceviFeedback(db, invia, { ...chi, email: 'qualcuno@gmail.com' }, { testo: 'Ciao ciao' }, adesso)).toBe('non-ammesso')
+    expect(await riceviFeedback(db, invia, { ...chi, email: null }, { testo: 'Ciao ciao' }, adesso)).toBe('non-ammesso')
+  })
+
+  it('al massimo 5 al giorno a testa; il giorno dopo si riparte', async () => {
+    const { invia } = postaFinta()
+    for (let i = 0; i < 5; i++) expect(await riceviFeedback(db, invia, chi, { testo: `Numero ${i}` }, adesso)).toBe('inviato')
+    expect(await riceviFeedback(db, invia, chi, { testo: 'Numero 6' }, adesso)).toBe('troppi')
+    // un altro utente no
+    expect(await riceviFeedback(db, invia, { ...chi, uid: 'bruno' }, { testo: 'Io sì' }, adesso)).toBe('inviato')
+    // il giorno dopo (in Italia: 23:30 UTC è già domani)
+    expect(await riceviFeedback(db, invia, chi, { testo: 'Di nuovo' }, new Date('2026-11-09T23:30:00Z'))).toBe('inviato')
+    // anche chiamando tutti insieme, non più di 5
+    const insieme = await Promise.all(
+      Array.from({ length: 8 }, (_, i) => riceviFeedback(db, invia, { ...chi, uid: 'carla' }, { testo: `Insieme ${i}` }, adesso)),
+    )
+    expect(insieme.filter((e) => e === 'inviato')).toHaveLength(5)
+    expect(insieme.filter((e) => e === 'troppi')).toHaveLength(3)
+  })
+
+  function richiesta(o: { metodo?: string; token?: string; corpo?: unknown; origine?: string }) {
+    const h = new Headers({ 'Content-Type': 'application/json', Origin: o.origine ?? ORIGINE })
+    if (o.token) h.set('Authorization', `Bearer ${o.token}`)
+    return new Request('https://server.test/api/feedback', {
+      method: o.metodo ?? 'POST',
+      headers: h,
+      body: o.metodo === 'OPTIONS' || o.metodo === 'GET' ? undefined : JSON.stringify(o.corpo ?? {}),
+    })
+  }
+  function token(uid: string, email: string) {
+    const b64 = (x: unknown) => Buffer.from(JSON.stringify(x)).toString('base64url')
+    const t = Math.floor(Date.now() / 1000)
+    return `${b64({ alg: 'none' })}.${b64({ sub: uid, aud: process.env.GCLOUD_PROJECT ?? 'demo-whosnext', iat: t, auth_time: t, exp: t + 3600, email })}.`
+  }
+
+  it('/api/feedback: CORS, metodo, token, dati, scuola, limite', async () => {
+    const pre = await feedback(richiesta({ metodo: 'OPTIONS' }))
+    expect(pre.status).toBe(204)
+    expect(pre.headers.get('Access-Control-Allow-Origin')).toBe(ORIGINE)
+    expect((await feedback(richiesta({ metodo: 'OPTIONS', origine: 'https://cattivo.example' }))).headers.get('Access-Control-Allow-Origin')).toBeNull()
+    expect((await feedback(richiesta({ metodo: 'GET' }))).status).toBe(405)
+    expect((await feedback(richiesta({ corpo: { testo: 'Ciao ciao' } }))).status).toBe(401)
+    expect((await feedback(richiesta({ token: 'spazzatura', corpo: { testo: 'Ciao ciao' } }))).status).toBe(401)
+    const t = token('anna', 'anna.verdi@studenti.ittsrimini.edu.it')
+    expect((await feedback(richiesta({ token: t, corpo: { testo: '' } }))).status).toBe(400)
+    expect((await feedback(richiesta({ token: token('x', 'x@gmail.com'), corpo: { testo: 'Ciao ciao' } }))).status).toBe(403)
+    // senza posta configurata (come nei test) si salva soltanto
+    const ok = await feedback(richiesta({ token: t, corpo: { testo: 'Ciao ciao' } }))
+    expect(ok.status).toBe(200)
+    expect(await ok.json()).toEqual({ esito: 'salvato' })
+    for (let i = 0; i < 4; i++) await feedback(richiesta({ token: t, corpo: { testo: 'Ancora uno' } }))
+    expect((await feedback(richiesta({ token: t, corpo: { testo: 'Troppi' } }))).status).toBe(429)
   })
 })

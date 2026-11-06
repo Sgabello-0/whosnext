@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { db } from '../lib/firebase'
 import { richiediPermesso, rimuoviMembro } from '../lib/classi'
 import { messaggioErrore } from '../lib/errori'
@@ -52,8 +52,8 @@ export default function Classe() {
       {io.ruolo === 'docente' && <PermessoDocente classId={classId} io={io} />}
       {!staff && dsa.has(io.uid) && (
         <Riquadro tono="info" icona={Sparkles}>
-          Hai il badge <strong>DSA/BES</strong>: per ogni interrogazione potrai scegliere la posizione esatta nella
-          lista. Il badge lo vedono solo il capoclasse e il vice.
+          Hai il badge <strong>DSA/BES</strong>: per ogni interrogazione puoi scegliere il giorno in cui essere
+          interrogato. Puoi decidere se mostrarlo ai compagni dalle <Link to="/impostazioni" className="font-semibold underline">Impostazioni</Link>.
         </Riquadro>
       )}
 
@@ -75,7 +75,7 @@ export default function Classe() {
         aperto={studenti.length <= 6}
         destra={<PilaAvatar membri={studenti} />}
       >
-        <ListaMembri membri={studenti} mioUid={io.uid} dsa={staff ? dsa : new Set()} />
+        <ListaMembri membri={studenti} mioUid={io.uid} dsa={dsa} />
       </Soffietto>
 
       {docenti.length > 0 && (

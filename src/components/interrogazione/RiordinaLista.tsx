@@ -15,22 +15,25 @@ import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../lib/firebase'
 import { messaggioErrore } from '../../lib/errori'
 import { riordinaLista } from '../../lib/gestioneLista'
-import { sposta } from '../../lib/lista'
+import { mandaInFondo, sposta } from '../../lib/lista'
+import { formattaGiorno } from '../../lib/calendar'
 import type { Membro } from '../../lib/tipi'
 import { Avatar, Bottone, Riquadro, Scheda } from '../ui'
-import { ArrowDown, ArrowUp, ArrowUpDown, GripVertical } from 'lucide-react'
+import { ArrowDownToLine, CalendarCheck, Check, GripVertical, Pencil } from 'lucide-react'
 import { useAvvisi } from '../Avvisi'
 
 type Props = {
   r: { classId: string; subjectId: string; interrogazioneId: string }
   ordine: string[]
+  /** DSA/BES con la data fissa: non si spostano */
+  fissi: Record<string, string>
   interrogati: Record<string, string>
   membri: Map<string, Membro>
   mioUid: string
   onFine: () => void
 }
 
-/** Riordino della lista trascinando i nomi (o con le frecce). Si salva tutto insieme alla fine. */
+/** Modifica della lista: si trascinano i nomi o si mandano in fondo; si salva tutto insieme con "Conferma". */
 export function RiordinaLista(p: Props) {
   const [ordine, setOrdine] = useState(p.ordine)
   const [inCorso, setInCorso] = useState(false)
@@ -67,7 +70,7 @@ export function RiordinaLista(p: Props) {
       const d = db
       const prima = p.ordine
       await riordinaLista(d, p.r, ordine, p.mioUid)
-      avvisi.mostra('Ordine salvato', { annulla: () => riordinaLista(d, p.r, prima, p.mioUid) })
+      avvisi.mostra('Lista aggiornata', { annulla: () => riordinaLista(d, p.r, prima, p.mioUid) })
       p.onFine()
     } catch (err) {
       setErrore(messaggioErrore(err))
@@ -78,9 +81,9 @@ export function RiordinaLista(p: Props) {
   const cambiato = ordine.some((u, i) => u !== p.ordine[i])
 
   return (
-    <Scheda titolo="Riordina la lista" icona={ArrowUpDown} tono="evidenza">
+    <Scheda titolo="Modifica la lista" icona={Pencil} tono="evidenza">
       <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">
-        Trascina i nomi tenendo premuto ⠿, oppure usa le frecce. Le modifiche si salvano solo con "Salva ordine".
+        Trascina i nomi tenendo premuto ⠿, oppure usa "In fondo". Le modifiche si salvano solo con "Conferma".
       </p>
       <DndContext
         sensors={sensori}
@@ -105,20 +108,36 @@ export function RiordinaLista(p: Props) {
                 membro={p.membri.get(uid)}
                 interrogato={!!p.interrogati[uid]}
                 io={uid === p.mioUid}
-                onSposta={(a) => setOrdine((o) => sposta(o, i, a))}
+                onInFondo={() => setOrdine((o) => mandaInFondo(o, o.indexOf(uid)))}
               />
             ))}
           </ol>
         </SortableContext>
       </DndContext>
+      {Object.keys(p.fissi).length > 0 && (
+        <div className="mt-4 rounded-2xl bg-slate-50 p-3 text-sm dark:bg-slate-800/60">
+          <p className="mb-1.5 flex items-center gap-1.5 font-medium">
+            <CalendarCheck aria-hidden className="size-4" /> Con la data fissa (DSA/BES), non si spostano
+          </p>
+          <ul className="space-y-0.5 text-slate-600 dark:text-slate-400">
+            {Object.entries(p.fissi)
+              .sort(([, a], [, b]) => a.localeCompare(b))
+              .map(([uid, d]) => (
+                <li key={uid}>
+                  {nome(uid)} · {formattaGiorno(d).toLowerCase()}
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
       {errore && (
         <div className="mt-3">
           <Riquadro tono="errore">{errore}</Riquadro>
         </div>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
-        <Bottone onClick={salva} disabled={inCorso || !cambiato}>
-          {inCorso ? 'Salvataggio…' : 'Salva ordine'}
+        <Bottone onClick={salva} icona={Check} disabled={inCorso || !cambiato}>
+          {inCorso ? 'Salvataggio…' : 'Conferma'}
         </Bottone>
         <Bottone variante="secondario" onClick={p.onFine} disabled={inCorso}>
           Annulla
@@ -135,7 +154,7 @@ function Riga(p: {
   membro: Membro | undefined
   interrogato: boolean
   io: boolean
-  onSposta: (nuovaPosizione: number) => void
+  onInFondo: () => void
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: p.uid,
@@ -165,26 +184,18 @@ function Riga(p: {
         {nome}
         {p.io && ' (tu)'}
       </span>
-      <span className="flex gap-1">
-        <button
-          type="button"
-          aria-label={`Sposta su ${nome}`}
-          disabled={p.indice === 0}
-          onClick={() => p.onSposta(p.indice - 1)}
-          className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50 disabled:opacity-30 dark:border-slate-700 dark:hover:bg-slate-800"
-        >
-          <ArrowUp aria-hidden className="size-4" />
-        </button>
-        <button
-          type="button"
-          aria-label={`Sposta giù ${nome}`}
-          disabled={p.indice === p.totale - 1}
-          onClick={() => p.onSposta(p.indice + 1)}
-          className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50 disabled:opacity-30 dark:border-slate-700 dark:hover:bg-slate-800"
-        >
-          <ArrowDown aria-hidden className="size-4" />
-        </button>
-      </span>
+      <button
+        type="button"
+        aria-label={`Manda in fondo ${nome}`}
+        title="Manda in fondo alla lista"
+        disabled={p.indice === p.totale - 1}
+        onClick={p.onInFondo}
+        className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+      >
+        <ArrowDownToLine aria-hidden className="size-4" />
+        <span className="hidden sm:inline">Manda in fondo</span>
+        <span className="sm:hidden">In fondo</span>
+      </button>
     </li>
   )
 }

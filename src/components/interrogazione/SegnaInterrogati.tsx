@@ -13,6 +13,8 @@ type Props = {
   r: { classId: string; subjectId: string; interrogazioneId: string }
   interrogazione: Interrogazione
   ordine: string[]
+  /** DSA/BES: uid → data scelta */
+  fissi: Record<string, string>
   interrogati: Record<string, string>
   membri: Map<string, Membro>
   cal: Calendario
@@ -20,21 +22,22 @@ type Props = {
 }
 
 /**
- * Dopo la lezione: i primi N non interrogati sono proposti come "probabilmente interrogati".
- * Si conferma con un tocco; chi viene tolto (assente) resta in testa ai non interrogati.
+ * Dopo la lezione: chi aveva la data fissa e i primi N non interrogati sono proposti come interrogati.
+ * Si conferma con un tocco; chi viene tolto (assente) resta in testa ai non interrogati
+ * (chi ha la data fissa passa alla lezione successiva).
  */
 export function SegnaInterrogati(p: Props) {
-  const proposta = propostaLezione(p.ordine, p.interrogati, p.interrogazione.perLezione)
-  const [scelti, setScelti] = useState<Set<string>>(() => new Set(proposta))
-  const [aggiunti, setAggiunti] = useState<string[]>([])
   const [data, setData] = useState(
     () => ultimaLezione(p.interrogazione.giorni, p.r.subjectId, p.cal, oggiISO()) ?? oggiISO(),
   )
+  const [proposta] = useState(() => propostaLezione(p.ordine, p.interrogati, p.interrogazione.perLezione, p.fissi, data))
+  const [scelti, setScelti] = useState<Set<string>>(() => new Set(proposta))
+  const [aggiunti, setAggiunti] = useState<string[]>([])
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const avvisi = useAvvisi()
 
-  const mancanti = nonInterrogati(p.ordine, p.interrogati)
+  const mancanti = [...nonInterrogati(p.ordine, p.interrogati), ...nonInterrogati(Object.keys(p.fissi), p.interrogati)]
   if (mancanti.length === 0) return null
   const altri = mancanti.filter((u) => !proposta.includes(u) && !aggiunti.includes(u))
   const elenco = [...proposta, ...aggiunti]

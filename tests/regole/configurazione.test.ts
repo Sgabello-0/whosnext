@@ -90,7 +90,20 @@ describe('calendario', () => {
     await assertFails(setDoc(rifCalendario(db, classId), { ...base, giorniScolastici: [true] }))
     await assertFails(setDoc(rifCalendario(db, classId), { ...base, fineAnno: '6 giugno' }))
     await assertFails(setDoc(rifCalendario(db, classId), { ...base, altro: 1 }))
+    await assertFails(setDoc(rifCalendario(db, classId), { ...base, uscite: ['14:00'] }))
+    await assertFails(setDoc(rifCalendario(db, classId), { ...base, uscite: '14:00' }))
     await assertSucceeds(setDoc(rifCalendario(db, classId), base))
+    await assertSucceeds(setDoc(rifCalendario(db, classId), { ...base, uscite: Array(7).fill('13:10') }))
+  })
+
+  it('gli orari di uscita si salvano e si rileggono', async () => {
+    const { classId } = await classeConfigurata()
+    const uscite = ['14:00', '13:10', '14:00', '12:00', '14:00', '14:00', '14:00']
+    await assertSucceeds(salvaCalendario(dbDi(env, anna), classId, { ...CALENDARIO_DEFAULT, uscite }))
+    expect((await getDoc(rifCalendario(dbDi(env, carla), classId))).data()?.uscite).toEqual(uscite)
+    await expect(salvaCalendario(dbDi(env, anna), classId, { ...CALENDARIO_DEFAULT, uscite: ['25:00', ...uscite.slice(1)] })).rejects.toMatchObject({
+      codice: 'dati-non-validi',
+    })
   })
 
   it('il sito blocca le vacanze con date invertite prima di scrivere', async () => {

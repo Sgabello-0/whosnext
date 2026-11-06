@@ -5,7 +5,8 @@ import { messaggioErrore } from '../../lib/errori'
 import type { Scelta } from '../../lib/generateList'
 import { useDocumento } from '../../lib/hooks'
 import { salvaPreferenza, togliPreferenza } from '../../lib/preferenze'
-import { ETICHETTA_SCELTA, SPIEGAZIONE_SCELTA } from '../../lib/testiPreferenze'
+import { descriviScelta, ETICHETTA_SCELTA, SPIEGAZIONE_SCELTA } from '../../lib/testiPreferenze'
+import { formattaGiorno } from '../../lib/calendar'
 import type { DocPreferenza } from '../../lib/tipi'
 import { Bottone, CLASSE_INPUT, Caricamento, Riquadro, Scheda } from '../ui'
 import { ArrowDownToLine, ArrowUpToLine, CircleCheck, Hand, Lock, MoveVertical, Shuffle, type LucideIcon } from 'lucide-react'
@@ -23,28 +24,29 @@ type Props = {
   subjectId: string
   interrogazioneId: string
   uid: string
-  /** ha il badge DSA/BES: può chiedere una posizione esatta */
+  /** ha il badge DSA/BES: può scegliere la data */
   dsa: boolean
-  numeroStudenti: number
+  /** le date tra cui può scegliere chi ha il badge DSA/BES */
+  dateDSA: string[]
   aperta: boolean
 }
 
-/** La preferenza dello studente: inizio, metà, fine, non mi interessa (o posizione esatta per DSA/BES). */
+/** La preferenza dello studente: inizio, metà, fine, non mi interessa (o la data, per DSA/BES). */
 export function SceltaPreferenza(p: Props) {
   const r = { classId: p.classId, subjectId: p.subjectId, interrogazioneId: p.interrogazioneId }
   const mia = useDocumento<DocPreferenza>(db && rifPreferenza(db, p.classId, p.subjectId, p.interrogazioneId, p.uid))
-  const [posizione, setPosizione] = useState<number | null>(null)
+  const [dataScelta, setDataScelta] = useState<string | null>(null)
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const avvisi = useAvvisi()
 
-  async function scegli(scelta: Scelta, pos: number | null = null) {
+  async function scegli(scelta: Scelta, data: string | null = null) {
     if (!db) return
     setInCorso(true)
     setErrore(null)
     try {
-      await salvaPreferenza(db, r, p.uid, scelta, pos)
-      avvisi.mostra(scelta === 'posizione' ? `Hai chiesto la posizione n° ${pos}` : `Preferenza salvata: ${ETICHETTA_SCELTA[scelta].toLowerCase()}`)
+      await salvaPreferenza(db, r, p.uid, scelta, data)
+      avvisi.mostra(`Preferenza salvata: ${descriviScelta({ scelta, dataDSA: data })}`)
     } catch (e) {
       setErrore(messaggioErrore(e))
     } finally {
@@ -60,7 +62,7 @@ export function SceltaPreferenza(p: Props) {
     try {
       await togliPreferenza(d, r, p.uid)
       avvisi.mostra('Scelta tolta', {
-        annulla: prima ? () => salvaPreferenza(d, r, p.uid, prima.scelta, prima.posizioneDSA) : undefined,
+        annulla: prima ? () => salvaPreferenza(d, r, p.uid, prima.scelta, prima.dataDSA ?? null) : undefined,
       })
     } catch (e) {
       setErrore(messaggioErrore(e))
@@ -71,11 +73,7 @@ export function SceltaPreferenza(p: Props) {
   if (mia.dati === undefined) return <Caricamento />
 
   const attuale = mia.dati
-  const descrizioneAttuale = attuale
-    ? attuale.scelta === 'posizione'
-      ? `posizione n° ${attuale.posizioneDSA}`
-      : ETICHETTA_SCELTA[attuale.scelta].toLowerCase()
-    : null
+  const descrizioneAttuale = attuale ? descriviScelta(attuale) : null
 
   if (!p.aperta) {
     return (
@@ -94,7 +92,9 @@ export function SceltaPreferenza(p: Props) {
     )
   }
 
-  const posizioneScelta = posizione ?? attuale?.posizioneDSA ?? 1
+  const giornoScelto = dataScelta ?? (attuale?.scelta === 'data' ? attuale.dataDSA : null) ?? p.dateDSA[0] ?? null
+  // la data scelta prima può non essere più tra quelle proposte (calendario cambiato): resta comunque visibile
+  const date = giornoScelto && !p.dateDSA.includes(giornoScelto) ? [giornoScelto, ...p.dateDSA] : p.dateDSA
 
   return (
     <Scheda titolo="Quando vuoi essere interrogato?" icona={Hand} tono={attuale ? 'normale' : 'evidenza'}>
@@ -129,32 +129,36 @@ export function SceltaPreferenza(p: Props) {
         {p.dsa && (
           <div className="space-y-2 rounded-2xl bg-amber-50 p-3 dark:bg-amber-950/40">
             <p className="text-sm">
-              Con il badge <strong>DSA/BES</strong> puoi chiedere una posizione precisa. Se qualcun altro chiede la
-              stessa, la ottiene chi l'ha chiesta prima.
+              Con il badge <strong>DSA/BES</strong> puoi scegliere il giorno preciso dell'interrogazione. Se quel
+              giorno non vieni interrogato, passi alla lezione successiva.
             </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                aria-label="Posizione"
-                value={posizioneScelta}
-                onChange={(e) => setPosizione(Number(e.target.value))}
-                className={`${CLASSE_INPUT} max-w-28`}
-              >
-                {Array.from({ length: Math.max(p.numeroStudenti, 1) }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    n° {i + 1}
-                  </option>
-                ))}
-              </select>
-              <Bottone
-                variante={attuale?.scelta === 'posizione' ? 'primario' : 'secondario'}
-                disabled={inCorso}
-                onClick={() => scegli('posizione', posizioneScelta)}
-              >
-                {attuale?.scelta === 'posizione' && attuale.posizioneDSA === posizioneScelta
-                  ? 'Posizione scelta'
-                  : 'Chiedi questa posizione'}
-              </Bottone>
-            </div>
+            {date.length === 0 ? (
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Per questa interrogazione non ci sono date di lezione da scegliere: indica una preferenza qui sopra.
+              </p>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  aria-label="Giorno dell'interrogazione"
+                  value={giornoScelto ?? ''}
+                  onChange={(e) => setDataScelta(e.target.value)}
+                  className={`${CLASSE_INPUT} max-w-56`}
+                >
+                  {date.map((d) => (
+                    <option key={d} value={d}>
+                      {formattaGiorno(d)}
+                    </option>
+                  ))}
+                </select>
+                <Bottone
+                  variante={attuale?.scelta === 'data' ? 'primario' : 'secondario'}
+                  disabled={inCorso || !giornoScelto}
+                  onClick={() => scegli('data', giornoScelto)}
+                >
+                  {attuale?.scelta === 'data' && attuale.dataDSA === giornoScelto ? 'Data scelta' : 'Scegli questa data'}
+                </Bottone>
+              </div>
+            )}
           </div>
         )}
 
