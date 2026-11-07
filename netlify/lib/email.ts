@@ -3,6 +3,7 @@
  * con logo, pulsante e piè di pagina. Solo HTML con stili in linea, che funziona anche in Gmail e Outlook.
  */
 import { CREDITI } from '../../src/lib/crediti'
+import { SITO } from './http'
 
 export type Email = {
   oggetto: string
@@ -12,7 +13,6 @@ export type Email = {
   link: string
 }
 
-const SITO = process.env.URL_SITO ?? 'https://whos-next.web.app'
 const BLU = '#2f5bd3'
 
 function escape(s: string): string {

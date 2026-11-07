@@ -4,8 +4,8 @@ import { messaggistica } from './admin'
 import { htmlEmail, testoEmail, type Email } from './email'
 import type { Postino } from './postino'
 import type { Notifica } from './testi'
+import { SITO } from './http'
 
-const SITO = process.env.URL_SITO ?? 'https://whos-next.web.app'
 
 export function postinoVero(): Postino {
   const utente = process.env.EMAIL_UTENTE
@@ -22,7 +22,8 @@ export function postinoVero(): Postino {
         webpush: {
           headers: { Urgency: 'high', TTL: String(24 * 3600) },
           // solo dati: la notifica la disegna il service worker del sito (src/sw.ts)
-          data: { titolo: n.titolo, testo: n.testo, link: `${SITO}${n.percorso}` },
+          // solo il percorso: il service worker lo apre sul sito da cui è installato
+          data: { titolo: n.titolo, testo: n.testo, link: n.percorso },
         },
       })
       return risposta.responses.flatMap((r, i) =>

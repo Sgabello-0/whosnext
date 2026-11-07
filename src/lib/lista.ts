@@ -105,3 +105,43 @@ export function spostati(vecchio: readonly string[], nuovo: readonly string[]): 
     fermi.has(i) ? [] : [{ uid, da: (posVecchia.get(uid) ?? -1) + 1, a: i + 1 }],
   )
 }
+
+// ───────────── Imprevisti: chi è in lista e con quale data ─────────────
+
+export type Composizione = {
+  ordine: string[]
+  fissi: Record<string, string>
+  interrogati: Record<string, string>
+}
+
+/** Dove si trova una persona nella lista. */
+export function statoInLista(c: Composizione, uid: string): 'ordine' | 'fissa' | 'fuori' {
+  if (c.ordine.includes(uid)) return 'ordine'
+  if (uid in c.fissi) return 'fissa'
+  return 'fuori'
+}
+
+/** In fondo alla lista (togliendo l'eventuale data fissa). Se è già in ordine non cambia niente. */
+export function aggiungiInFondo(c: Composizione, uid: string): Composizione {
+  if (c.ordine.includes(uid)) return c
+  const { [uid]: _tolta, ...fissi } = c.fissi
+  return { ...c, ordine: [...c.ordine, uid], fissi }
+}
+
+/** Data fissa per quel giorno: esce dall'ordine (se c'era). */
+export function conDataFissa(c: Composizione, uid: string, data: string): Composizione {
+  return { ...c, ordine: c.ordine.filter((u) => u !== uid), fissi: { ...c.fissi, [uid]: data } }
+}
+
+/** Fuori dalla lista: niente posto, niente data, niente segno di interrogato. */
+export function togliDallaLista(c: Composizione, uid: string): Composizione {
+  const { [uid]: _f, ...fissi } = c.fissi
+  const { [uid]: _i, ...interrogati } = c.interrogati
+  return { ordine: c.ordine.filter((u) => u !== uid), fissi, interrogati }
+}
+
+/** Studenti fuori dall'elenco degli esclusi (l'ordine resta quello dato). */
+export function senzaEsclusi(studenti: readonly string[], esclusi: readonly string[] | undefined): string[] {
+  const via = new Set(esclusi ?? [])
+  return studenti.filter((u) => !via.has(u))
+}

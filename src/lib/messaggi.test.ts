@@ -11,7 +11,7 @@ import {
 
 describe('messaggi', () => {
   it('costruisce i link', () => {
-    expect(linkAssoluto('/unisciti/ABCDEF', 'https://whosnext.netlify.app')).toBe('https://whosnext.netlify.app/unisciti/ABCDEF')
+    expect(linkAssoluto('/unisciti/ABCDEF', 'https://whosnext.example')).toBe('https://whosnext.example/unisciti/ABCDEF')
     expect(linkAssoluto('classe/x', 'https://a.it/')).toBe('https://a.it/classe/x')
     expect(percorsoInterrogazione('c', 's', 'i')).toBe('/classe/c/materia/s/interrogazione/i')
   })

@@ -7,5 +7,7 @@ export default defineConfig({
     include: ['tests/server/**/*.test.ts'],
     fileParallelism: false,
     testTimeout: 20_000,
+    // indirizzo finto del sito (quello vero è solo nelle variabili di Netlify)
+    env: { URL_SITO: 'https://whosnext.example' },
   },
 })

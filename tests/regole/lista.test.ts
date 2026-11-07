@@ -7,12 +7,13 @@ import {
   creaInterrogazione,
   creaMateria,
   eliminaInterrogazione,
+  impostaEsclusi,
   rifInterrogazione,
   rifLista,
   rifSegnalazione,
   rifSegnalazioni,
 } from '../../src/lib/configurazione'
-import { riordinaLista, segnaInterrogati, segnalaInterrogato, togliInterrogato, togliSegnalazione } from '../../src/lib/gestioneLista'
+import { gestisciImprevisto, riordinaLista, segnaInterrogati, segnalaInterrogato, togliInterrogato, togliSegnalazione } from '../../src/lib/gestioneLista'
 import { generaEPubblicaLista, salvaPreferenza } from '../../src/lib/preferenze'
 import { avviaAmbiente, dbDi, UTENTI } from './aiuti'
 
@@ -222,5 +223,87 @@ describe('data fissa (DSA/BES)', () => {
   it('anche chi ha la data fissa può dire "sono stato interrogato"', async () => {
     const { r } = await listaPronta({ carlaConData: true })
     await assertSucceeds(segnalaInterrogato(dbDi(env, carla), r, 'carla', '2026-11-10'))
+  })
+})
+
+describe('imprevisti (solo capo e vice)', () => {
+  it('capo e vice rimettono, fissano una data e tolgono; docenti con permesso e studenti no', async () => {
+    const { r, ordine } = await listaPronta()
+    const [primo] = ordine
+    await assertSucceeds(gestisciImprevisto(dbDi(env, anna), r, { tipo: 'fissa', uid: primo!, data: '2026-11-17' }, 'anna'))
+    expect((await lista(r)).fissi).toEqual({ [primo!]: '2026-11-17' })
+    expect((await lista(r)).ordine).not.toContain(primo)
+    await assertSucceeds(gestisciImprevisto(dbDi(env, bruno), r, { tipo: 'aggiungi', uid: primo! }, 'bruno'))
+    expect((await lista(r)).ordine.at(-1)).toBe(primo)
+    expect((await lista(r)).fissi).toEqual({})
+    for (const p of [bianchi, carla, rossi]) {
+      await assertFails(gestisciImprevisto(dbDi(env, p), r, { tipo: 'togli', uid: primo! }, p.uid))
+      await assertFails(gestisciImprevisto(dbDi(env, p), r, { tipo: 'fissa', uid: primo!, data: '2026-11-17' }, p.uid))
+    }
+    await assertSucceeds(gestisciImprevisto(dbDi(env, anna), r, { tipo: 'togli', uid: primo! }, 'anna'))
+    expect((await lista(r)).ordine).toHaveLength(ordine.length - 1)
+  })
+
+  it('togliere chi manca conclude; rimettere qualcuno riapre', async () => {
+    const { r, ordine } = await listaPronta()
+    const [a, b, c] = ordine as [string, string, string]
+    await segnaInterrogati(dbDi(env, anna), r, [a, b], '2026-11-03', 'anna')
+    await assertSucceeds(gestisciImprevisto(dbDi(env, anna), r, { tipo: 'togli', uid: c }, 'anna'))
+    expect(await stato(r)).toBe('conclusa')
+    await assertSucceeds(gestisciImprevisto(dbDi(env, anna), r, { tipo: 'aggiungi', uid: c }, 'anna'))
+    expect(await stato(r)).toBe('lista')
+    // togliere un interrogato toglie anche il segno
+    await assertSucceeds(gestisciImprevisto(dbDi(env, anna), r, { tipo: 'togli', uid: a }, 'anna'))
+    expect((await lista(r)).interrogati).toEqual({ [b]: '2026-11-03' })
+  })
+
+  it('scritto direttamente: niente doppioni, niente persona in ordine e con data, niente senza storico', async () => {
+    const { r, ordine } = await listaPronta()
+    const db = dbDi(env, anna)
+    const prova = async (dati: Record<string, unknown>, conStorico = true) => {
+      const b = writeBatch(db)
+      const voce = conStorico ? aggiungiVoceStorico(db, b, r, 'anna', 'aggiunto', {}) : 'inventata'
+      b.update(rifLista(db, r.classId, r.subjectId, r.interrogazioneId), {
+        aggiornato: serverTimestamp(), aggiornatoDa: 'anna', ultimaModifica: voce, ...dati,
+      })
+      return b.commit()
+    }
+    await assertFails(prova({ ordine: [...ordine, ordine[0]] }))
+    await assertFails(prova({ fissi: { [ordine[0]!]: '2026-11-10' } }))
+    await assertFails(prova({ ordine: [...ordine, 'nuovo'] }, false))
+    await assertFails(prova({ interrogati: { estraneo: '2026-11-03' } }))
+    await assertSucceeds(prova({ ordine: [...ordine, 'nuovo'] }))
+  })
+})
+
+describe('esclusi prima della generazione', () => {
+  it('capo e vice escludono; gli esclusi non scelgono e non entrano in lista', async () => {
+    const { classId, codice } = await creaClasse(dbDi(env, anna), anna, '4ªB', () => 'AAAAAA')
+    for (const p of [bruno, carla, rossi]) await uniscitiConCodice(dbDi(env, p), p, codice)
+    await impostaVice(dbDi(env, anna), classId, 'bruno', true)
+    await impostaPermessoDocente(dbDi(env, anna), classId, 'rossi', true)
+    const subjectId = await creaMateria(dbDi(env, anna), classId, { nome: 'Storia', orario: [1] })
+    const interrogazioneId = await creaInterrogazione(dbDi(env, anna), classId, subjectId, {
+      nome: 'Orale', descrizione: '', giorni: [1], perLezione: 1, scadenzaPreferenze: new Date(Date.now() + 3_600_000),
+    }, 'anna')
+    const r = { classId, subjectId, interrogazioneId }
+    await assertFails(impostaEsclusi(dbDi(env, carla), classId, subjectId, interrogazioneId, ['carla']))
+    await assertFails(impostaEsclusi(dbDi(env, rossi), classId, subjectId, interrogazioneId, ['carla']))
+    await assertSucceeds(impostaEsclusi(dbDi(env, bruno), classId, subjectId, interrogazioneId, ['carla']))
+    await assertFails(salvaPreferenza(dbDi(env, carla), r, 'carla', 'inizio'))
+    await assertSucceeds(salvaPreferenza(dbDi(env, anna), r, 'anna', 'inizio'))
+    await assertFails(
+      updateDoc(rifInterrogazione(dbDi(env, anna), classId, subjectId, interrogazioneId), { esclusi: 'carla', aggiornato: serverTimestamp() }),
+    )
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(rifInterrogazione(ctx.firestore() as unknown as Firestore, classId, subjectId, interrogazioneId), {
+        scadenzaPreferenze: Timestamp.fromDate(new Date(Date.now() - 60_000)),
+      })
+    })
+    const { ordine } = await generaEPubblicaLista(dbDi(env, anna), r, 'anna', 1)
+    expect([...ordine].sort()).toEqual(['anna', 'bruno'])
+    // dopo, il capo la rimette in fondo
+    await assertSucceeds(gestisciImprevisto(dbDi(env, anna), r, { tipo: 'aggiungi', uid: 'carla' }, 'anna'))
+    expect((await lista(r)).ordine.at(-1)).toBe('carla')
   })
 })

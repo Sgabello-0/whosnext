@@ -283,3 +283,79 @@ test('DSA/BES: si sceglie il giorno, in lista resta fisso; il badge si può nasc
   await expect(bruno.getByRole('switch', { name: /Mostra il badge/ })).toHaveCount(0)
   await anna.screenshot({ path: info.outputPath('lista-data-fissa.png'), fullPage: true })
 })
+
+test('imprevisti: escludere prima, poi rimettere, fissare una data e togliere (solo capo e vice)', async ({ browser }) => {
+  const anna = await accedi(browser, 'anna.verdi@studenti.ittsrimini.edu.it', 'Anna Verdi')
+  await anna.getByLabel('Nome della classe').fill('4ªB')
+  await anna.getByRole('button', { name: 'Crea classe' }).click()
+  const codice = await leggiCodice(anna)
+  const classe = new URL(anna.url()).pathname
+  const bruno = await accedi(browser, 'bruno.neri@studenti.ittsrimini.edu.it', 'Bruno Neri', `/unisciti/${codice}`)
+  await bruno.getByRole('button', { name: 'Entra', exact: true }).click()
+  const carla = await accedi(browser, 'carla.blu@studenti.ittsrimini.edu.it', 'Carla Blu', `/unisciti/${codice}`)
+  await carla.getByRole('button', { name: 'Entra', exact: true }).click()
+  await anna.goto(`${classe}/configura`)
+  await anna.getByLabel('Nome', { exact: true }).fill('Storia')
+  const giorni = anna.getByRole('group', { name: 'Giorni di lezione' })
+  for (const g of ['lunedì', 'mercoledì', 'venerdì']) await giorni.getByRole('button', { name: g }).click()
+  await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
+  await expect(anna.getByRole('link', { name: 'Storia' })).toBeVisible()
+  await anna.goto(classe)
+  await anna.getByRole('button', { name: 'Nuova interrogazione' }).click()
+  await anna.getByLabel('Nome', { exact: true }).fill('Orale')
+  await anna.getByLabel('Interrogati per lezione (facoltativo)').fill('1')
+  await anna.getByRole('button', { name: 'Crea interrogazione' }).click()
+  await expect(anna.getByRole('heading', { name: 'Orale' })).toBeVisible()
+  const interrogazione = anna.url()
+
+  // Prima della generazione Anna esclude Carla: Carla non può scegliere
+  await anna.getByText('Escludi studenti').click()
+  const inLista = anna.getByRole('list', { name: 'Studenti in lista' })
+  await inLista.getByRole('checkbox', { name: /Carla Blu/ }).uncheck()
+  await expect(anna.getByText('Carla Blu escluso da questa interrogazione')).toBeVisible()
+  await expect(anna.getByText('Preferenze ricevute (0/2)')).toBeVisible()
+  await carla.goto(interrogazione)
+  await expect(carla.getByText(/Sei stato escluso da questa interrogazione/)).toBeVisible()
+  await expect(carla.getByRole('radio')).toHaveCount(0)
+  await bruno.goto(interrogazione)
+  await expect(bruno.getByText('Escludi studenti')).toHaveCount(0) // solo capo e vice
+
+  await anna.getByRole('button', { name: 'Modifica' }).click()
+  await anna.getByLabel('Scadenza per le preferenze').fill(dataOraLocale(new Date(Date.now() - 60_000)))
+  await anna.getByRole('button', { name: 'Salva modifiche' }).click()
+  await anna.getByRole('button', { name: 'Genera lista' }).click()
+  await conferma(anna, 'Genera lista')
+  const ordine = anna.getByRole('list', { name: 'Ordine delle interrogazioni' })
+  await expect(ordine.getByRole('listitem')).toHaveCount(2)
+  await expect(ordine).not.toContainText('Carla Blu')
+
+  // Imprevisto 1: Carla va rimessa (in fondo)
+  await expect(anna.getByText(/Imprevisti: .*\(1 fuori lista\)/)).toBeVisible()
+  await anna.getByRole('button', { name: 'Aggiungi in fondo Carla Blu' }).click()
+  await expect(ordine.getByRole('listitem')).toHaveCount(3)
+  await expect(ordine.getByRole('listitem').nth(2)).toContainText('Carla Blu')
+  await expect(carla.getByText('Sei il n° 3 di 3')).toBeVisible()
+
+  // Imprevisto 2: il docente vuole Bruno in un giorno preciso
+  await anna.getByRole('button', { name: 'Fissa una data Bruno Neri' }).click()
+  const scelta = anna.getByLabel("Giorno dell'interrogazione di Bruno Neri")
+  const giorno = (await scelta.locator('option').allTextContents())[2]!
+  await scelta.selectOption({ label: giorno })
+  await anna.getByRole('button', { name: 'Fissa', exact: true }).click()
+  await expect(ordine.getByRole('listitem').filter({ hasText: 'Bruno Neri' })).toContainText('data fissa')
+  await expect(bruno.getByText(`Interrogazione ${giorno.toLowerCase()}`)).toBeVisible()
+  await expect(bruno.getByRole('button', { name: /Fissa una data/ })).toHaveCount(0) // gli studenti non hanno gli imprevisti
+
+  // Imprevisto 3: Carla si ritira, la si toglie
+  await anna.getByRole('button', { name: 'Togli dalla lista Carla Blu' }).click()
+  await conferma(anna, 'Togli dalla lista')
+  await expect(ordine).not.toContainText('Carla Blu')
+  await expect(carla.getByText(/^Sei il n°/)).toHaveCount(0)
+
+  // Tutto nello storico, visibile a tutti
+  await bruno.getByText(/Storico delle modifiche/).click()
+  const storico = bruno.getByRole('list', { name: 'Storico delle modifiche' })
+  await expect(storico.getByText('Anna Verdi ha aggiunto Carla Blu in fondo alla lista')).toBeVisible()
+  await expect(storico.getByText(`Anna Verdi ha fissato l'interrogazione di Bruno Neri per ${giorno.toLowerCase()}`)).toBeVisible()
+  await expect(storico.getByText('Anna Verdi ha tolto Carla Blu dalla lista')).toBeVisible()
+})

@@ -16,6 +16,7 @@ import { ErroreApp, rifDSA, rifMembri } from './classi'
 import { rifInterrogazione, rifLista, rifPreferenza, rifPreferenze, rifRapporto } from './configurazione'
 import { generaLista, preferenzeDa, semeCasuale, type Risultato, type Scelta } from './generateList'
 import { aggiungiVoceStorico } from './storico'
+import { senzaEsclusi } from './lista'
 import type { DocPreferenza, Interrogazione, Membro } from './tipi'
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
@@ -67,7 +68,10 @@ export async function generaEPubblicaLista(
     getDocs(rifDSA(db, r.classId)),
     getDocs(rifPreferenze(db, r.classId, r.subjectId, r.interrogazioneId)),
   ])
-  const studenti = membri.docs.map((d) => d.data() as Membro).filter((m) => m.ruolo !== 'docente').map((m) => m.uid)
+  const studenti = senzaEsclusi(
+    membri.docs.map((d) => d.data() as Membro).filter((m) => m.ruolo !== 'docente').map((m) => m.uid),
+    dati.esclusi,
+  )
   const risultato = generaLista({
     studenti,
     preferenze: preferenzeDa(preferenze.docs.map((d) => ({ id: d.id, dati: d.data() as DocPreferenza }))),

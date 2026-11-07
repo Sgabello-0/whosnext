@@ -34,6 +34,8 @@ export type InterrogazioneOsservata = {
   miaScelta?: { scelta: Scelta; dataDSA: string | null } | null
   /** giorno di creazione (non conta per le date) */
   creata?: DataISO | null
+  /** esclusi da capo o vice prima della generazione */
+  esclusi?: string[]
   /** solo con stato "lista": undefined finché non arriva */
   lista?: {
     ordine: string[]
@@ -68,7 +70,7 @@ export type VoceDaFare =
 /** Cosa vede lo studente (o il docente) per questa interrogazione; null se niente. */
 export function voceMia(d: InterrogazioneOsservata, adesso: Date): VoceMia | null {
   if (d.stato === 'raccolta') {
-    if (d.ruolo === 'docente' || d.miaScelta === undefined) return null
+    if (d.ruolo === 'docente' || d.miaScelta === undefined || d.esclusi?.includes(d.mioUid)) return null
     if (d.scadenza <= adesso.getTime()) return { tipo: 'attesa-lista' }
     if (d.miaScelta === null) return { tipo: 'da-scegliere', scadenza: d.scadenza }
     return { tipo: 'scelta', scelta: d.miaScelta.scelta, dataDSA: d.miaScelta.dataDSA, scadenza: d.scadenza }

@@ -116,6 +116,23 @@ describe('generazione automatica: casi difficili', () => {
     expect(lista.ordine).not.toContain('uscito')
   })
 
+  it('gli esclusi dal capoclasse non entrano nemmeno nella lista generata dal server', async () => {
+    await classe(TRE, { esclusi: ['bruno'] })
+    await db.doc(`${INTERR}/preferences/bruno`).set({ scelta: 'inizio', dataDSA: null, aggiornato: Timestamp.now() })
+    await generaScadute(db, new Date())
+    const lista = (await db.doc(`${INTERR}/list/current`).get()).data()!
+    expect([...lista.ordine].sort()).toEqual(['anna', 'carla'])
+    const { p, push } = postinoFinto()
+    expect(await avvisaListaPronta(db, p, R, new Date())).toBe(2)
+    expect(push.map((x) => x.tokens[0])).not.toContain('token-bruno')
+  })
+
+  it('dati strani negli esclusi non bloccano la generazione', async () => {
+    await classe(TRE, { esclusi: 'bruno' })
+    await generaScadute(db, new Date())
+    expect((await db.doc(`${INTERR}/list/current`).get()).data()!.ordine).toHaveLength(3)
+  })
+
   it('una preferenza con un valore sconosciuto non blocca la generazione (conta come "non mi interessa")', async () => {
     await classe(TRE)
     await db.doc(`${INTERR}/preferences/bruno`).set({ scelta: 'boh', posizioneDSA: null, aggiornato: Timestamp.now() })
@@ -285,7 +302,7 @@ describe('avvisi: casi difficili', () => {
 })
 
 describe('/api/notifica', () => {
-  const ORIGINE = 'https://whos-next.web.app'
+  const ORIGINE = 'https://whosnext.example'
   let precedente: string | undefined
 
   beforeAll(() => {
@@ -381,7 +398,7 @@ describe('/api/notifica', () => {
 })
 
 describe('feedback', () => {
-  const ORIGINE = 'https://whos-next.web.app'
+  const ORIGINE = 'https://whosnext.example'
   let precedente: string | undefined
   beforeAll(() => {
     precedente = process.env.FIREBASE_AUTH_EMULATOR_HOST

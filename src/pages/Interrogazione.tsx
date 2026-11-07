@@ -151,6 +151,7 @@ export default function Interrogazione() {
               : []
           }
           aperta={!scaduta}
+          escluso={(i.esclusi ?? []).includes(io.uid)}
         />
       )}
       {i.stato === 'raccolta' && io.ruolo === 'docente' && (
@@ -169,6 +170,7 @@ export default function Interrogazione() {
           nomeInterrogazione={i.nome}
           nomeMateria={materia.dati.nome}
           scadenza={scadenza}
+          esclusi={i.esclusi ?? []}
         />
       )}
       {i.stato !== 'raccolta' && cal && (

@@ -21,3 +21,8 @@ playwright-report/
 
 # Service worker generato in sviluppo
 dev-dist/
+
+# Dati del progetto vero (id Firebase, nomi dei siti): solo sul computer. Modello in .firebaserc.example
+.firebaserc
+# Pagina di rinvio dai vecchi indirizzi: contiene l'indirizzo del sito, resta solo sul computer
+reindirizzamento/

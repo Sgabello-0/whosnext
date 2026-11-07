@@ -194,6 +194,15 @@ export async function creaInterrogazione(
   return rif.id
 }
 
+/** Capo o vice escludono studenti prima della generazione (non entrano in lista, nemmeno con la generazione automatica). */
+export async function impostaEsclusi(db: Firestore, classId: string, subjectId: string, interrogazioneId: string, esclusi: string[]): Promise<void> {
+  if (esclusi.length > 200) datiNonValidi('Troppi studenti esclusi.')
+  await updateDoc(rifInterrogazione(db, classId, subjectId, interrogazioneId), {
+    esclusi: [...new Set(esclusi)].sort(),
+    aggiornato: serverTimestamp(),
+  })
+}
+
 export async function aggiornaInterrogazione(
   db: Firestore,
   classId: string,

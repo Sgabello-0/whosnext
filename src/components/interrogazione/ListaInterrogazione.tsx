@@ -4,7 +4,8 @@ import { formattaGiorno, momentoLocale, oggiISO, type Calendario } from '../../l
 import { rifLista, rifRapporto } from '../../lib/configurazione'
 import { messaggioErrore } from '../../lib/errori'
 import { testoStima } from '../../lib/estimate'
-import { programmaLista } from '../../lib/programma'
+import { dateDisponibili, programmaLista } from '../../lib/programma'
+import { Imprevisti } from './Imprevisti'
 import { useAdesso } from '../../lib/useAdesso'
 import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { useDocumento } from '../../lib/hooks'
@@ -340,6 +341,26 @@ export function ListaInterrogazione(p: Props) {
         </Scheda>
       )}
 
+      {/* imprevisti: solo capoclasse e vice */}
+      {p.staff && !riordino && p.interrogazione.stato !== 'raccolta' && (
+        <Imprevisti
+          r={r}
+          composizione={{ ordine, fissi, interrogati }}
+          membri={perUid}
+          mioUid={p.mioUid}
+          date={dateDisponibili({
+            giorni: p.interrogazione.giorni,
+            subjectId: p.subjectId,
+            cal: p.cal,
+            adesso: momentoLocale(adesso),
+            creata: p.interrogazione.creato ? oggiISO(p.interrogazione.creato.toDate()) : null,
+            perLezione: p.interrogazione.perLezione,
+            numeroStudenti: Math.max(totale, 1),
+            // per un imprevisto si può fissare anche più avanti
+            quante: 40,
+          })}
+        />
+      )}
       {p.staff && <RapportoSoddisfazione {...p} />}
       <StoricoLista classId={p.classId} subjectId={p.subjectId} interrogazioneId={p.interrogazioneId} membri={perUid} />
     </>

@@ -70,6 +70,8 @@ export type Interrogazione = {
   /** quanti studenti per lezione; null = non si sa */
   perLezione: number | null
   scadenzaPreferenze: Timestamp
+  /** studenti esclusi da capo o vice prima della generazione: non entrano in lista */
+  esclusi?: string[]
   stato: StatoInterrogazione
   creato?: Timestamp
   creatoDa: string
@@ -107,7 +109,7 @@ export type DocSegnalazione = {
 }
 
 export type DocStorico = {
-  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato' | 'scambio'
+  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato' | 'scambio' | 'aggiunto' | 'tolto' | 'fissato' | 'liberato'
   chi: string
   quando?: Timestamp
   dettagli: {

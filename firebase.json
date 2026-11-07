@@ -5,7 +5,7 @@
   },
   "hosting": [
     {
-      "site": "whos-next",
+      "target": "sito",
       "public": "dist",
       "ignore": [
         "firebase.json",
@@ -79,7 +79,7 @@
       ]
     },
     {
-      "site": "whosnext-4b067",
+      "target": "vecchio",
       "public": "reindirizzamento",
       "rewrites": [
         {

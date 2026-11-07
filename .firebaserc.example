@@ -1,0 +1,17 @@
+{
+  "projects": {
+    "default": "<id-del-progetto>"
+  },
+  "targets": {
+    "<id-del-progetto>": {
+      "hosting": {
+        "sito": [
+          "<nome-del-sito>"
+        ],
+        "vecchio": [
+          "<vecchio-sito-facoltativo>"
+        ]
+      }
+    }
+  }
+}

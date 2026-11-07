@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { uidDalToken } from './token'
 
-const P = 'whosnext-4b067'
+const P = 'progetto-di-prova'
 
 async function chiavi() {
   const { publicKey, privateKey } = await generateKeyPair('RS256')
@@ -36,5 +36,15 @@ describe('token di Firebase', () => {
     const estranee = await chiavi()
     await expect(uidDalToken(await token(estranee.privateKey), o)).rejects.toThrow()
     await expect(uidDalToken('non-un-token', o)).rejects.toThrow()
+  })
+})
+
+describe('id del progetto', () => {
+  it('si ricava dall\'email dell\'account di servizio', async () => {
+    const { progettoDaEmail } = await import('./admin')
+    expect(progettoDaEmail('firebase-adminsdk-abc@mio-progetto-123.iam.gserviceaccount.com')).toBe('mio-progetto-123')
+    expect(progettoDaEmail(' x@p.iam.gserviceaccount.com\n')).toBe('p')
+    expect(progettoDaEmail('qualcuno@gmail.com')).toBe('')
+    expect(progettoDaEmail(undefined)).toBe('')
   })
 })

@@ -127,11 +127,13 @@ export function dateDisponibili(o: {
   scadenza?: Momento | null
   perLezione: number | null
   numeroStudenti: number
+  /** quante date proporre al massimo (di default quelle che servono per interrogare tutti) */
+  quante?: number
 }): DataISO[] {
   let da = primoGiornoUtile(o.adesso, o.cal, o.creata)
   const dopoScadenza = o.scadenza ? primoGiornoUtile(o.scadenza, o.cal) : null
   if (dopoScadenza && dopoScadenza > da) da = dopoScadenza
   // le lezioni che servono per interrogare tutti (almeno 5, al massimo 60)
-  const servono = o.perLezione && o.perLezione >= 1 ? Math.ceil(o.numeroStudenti / o.perLezione) : 20
+  const servono = o.quante ?? (o.perLezione && o.perLezione >= 1 ? Math.ceil(o.numeroStudenti / o.perLezione) : 20)
   return prossimeLezioni({ giorni: o.giorni, subjectId: o.subjectId, cal: o.cal, da, quante: Math.min(60, Math.max(5, servono)) })
 }

@@ -9,7 +9,8 @@ const URL_FEEDBACK = URL_NOTIFICHE ? new URL('/api/feedback', URL_NOTIFICHE).toS
 export const feedbackAttivo = !!URL_FEEDBACK
 export const MAX_FEEDBACK = 2000
 
-export async function inviaFeedback(testo: string, pagina: string | null = null): Promise<void> {
+/** 'inviato': arrivato per email; 'salvato': ricevuto e salvato, l'email partirà più avanti o si leggerà dal database. */
+export async function inviaFeedback(testo: string, pagina: string | null = null): Promise<'inviato' | 'salvato'> {
   const utente = auth?.currentUser
   if (!URL_FEEDBACK || !utente) throw new ErroreApp('dati-non-validi', 'Il feedback non è disponibile in questo momento.')
   const pulito = testo.trim()
@@ -27,4 +28,6 @@ export async function inviaFeedback(testo: string, pagina: string | null = null)
   }
   if (risposta.status === 429) throw new ErroreApp('troppe-richieste', 'Hai già inviato 5 feedback oggi: riprova domani.')
   if (!risposta.ok) throw new ErroreApp('dati-non-validi', 'Invio non riuscito. Riprova più tardi.')
+  const corpo = (await risposta.json().catch(() => null)) as { esito?: string } | null
+  return corpo?.esito === 'inviato' ? 'inviato' : 'salvato'
 }

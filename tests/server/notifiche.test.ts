@@ -112,10 +112,10 @@ describe('avvisi', () => {
       percorso: '/classe/c1/materia/s1/interrogazione/i1',
     })
     expect(email.map((e) => e.a)).toEqual(['anna@studenti.ittsrimini.edu.it', 'bruno@studenti.ittsrimini.edu.it']) // Carla no
-    expect(email[0]!.testo).toContain('Apri la lista: https://whos-next.web.app/classe/c1/materia/s1/interrogazione/i1')
+    expect(email[0]!.testo).toContain('Apri la lista: https://whosnext.example/classe/c1/materia/s1/interrogazione/i1')
     expect(email[0]!.testo).toContain('Sei il n° 1 di 3.')
     expect(email[0]!.html).toContain('<strong style="color:#0f172a">n° 1 di 3</strong>')
-    expect(email[0]!.html).toContain('href="https://whos-next.web.app/classe/c1/materia/s1/interrogazione/i1"')
+    expect(email[0]!.html).toContain('href="https://whosnext.example/classe/c1/materia/s1/interrogazione/i1"')
     // il token non più valido viene tolto
     expect((await db.doc('users/carla').get()).data()!.fcmTokens).toEqual(['token-carla'])
     // rifarlo non manda niente
@@ -153,7 +153,7 @@ describe('avvisi', () => {
     // Carla ha il badge DSA/BES: sceglie il giorno
     expect(push[1]!.n.testo).toMatch(/^Scegli il giorno entro /)
     expect(email).toHaveLength(2)
-    expect(email[0]!.testo).toContain('Scegli: https://whos-next.web.app/classe/c1/materia/s1/interrogazione/i1')
+    expect(email[0]!.testo).toContain('Scegli: https://whosnext.example/classe/c1/materia/s1/interrogazione/i1')
     expect(await avvisaNuovaInterrogazione(db, p, R, 'anna', new Date())).toBe(0)
     expect(push).toHaveLength(2)
   })

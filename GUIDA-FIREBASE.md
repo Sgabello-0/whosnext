@@ -52,10 +52,10 @@ Firebase crea in automatico una schermata di consenso in modalità **Test**: in 
    - Nome dell'app: `WhosNext`
    - Email di assistenza utenti: il tuo Gmail
    - **Logo: lascialo vuoto** (caricare un logo obbliga a far verificare l'app da Google, con attese di settimane)
-   - Home page dell'applicazione: `https://whos-next.web.app` (prima della pubblicazione: `https://github.com/Sgabello-0/whosnext`)
+   - Home page dell'applicazione: `https://<il-tuo-sito>.web.app` (prima della pubblicazione: `https://github.com/Sgabello-0/whosnext`)
    - Norme sulla privacy: `https://github.com/Sgabello-0/whosnext/blob/main/PRIVACY.md`
    - Termini di servizio: vuoto (facoltativo)
-   - Domini autorizzati: lascia quello `….firebaseapp.com` e aggiungi `github.com` e `whos-next.web.app`
+   - Domini autorizzati: lascia quello `….firebaseapp.com` e aggiungi `github.com` e `<il-tuo-sito>.web.app`
    - Email del contatto sviluppatore: il tuo Gmail → **Salva**
 
    La privacy resta su GitHub: è un indirizzo pubblico e sempre aggiornato.
@@ -120,7 +120,7 @@ npx firebase login          # una volta sola: si apre il browser, usa il tuo acc
 npm run deploy:regole       # pubblica firestore.rules e firestore.indexes.json
 ```
 
-Deve finire con `✔  Deploy complete!`. **Ripetilo ogni volta che `firestore.rules` cambia** (te lo dirò io), altrimenti le nuove funzioni del sito vengono bloccate. Il progetto di destinazione è già indicato in `.firebaserc` (`whosnext-4b067`).
+Deve finire con `✔  Deploy complete!`. **Ripetilo ogni volta che `firestore.rules` cambia** (te lo dirò io), altrimenti le nuove funzioni del sito vengono bloccate. Il progetto di destinazione e i nomi dei siti sono in `.firebaserc`, che **resta solo sul tuo computer** (non va su GitHub): se lo perdi, copia `.firebaserc.example` in `.firebaserc` e metti l'id del progetto e il nome del sito.
 
 > Se `firebase login` non apre il browser, usa `npx firebase login --no-localhost` e segui le istruzioni.
 
@@ -152,11 +152,11 @@ Serve Java (è già installato su questo computer).
 npm run deploy:sito
 ```
 
-Compila il sito con i valori del tuo `.env` e lo pubblica su **https://whos-next.web.app**. Gratis con il piano Spark, senza carta di credito.
+Compila il sito con i valori del tuo `.env` e lo pubblica su **https://<il-tuo-sito>.web.app**. Gratis con il piano Spark, senza carta di credito.
 
-- Il login usa lo stesso indirizzo del sito: nel `.env` c'è `VITE_FIREBASE_AUTH_DOMAIN=whos-next.web.app`. Così l'accesso funziona anche su iPhone con l'app installata (Safari blocca i login su domini diversi).
-- Per questo `whos-next.web.app` è stato aggiunto in tre posti: Firebase → Authentication → **Domini autorizzati**; Google Cloud → Credenziali → "Web client (auto created by Google Service)" (origine `https://whos-next.web.app` e reindirizzamento `https://whos-next.web.app/__/auth/handler`); Branding della schermata di consenso → **Domini autorizzati**.
-- I vecchi indirizzi `whosnext-4b067.web.app` e `whosnext-4b067.firebaseapp.com` mostrano solo la pagina della cartella `reindirizzamento/`: portano allo stesso percorso sul nuovo indirizzo e tolgono dal telefono la vecchia copia salvata dell'app.
+- Il login usa lo stesso indirizzo del sito: nel `.env` c'è `VITE_FIREBASE_AUTH_DOMAIN=<il-tuo-sito>.web.app`. Così l'accesso funziona anche su iPhone con l'app installata (Safari blocca i login su domini diversi).
+- Per questo `<il-tuo-sito>.web.app` è stato aggiunto in tre posti: Firebase → Authentication → **Domini autorizzati**; Google Cloud → Credenziali → "Web client (auto created by Google Service)" (origine `https://<il-tuo-sito>.web.app` e reindirizzamento `https://<il-tuo-sito>.web.app/__/auth/handler`); Branding della schermata di consenso → **Domini autorizzati**.
+- I vecchi indirizzi `<id-progetto>.web.app` e `<id-progetto>.firebaseapp.com` mostrano solo la pagina della cartella `reindirizzamento/`: portano allo stesso percorso sul nuovo indirizzo e tolgono dal telefono la vecchia copia salvata dell'app.
 - Gli indirizzi dei tunnel di prova (`….trycloudflare.com`) si possono togliere dai domini autorizzati quando non servono più.
 - L'uso (letture e scritture del database, traffico del sito) si vede in Firebase → Firestore → **Utilizzo** e in Hosting.
 
@@ -171,6 +171,8 @@ Il server (cartella `netlify/`) genera le liste alla scadenza e manda le notific
 5. **Netlify**: *Add new project* → *Import an existing project* → GitHub → `whosnext` → lascia le impostazioni (le legge da `netlify.toml`) → **Deploy**.
 6. Netlify → *Project configuration* → **Environment variables** → aggiungi (ambito *Functions*, segna come segrete quelle con ★):
    - `FIREBASE_CLIENT_EMAIL` = il valore di `client_email` nel file JSON
+   - `URL_SITO` = l'indirizzo del sito, es. `https://<il-tuo-sito>.web.app` (senza `/` in fondo): solo il server può chiamarlo, e serve per i link nelle email. Non è scritto nel codice pubblico.
+   - (facoltativo) `ORIGINI_PERMESSE` = altri indirizzi da cui si può usare il server, separati da virgole (di default solo `URL_SITO` e `http://localhost:5173`)
    - ★ `FIREBASE_PRIVATE_KEY` = il valore di `private_key`: tutto quello che c'è tra le virgolette, una riga sola piena di `\n`, da `-----BEGIN PRIVATE KEY-----` fino a `-----END PRIVATE KEY-----\n`. **Attenzione:** non finisce con `==`, quelli sono a metà; se nei log delle funzioni compare "FIREBASE_PRIVATE_KEY è tagliata", ricopiala intera.
 7. *Deploys* → **Trigger deploy** (le variabili valgono dal deploy successivo). Poi cancella il file JSON dal computer.
 8. Nel `.env` del sito: `VITE_URL_NOTIFICHE=https://<nome-progetto>.netlify.app/api/notifica`, poi `npm run deploy:sito`.

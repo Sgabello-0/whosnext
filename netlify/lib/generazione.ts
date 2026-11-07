@@ -1,6 +1,7 @@
 /** Generazione automatica delle liste alla scadenza delle preferenze (stesso algoritmo del sito). */
 import { FieldValue, Timestamp, type DocumentReference, type Firestore } from 'firebase-admin/firestore'
 import { generaLista, preferenzeDa, semeCasuale, type Scelta } from '../../src/lib/generateList'
+import { senzaEsclusi } from '../../src/lib/lista'
 
 export type Rif = { classId: string; subjectId: string; interrogazioneId: string }
 
@@ -28,7 +29,10 @@ export async function generaSeScaduta(db: Firestore, ref: DocumentReference, ade
       tx.get(ref.collection('preferences')),
     ])
     const risultato = generaLista({
-      studenti: membri.docs.filter((m) => m.data().ruolo !== 'docente').map((m) => m.id),
+      studenti: senzaEsclusi(
+        membri.docs.filter((m) => m.data().ruolo !== 'docente').map((m) => m.id),
+        Array.isArray(dati.esclusi) ? (dati.esclusi as string[]) : [],
+      ),
       preferenze: preferenzeDa(
         preferenze.docs.map((d) => ({ id: d.id, dati: d.data() as { scelta: Scelta; dataDSA?: string | null; aggiornato?: Timestamp } })),
       ),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { linkSicuro, notificaDa } from './notifica'
 
-const O = 'https://whos-next.web.app'
+const O = 'https://whosnext.example'
 
 describe('notifiche push nel service worker', () => {
   it('formato di Firebase: titolo, testo e pagina da aprire', () => {
@@ -25,7 +25,7 @@ describe('notifiche push nel service worker', () => {
     expect(linkSicuro('https://cattivo.example/ruba', O)).toBe('/')
     expect(linkSicuro('//cattivo.example/ruba', O)).toBe('/')
     expect(linkSicuro('javascript:alert(1)', O)).toBe('/')
-    expect(linkSicuro('http://whos-next.web.app/x', O)).toBe('/') // niente http
+    expect(linkSicuro('http://whosnext.example/x', O)).toBe('/') // niente http
     expect(linkSicuro('/impostazioni', O)).toBe('/impostazioni')
     expect(linkSicuro(`${O}/classe/a/materia/b`, O)).toBe('/classe/a/materia/b')
   })

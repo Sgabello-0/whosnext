@@ -2,15 +2,15 @@ import { avvisaServer, serverAttivo } from '../../lib/avvisaServer'
 import { useState } from 'react'
 import { formattaGiorno } from '../../lib/calendar'
 import { db } from '../../lib/firebase'
-import { rifPreferenze } from '../../lib/configurazione'
+import { impostaEsclusi, rifPreferenze } from '../../lib/configurazione'
 import { messaggioErrore } from '../../lib/errori'
 import type { Scelta } from '../../lib/generateList'
 import { useQuery } from '../../lib/hooks'
 import { generaEPubblicaLista } from '../../lib/preferenze'
 import { ETICHETTA_SCELTA } from '../../lib/testiPreferenze'
 import type { DocPreferenza, Membro } from '../../lib/tipi'
-import { Bottone, Caricamento, Riquadro, Scheda } from '../ui'
-import { Inbox, Shuffle } from 'lucide-react'
+import { Avatar, Bottone, Caricamento, Riquadro, Scheda, Soffietto } from '../ui'
+import { Inbox, Shuffle, UserMinus } from 'lucide-react'
 import { Condividi } from '../Condividi'
 import { linkAssoluto, messaggioPromemoria, percorsoInterrogazione } from '../../lib/messaggi'
 import { useAvvisi } from '../Avvisi'
@@ -29,6 +29,8 @@ export function PannelloPreferenze(p: {
   nomeInterrogazione: string
   nomeMateria: string
   scadenza: Date
+  /** studenti esclusi (non entrano in lista) */
+  esclusi: string[]
 }) {
   const preferenze = useQuery<DocPreferenza>(
     db && rifPreferenze(db, p.classId, p.subjectId, p.interrogazioneId),
@@ -38,21 +40,52 @@ export function PannelloPreferenze(p: {
   const [errore, setErrore] = useState<string | null>(null)
   const avvisi = useAvvisi()
   const conferma = useConferma()
+  // le spunte si spostano subito; tornano come prima se il salvataggio non riesce
+  const [elencoEsclusi, setElencoEsclusi] = useState(p.esclusi)
+  const [apertoEsclusi] = useState(p.esclusi.length > 0)
+  const chiaveEsclusi = p.esclusi.join('|')
+  const [salvati, setSalvati] = useState(chiaveEsclusi)
+  if (salvati !== chiaveEsclusi) {
+    setSalvati(chiaveEsclusi)
+    setElencoEsclusi(p.esclusi)
+  }
 
   if (preferenze.errore) return <Riquadro tono="errore">{messaggioErrore(preferenze.errore)}</Riquadro>
   if (!preferenze.dati) return <Caricamento />
 
   const perUid = new Map(preferenze.dati.map((d) => [d.id, d]))
   const nome = (uid: string) => p.studenti.find((s) => s.uid === uid)?.nome ?? 'Ex membro'
-  const studentiUid = new Set(p.studenti.map((s) => s.uid))
+  const esclusi = new Set(elencoEsclusi)
+  // contano solo gli studenti in lista: le preferenze degli esclusi si ignorano
+  const inLista = p.studenti.filter((s) => !esclusi.has(s.uid))
+  const studentiUid = new Set(inLista.map((s) => s.uid))
   const risposte = preferenze.dati.filter((d) => studentiUid.has(d.id))
-  const senzaRisposta = p.studenti.filter((s) => !perUid.has(s.uid))
+  const senzaRisposta = inLista.filter((s) => !perUid.has(s.uid))
+
+  async function cambiaEsclusione(uid: string, escludi: boolean) {
+    if (!db) return
+    const d = db
+    const prima = elencoEsclusi
+    const dopo = escludi ? [...prima, uid] : prima.filter((u) => u !== uid)
+    setElencoEsclusi(dopo)
+    try {
+      await impostaEsclusi(d, p.classId, p.subjectId, p.interrogazioneId, dopo)
+      avvisi.mostra(escludi ? `${nome(uid)} escluso da questa interrogazione` : `${nome(uid)} di nuovo in lista`, {
+        annulla: () => impostaEsclusi(d, p.classId, p.subjectId, p.interrogazioneId, prima),
+      })
+    } catch (e) {
+      setElencoEsclusi(prima)
+      avvisi.errore(messaggioErrore(e))
+    }
+  }
 
   async function genera() {
     if (!db) return
     const ok = await conferma({
       titolo: 'Generare la lista adesso?',
-      testo: 'Il sorteggio si fa una volta sola. Dopo potrai comunque riordinare la lista a mano.',
+      testo: `Il sorteggio si fa una volta sola, tra ${inLista.length} ${inLista.length === 1 ? 'studente' : 'studenti'}${
+        esclusi.size > 0 ? ` (${esclusi.size} ${esclusi.size === 1 ? 'escluso' : 'esclusi'})` : ''
+      }. Dopo potrai comunque modificare la lista a mano.`,
       pulsante: 'Genera lista',
     })
     if (!ok) return
@@ -70,7 +103,7 @@ export function PannelloPreferenze(p: {
 
   return (
     <Scheda
-      titolo={`Preferenze ricevute (${risposte.length}/${p.studenti.length})`}
+      titolo={`Preferenze ricevute (${risposte.length}/${inLista.length})`}
       icona={Inbox}
       tono={p.scaduta ? 'avviso' : 'normale'}
     >
@@ -96,6 +129,38 @@ export function PannelloPreferenze(p: {
             </li>
           )}
         </ul>
+
+        <Soffietto
+          titolo={esclusi.size > 0 ? `Escludi studenti (${esclusi.size} ${esclusi.size === 1 ? 'escluso' : 'esclusi'})` : 'Escludi studenti'}
+          icona={UserMinus}
+          aperto={apertoEsclusi}
+        >
+          <p className="mb-2 text-sm text-slate-600 dark:text-slate-400">
+            Togli la spunta a chi non deve entrare in lista (ritirato, già valutato, assente a lungo…). Vale anche per la
+            generazione automatica. Dopo la generazione potrai comunque rimetterlo.
+          </p>
+          <ul className="space-y-0.5" aria-label="Studenti in lista">
+            {[...p.studenti]
+              .sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+              .map((s) => (
+                <li key={s.uid}>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                    <input
+                      type="checkbox"
+                      checked={!esclusi.has(s.uid)}
+                      onChange={(e) => cambiaEsclusione(s.uid, !e.target.checked)}
+                      className="size-5 accent-accento"
+                    />
+                    <Avatar nome={s.nome} foto={s.foto} />
+                    <span className={`min-w-0 flex-1 truncate ${esclusi.has(s.uid) ? 'text-slate-500 line-through dark:text-slate-400' : ''}`}>
+                      {s.nome}
+                    </span>
+                    {esclusi.has(s.uid) && <span className="text-xs text-slate-600 dark:text-slate-400">escluso</span>}
+                  </label>
+                </li>
+              ))}
+          </ul>
+        </Soffietto>
 
         {p.scaduta ? (
           <div className="space-y-2">

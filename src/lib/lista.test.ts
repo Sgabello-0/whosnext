@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { CALENDARIO_DEFAULT } from './calendar'
-import { nonInterrogati, propostaLezione, sposta, spostati, stessiElementi, tuttiInterrogati, ultimaLezione } from './lista'
+import {
+  aggiungiInFondo,
+  conDataFissa,
+  nonInterrogati,
+  propostaLezione,
+  senzaEsclusi,
+  sposta,
+  spostati,
+  statoInLista,
+  stessiElementi,
+  togliDallaLista,
+  tuttiInterrogati,
+  ultimaLezione,
+} from './lista'
 
 const ordine = ['a', 'b', 'c', 'd', 'e']
 
@@ -72,5 +85,43 @@ describe('spostati', () => {
   })
   it('lista invertita: si spostano tutti tranne uno', () => {
     expect(spostati(ordine, [...ordine].reverse())).toHaveLength(4)
+  })
+})
+
+describe('imprevisti', () => {
+  const c = { ordine: ['a', 'b', 'c'], fissi: { d: '2026-11-10' }, interrogati: { a: '2026-11-03' } }
+  it('aggiungi in fondo: da fuori, o togliendo la data fissa; chi è già in ordine resta dov\'è', () => {
+    expect(aggiungiInFondo(c, 'e')).toEqual({ ...c, ordine: ['a', 'b', 'c', 'e'] })
+    expect(aggiungiInFondo(c, 'd')).toEqual({ ...c, ordine: ['a', 'b', 'c', 'd'], fissi: {} })
+    expect(aggiungiInFondo(c, 'b')).toBe(c)
+  })
+  it('data fissa: esce dall\'ordine; cambiarla la sostituisce', () => {
+    expect(conDataFissa(c, 'b', '2026-11-12')).toEqual({ ...c, ordine: ['a', 'c'], fissi: { d: '2026-11-10', b: '2026-11-12' } })
+    expect(conDataFissa(c, 'd', '2026-11-17').fissi).toEqual({ d: '2026-11-17' })
+    expect(conDataFissa(c, 'e', '2026-11-17').ordine).toEqual(['a', 'b', 'c'])
+  })
+  it('togli: niente posto, niente data, niente segno di interrogato', () => {
+    expect(togliDallaLista(c, 'a')).toEqual({ ordine: ['b', 'c'], fissi: { d: '2026-11-10' }, interrogati: {} })
+    expect(togliDallaLista(c, 'd')).toEqual({ ...c, fissi: {} })
+    expect(togliDallaLista(c, 'zz')).toEqual(c)
+  })
+  it('dove si trova ognuno', () => {
+    expect(['a', 'd', 'e'].map((u) => statoInLista(c, u))).toEqual(['ordine', 'fissa', 'fuori'])
+  })
+  it('qualunque sequenza di imprevisti: mai doppioni, mai in ordine e con data insieme', () => {
+    let x = { ordine: ['u0', 'u1', 'u2'], fissi: {} as Record<string, string>, interrogati: {} as Record<string, string> }
+    let seme = 7
+    const caso = () => (seme = (seme * 1103515245 + 12345) % 2 ** 31) / 2 ** 31
+    for (let t = 0; t < 3000; t++) {
+      const u = `u${Math.floor(caso() * 6)}`
+      const k = caso()
+      x = k < 0.33 ? aggiungiInFondo(x, u) : k < 0.66 ? conDataFissa(x, u, '2026-11-10') : togliDallaLista(x, u)
+      expect(new Set(x.ordine).size).toBe(x.ordine.length)
+      for (const f of Object.keys(x.fissi)) expect(x.ordine).not.toContain(f)
+    }
+  })
+  it('esclusi: tolti, il resto nell\'ordine dato', () => {
+    expect(senzaEsclusi(['a', 'b', 'c'], ['b', 'x'])).toEqual(['a', 'c'])
+    expect(senzaEsclusi(['a'], undefined)).toEqual(['a'])
   })
 })

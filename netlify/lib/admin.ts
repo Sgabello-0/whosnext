@@ -8,7 +8,12 @@ import { cert, getApps, initializeApp, type App } from 'firebase-admin/app'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getMessaging } from 'firebase-admin/messaging'
 
-export const PROGETTO = process.env.FIREBASE_PROJECT_ID ?? 'whosnext-4b067'
+/** Id del progetto Firebase: FIREBASE_PROJECT_ID, oppure lo si ricava dall'email dell'account di servizio (…@<progetto>.iam.gserviceaccount.com). */
+export const PROGETTO = process.env.FIREBASE_PROJECT_ID ?? progettoDaEmail(process.env.FIREBASE_CLIENT_EMAIL)
+
+export function progettoDaEmail(email: string | undefined): string {
+  return /@([a-z0-9-]+)\.iam\.gserviceaccount\.com$/.exec(email?.trim() ?? '')?.[1] ?? ''
+}
 
 function app(): App {
   const esistente = getApps()[0]

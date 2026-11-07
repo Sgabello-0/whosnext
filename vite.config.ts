@@ -57,5 +57,7 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.ts', 'netlify/**/*.test.ts', 'sw/**/*.test.ts'],
+    // indirizzo finto del sito (quello vero è solo nelle variabili di Netlify)
+    env: { URL_SITO: 'https://whosnext.example' },
   },
 })

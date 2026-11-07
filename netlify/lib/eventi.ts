@@ -12,8 +12,8 @@ import { percorsoDi, rifDa, type Rif } from './generazione'
 import { dataItalia, domaniItalia, momentoItalia, oraItalia, scadenzaItalia } from './ora'
 import { avvisa, type Postino } from './postino'
 import { listaPronta, nuovaInterrogazione, richiestaScambio, toccaDomani } from './testi'
+import { SITO } from './http'
 
-const SITO = process.env.URL_SITO ?? 'https://whos-next.web.app'
 
 type Lista = { ordine: string[]; fissi?: Record<string, string>; interrogati: Record<string, string> }
 type DatiInterrogazione = {

@@ -9,8 +9,6 @@
 Ognuno sceglie se vuole essere interrogato all'inizio, a metà o alla fine; WhosNext genera la lista,
 stima la data per ciascuno e la tiene aggiornata con vacanze, lezioni saltate e scambi tra compagni.
 
-[**Apri WhosNext → whos-next.web.app**](https://whos-next.web.app)
-
 ![React](https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-Auth%20·%20Firestore%20·%20Hosting-ffca28?logo=firebase&logoColor=black)
@@ -51,6 +49,7 @@ stima la data per ciascuno e la tiene aggiornata con vacanze, lezioni saltate e 
 - **Configurazione guidata** della classe nuova, orario a griglia, calendario con vacanze e lezioni saltate.
 - **Generazione della lista** automatica alla scadenza (o subito, a mano), segna chi è stato interrogato.
 - **Modifica della lista** a piacere: trascina i nomi o mandali in fondo con un tocco, poi conferma.
+- **Escludi studenti** prima della generazione (vale anche per quella automatica) e **imprevisti** dopo: rimettere in lista chi era fuori o è entrato in classe dopo, fissare l'interrogazione di qualcuno in un giorno preciso, togliere chi non deve più esserci. Tutto finisce nello storico.
 - **Calendario con l'ora di uscita** per ogni giorno: da quell'ora la lezione conta come fatta e le date si aggiornano. Il giorno in cui si crea un'interrogazione non conta.
 - **Storico delle modifiche**: chi ha generato, spostato o segnato cosa, sempre visibile a tutta la classe.
 - **Messaggi pronti per WhatsApp**: invito, promemoria per chi non ha scelto, annuncio della lista.
@@ -173,7 +172,7 @@ firestore.rules    regole di sicurezza del database
 tests/             test delle regole, del server e nel browser
 ```
 
-Documenti: [PIANO.md](PIANO.md) (piano e avanzamento) · [GUIDA-FIREBASE.md](GUIDA-FIREBASE.md) (configurazione) · [PRIVACY.md](PRIVACY.md)
+Documenti: [PIANO.md](PIANO.md) (piano e avanzamento) · [GUIDA-FIREBASE.md](GUIDA-FIREBASE.md) (configurazione) · [GUIDA-SERVER-SCUOLA.md](GUIDA-SERVER-SCUOLA.md) (pubblicare su un server della scuola) · [PRIVACY.md](PRIVACY.md)
 
 ---
 

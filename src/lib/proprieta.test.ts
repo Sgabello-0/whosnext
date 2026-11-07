@@ -214,8 +214,8 @@ describe('codici d\'invito', () => {
       expect(normalizzaCodice(c)).toBe(c)
       expect(normalizzaCodice(formattaCodice(c).toLowerCase())).toBe(c)
       expect(normalizzaCodice(` ${c.slice(0, 3)} ${c.slice(3)} `)).toBe(c)
-      expect(codiceDaTesto(`Entra: https://whos-next.web.app/unisciti/${c} grazie`)).toBe(c)
-      expect(codiceDaTesto(`https://whos-next.web.app/unisciti/${formattaCodice(c)}`)).toBe(c)
+      expect(codiceDaTesto(`Entra: https://whosnext.example/unisciti/${c} grazie`)).toBe(c)
+      expect(codiceDaTesto(`https://whosnext.example/unisciti/${formattaCodice(c)}`)).toBe(c)
     }
     for (const sbagliato of ['', 'ABCDE', 'ABCDEFG', 'ABC-DE0', 'ABCDEI', 'ÀBCDEF', 'ABC DEF GH']) {
       expect(normalizzaCodice(sbagliato)).toBeNull()

@@ -34,7 +34,7 @@ describe('formattaCodice / codiceDaTesto', () => {
     expect(formattaCodice('ABCDEF')).toBe('ABC-DEF')
   })
   it('estrae il codice da un link d\'invito', () => {
-    expect(codiceDaTesto('https://whosnext.netlify.app/unisciti/ABCDEF')).toBe('ABCDEF')
+    expect(codiceDaTesto('https://whosnext.example/unisciti/ABCDEF')).toBe('ABCDEF')
     expect(codiceDaTesto('http://localhost:5173/unisciti/abc-def?x=1')).toBe('ABCDEF')
   })
   it('accetta anche il codice da solo', () => {

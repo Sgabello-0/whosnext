@@ -136,6 +136,7 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
     miaScelta:
       mia.dati === undefined ? undefined : mia.dati === null ? null : { scelta: mia.dati.scelta, dataDSA: mia.dati.dataDSA ?? null },
     creata: i.creato ? oggiISO(i.creato.toDate()) : null,
+    esclusi: i.esclusi,
     lista:
       lista.dati === undefined
         ? undefined
@@ -147,8 +148,9 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
               interrogati: lista.dati.interrogati,
               generata: lista.dati.generata ? oggiISO(lista.dati.generata.toDate()) : null,
             },
-    risposte: preferenze.dati?.length,
-    numeroStudenti: c.numeroStudenti,
+    // gli esclusi non contano né tra le risposte né tra gli studenti
+    risposte: preferenze.dati?.filter((d) => !i.esclusi?.includes(d.id)).length,
+    numeroStudenti: c.numeroStudenti === undefined ? undefined : c.numeroStudenti - (i.esclusi?.length ?? 0),
     segnalazioni: segnalazioni.dati?.length,
     scambiInArrivo: c.rifiutaScambi ? 0 : scambiValidi.length,
   })

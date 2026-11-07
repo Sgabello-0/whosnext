@@ -6,7 +6,7 @@ const e = { oggetto: 'Prova <b>', righe: ['Ciao **Anna <script>**', 'Seconda rig
 describe('email', () => {
   it('testo semplice: righe senza asterischi, link e piè di pagina', () => {
     expect(testoEmail(e)).toBe(
-      'Ciao Anna <script>\n\nSeconda riga\n\nApri: https://x.it/a?b=1&c="2"\n\n— WhosNext\nQuesta email è inviata in automatico: non rispondere, nessuno legge le risposte.\nPuoi disattivare le email dalle Impostazioni: https://whos-next.web.app/impostazioni',
+      'Ciao Anna <script>\n\nSeconda riga\n\nApri: https://x.it/a?b=1&c="2"\n\n— WhosNext\nQuesta email è inviata in automatico: non rispondere, nessuno legge le risposte.\nPuoi disattivare le email dalle Impostazioni: https://whosnext.example/impostazioni',
     )
   })
   it('HTML: niente codice dai nomi, grassetto e link al sicuro', () => {

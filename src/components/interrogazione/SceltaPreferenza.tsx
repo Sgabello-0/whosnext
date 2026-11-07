@@ -29,6 +29,8 @@ type Props = {
   /** le date tra cui può scegliere chi ha il badge DSA/BES */
   dateDSA: string[]
   aperta: boolean
+  /** escluso dal capoclasse o dal vice */
+  escluso: boolean
 }
 
 /** La preferenza dello studente: inizio, metà, fine, non mi interessa (o la data, per DSA/BES). */
@@ -69,6 +71,14 @@ export function SceltaPreferenza(p: Props) {
     }
   }
 
+  if (p.escluso) {
+    return (
+      <Riquadro tono="info" icona={Lock}>
+        Sei stato escluso da questa interrogazione: non entrerai in lista. Se pensi che sia un errore, chiedi al
+        capoclasse o al vice.
+      </Riquadro>
+    )
+  }
   if (mia.errore) return <Riquadro tono="errore">{messaggioErrore(mia.errore)}</Riquadro>
   if (mia.dati === undefined) return <Caricamento />
 

@@ -341,8 +341,10 @@ service cloud.firestore {
         // interrogations/{i} → { nome, descrizione, giorni, perLezione, scadenzaPreferenze, stato, creato, creatoDa, aggiornato }
         match /interrogations/{i} {
           function interrogazioneValida(d) {
-            return d.keys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'stato', 'creato', 'creatoDa', 'aggiornato'])
+            return d.keys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'esclusi', 'stato', 'creato', 'creatoDa', 'aggiornato'])
               && testo(d.nome, 60)
+              // studenti esclusi prima della generazione (li sceglie il capoclasse o il vice)
+              && (!('esclusi' in d) || (d.esclusi is list && d.esclusi.size() <= 200))
               && d.descrizione is string && d.descrizione.size() <= 500
               && giorniLezione(d.giorni)
               && (d.perLezione == null || (d.perLezione is int && d.perLezione >= 1 && d.perLezione <= 50))
@@ -376,7 +378,7 @@ service cloud.firestore {
               && interrogazioneValida(request.resource.data)
               && (
               // Modifica dei dati
-              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'aggiornato'])
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'esclusi', 'aggiornato'])
               ||
               // Generazione della lista: solo dopo la scadenza, e nello stesso batch va scritta la lista
               (
@@ -405,6 +407,7 @@ service cloud.firestore {
             allow create, update: if isMembro(c) && u == request.auth.uid
               && mioRuolo(c) in ['capo', 'vice', 'studente']
               && aperta()
+              && !(u in get(interrogazionePath(c, s, i)).data.get('esclusi', []))
               // posizioneDSA: solo null, come la scrive la versione vecchia del sito (ancora aperta su qualche telefono)
               && request.resource.data.keys().hasOnly(['scelta', 'dataDSA', 'posizioneDSA', 'aggiornato'])
               && request.resource.data.get('posizioneDSA', null) == null
@@ -457,6 +460,21 @@ service cloud.firestore {
               && request.resource.data.ordine is list
               && request.resource.data.ordine.size() == resource.data.ordine.size()
               && request.resource.data.ordine.toSet() == resource.data.ordine.toSet()
+              && request.resource.data.interrogati is map
+              && request.resource.data.ordine.toSet().union(request.resource.data.get('fissi', {}).keys().toSet())
+                .hasAll(request.resource.data.interrogati.keys());
+            // Imprevisti (solo capo e vice): aggiungere o togliere persone, fissare o togliere una data.
+            // Nessuno compare due volte, nessuno è sia in ordine sia con la data fissa, e resta traccia nello storico.
+            allow update: if isCapoOVice(c) && documento == 'current'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'fissi', 'interrogati', 'aggiornato', 'aggiornatoDa', 'ultimaModifica'])
+              && request.resource.data.get('ultimaModifica', null) != resource.data.get('ultimaModifica', null)
+              && voceStoricoNuova(request.resource.data.get('ultimaModifica', null))
+              && request.resource.data.aggiornato == request.time
+              && request.resource.data.aggiornatoDa == request.auth.uid
+              && request.resource.data.ordine is list && request.resource.data.ordine.size() <= 200
+              && request.resource.data.ordine.toSet().size() == request.resource.data.ordine.size()
+              && request.resource.data.get('fissi', {}) is map && request.resource.data.get('fissi', {}).size() <= 200
+              && request.resource.data.ordine.toSet().intersection(request.resource.data.get('fissi', {}).keys().toSet()).size() == 0
               && request.resource.data.interrogati is map
               && request.resource.data.ordine.toSet().union(request.resource.data.get('fissi', {}).keys().toSet())
                 .hasAll(request.resource.data.interrogati.keys());
@@ -513,7 +531,7 @@ service cloud.firestore {
             allow read: if isMembro(c);
             allow create: if puoModificareListe(c)
               && request.resource.data.keys().hasOnly(['tipo', 'chi', 'quando', 'dettagli'])
-              && request.resource.data.tipo in ['generata', 'riordino', 'interrogati', 'annullato']
+              && request.resource.data.tipo in ['generata', 'riordino', 'interrogati', 'annullato', 'aggiunto', 'tolto', 'fissato', 'liberato']
               && request.resource.data.chi == request.auth.uid
               && request.resource.data.quando == request.time
               && request.resource.data.dettagli is map

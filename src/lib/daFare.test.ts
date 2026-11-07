@@ -144,3 +144,10 @@ describe('ordinamenti', () => {
     expect([b, c, a].sort(confrontaMie).map((x) => x.d.chiave)).toEqual(['a', 'c', 'b'])
   })
 })
+
+describe('esclusi', () => {
+  it('chi è escluso non ha niente da scegliere', () => {
+    expect(voceMia(interr({ miaScelta: null, esclusi: ['io'] }), ADESSO)).toBeNull()
+    expect(voceMia(interr({ miaScelta: null, esclusi: ['altro'] }), ADESSO)).toMatchObject({ tipo: 'da-scegliere' })
+  })
+})

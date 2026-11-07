@@ -318,9 +318,9 @@ function Feedback() {
     setInCorso(true)
     setErrore(null)
     try {
-      await inviaFeedback(testo)
+      const esito = await inviaFeedback(testo)
       setTesto('')
-      avvisi.mostra('Feedback inviato: grazie!')
+      avvisi.mostra(esito === 'inviato' ? 'Feedback inviato: grazie!' : 'Feedback ricevuto: grazie! Verrà letto appena possibile.')
     } catch (err) {
       setErrore(messaggioErrore(err))
     } finally {

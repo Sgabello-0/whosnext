@@ -38,6 +38,14 @@ export function StoricoLista(p: { classId: string; subjectId: string; interrogaz
         const [px, py] = d.posizioni ?? []
         return `${nome(x)} e ${nome(y)} si sono scambiati di posto${px && py ? ` (n° ${px} ↔ n° ${py})` : ''}`
       }
+      case 'aggiunto':
+        return `${chi} ha aggiunto ${nome(d.uid)} in fondo alla lista`
+      case 'liberato':
+        return `${chi} ha tolto la data fissa a ${nome(d.uid)} e l'ha rimesso in fondo alla lista`
+      case 'fissato':
+        return `${chi} ha fissato l'interrogazione di ${nome(d.uid)}${d.data ? ` per ${formattaGiorno(d.data).toLowerCase()}` : ''}`
+      case 'tolto':
+        return `${chi} ha tolto ${nome(d.uid)} dalla lista`
     }
   }
 
