@@ -21,7 +21,7 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   const codice = await leggiCodice(anna)
   const carla = await accedi(browser, 'carla.blu@studenti.ittsrimini.edu.it', 'Carla Blu', `/unisciti/${codice}`)
   await carla.getByRole('button', { name: 'Entra', exact: true }).click()
-  await expect(carla.getByText('Il capoclasse non ha ancora aggiunto materie.')).toBeVisible()
+  await expect(carla.getByText('Nessuna interrogazione', { exact: true })).toBeVisible()
   await expect(carla.getByRole('link', { name: 'Materie e calendario' })).toHaveCount(0)
 
   // Anna aggiunge Matematica (martedì e giovedì)

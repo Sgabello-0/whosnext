@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { orderBy, query } from 'firebase/firestore'
 import { db } from '../lib/firebase'
@@ -16,11 +16,19 @@ import { NOMI_GIORNI_BREVI } from '../lib/calendar'
 import { FormInterrogazione } from './FormInterrogazione'
 import { useAvvisi } from './Avvisi'
 
-/** Elenco delle materie della classe con le loro interrogazioni. */
+/** Le interrogazioni della classe, per materia: compaiono solo le materie che ne hanno almeno una. */
 export function InterrogazioniClasse({ classId, staff, mioUid }: { classId: string; staff: boolean; mioUid: string }) {
   const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
   const elenco = [...(materie.dati ?? [])].sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
   const [nuova, setNuova] = useState(false)
+  // quante interrogazioni ha ogni materia (undefined finché non si sa)
+  const [conteggi, setConteggi] = useState<Record<string, number>>({})
+  const segnaConteggio = useCallback(
+    (id: string, n: number) => setConteggi((c) => (c[id] === n ? c : { ...c, [id]: n })),
+    [],
+  )
+  const nessuna = elenco.length > 0 && elenco.every((m) => conteggi[m.id] === 0)
+  const inCaricamento = elenco.some((m) => conteggi[m.id] === undefined)
 
   return (
     <Scheda titolo="Interrogazioni" icona={ClipboardList}>
@@ -46,28 +54,49 @@ export function InterrogazioniClasse({ classId, staff, mioUid }: { classId: stri
       ) : !materie.dati ? (
         <Caricamento />
       ) : elenco.length === 0 ? (
-        <Vuoto icona={BookOpen} titolo="Nessuna materia">
-          {staff
-            ? 'Inizia da "Materie e calendario": aggiungi le materie e i giorni di lezione.'
-            : 'Il capoclasse non ha ancora aggiunto materie.'}
-        </Vuoto>
+        staff ? (
+          <Vuoto icona={BookOpen} titolo="Nessuna materia">
+            Inizia da "Materie e calendario": aggiungi le materie e i giorni di lezione.
+          </Vuoto>
+        ) : (
+          <Vuoto icona={ClipboardList} titolo="Nessuna interrogazione" />
+        )
       ) : (
-        <ul className="space-y-5">
-          {elenco.map((m) => (
-            <MateriaConInterrogazioni key={m.id} classId={classId} materia={m} />
-          ))}
-        </ul>
+        <>
+          {inCaricamento && <Caricamento />}
+          {nessuna && <Vuoto icona={ClipboardList} titolo="Nessuna interrogazione" />}
+          <ul className="space-y-5">
+            {elenco.map((m) => (
+              <MateriaConInterrogazioni key={m.id} classId={classId} materia={m} onConteggio={segnaConteggio} />
+            ))}
+          </ul>
+        </>
       )}
     </Scheda>
   )
 }
 
-function MateriaConInterrogazioni({ classId, materia }: { classId: string; materia: ConId<Materia> }) {
+function MateriaConInterrogazioni({
+  classId,
+  materia,
+  onConteggio,
+}: {
+  classId: string
+  materia: ConId<Materia>
+  onConteggio: (id: string, n: number) => void
+}) {
   const interrogazioni = useQuery<Interrogazione>(
     db && query(rifInterrogazioni(db, classId, materia.id), orderBy('creato', 'desc')),
     `interrogazioni/${classId}/${materia.id}`,
   )
   const attive = (interrogazioni.dati ?? []).filter((i) => i.stato !== 'conclusa')
+  const totale = interrogazioni.dati?.length
+  useEffect(() => {
+    if (totale !== undefined) onConteggio(materia.id, totale)
+  }, [totale, materia.id, onConteggio])
+
+  // una materia senza interrogazioni non compare (quelle solo concluse sì: da lì si riaprono le liste vecchie)
+  if (!totale) return null
 
   return (
     <li>
@@ -80,7 +109,7 @@ function MateriaConInterrogazioni({ classId, materia }: { classId: string; mater
           {materia.orario.length ? materia.orario.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}
         </span>
       </Link>
-      {interrogazioni.dati && attive.length === 0 && (
+      {attive.length === 0 && (
         <p className="py-1 text-sm text-slate-600 dark:text-slate-400">Nessuna interrogazione in corso.</p>
       )}
       {attive.length > 0 && (
