@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { installa, tipoTelefono, useInstallazione, type Telefono } from '../lib/installazione'
-import { Download, EllipsisVertical, Maximize2, Share, WifiOff, X, Zap } from 'lucide-react'
+import { copiaTesto } from '../lib/diagnostica'
+import { Check, Copy, Download, EllipsisVertical, Maximize2, Share, WifiOff, X, Zap } from 'lucide-react'
 import { Logo } from './Logo'
 import { Bottone } from './ui'
 
@@ -31,6 +32,7 @@ const VANTAGGI = [
 /** Il pulsante "Installa" (Android) o i passaggi da fare a mano (iPhone, app social, altri browser). */
 export function IstruzioniInstallazione(props: { telefono: Telefono; onInstallata?: () => void; altro?: React.ReactNode }) {
   const { proponibile } = useInstallazione()
+  if (props.telefono === 'samsung') return <ApriInChrome altro={props.altro} />
   if (proponibile) {
     return (
       <div className="flex flex-wrap gap-2">
@@ -64,6 +66,32 @@ export function IstruzioniInstallazione(props: { telefono: Telefono; onInstallat
       </>
     )
   return <p className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-950/50">{testo}</p>
+}
+
+/** Samsung Internet: Android può bloccare l'app che crea ("App non sicura"), quindi si manda su Chrome. */
+function ApriInChrome(props: { altro?: React.ReactNode }) {
+  const [copia, setCopia] = useState<'fatta' | 'fallita' | null>(null)
+  const indirizzo = location.origin
+
+  return (
+    <div className="space-y-3">
+      <p className="rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-950/50">
+        Da Samsung Internet Android può bloccare l'installazione. Apri il sito con <strong>Chrome</strong> e installa l'app da lì.
+        {copia === 'fallita' && (
+          <>
+            {' '}
+            L'indirizzo è <strong className="break-all">{indirizzo}</strong>
+          </>
+        )}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Bottone icona={copia === 'fatta' ? Check : Copy} onClick={async () => setCopia((await copiaTesto(indirizzo)) ? 'fatta' : 'fallita')}>
+          {copia === 'fatta' ? 'Link copiato' : 'Copia il link'}
+        </Bottone>
+        {props.altro}
+      </div>
+    </div>
+  )
 }
 
 /**

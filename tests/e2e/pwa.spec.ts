@@ -60,5 +60,28 @@ test('si apre anche senza connessione, con gli ultimi dati', async ({ browser },
   await anna.context().setOffline(false)
 })
 
+test('da Samsung Internet non propone di installare: manda su Chrome', async ({ browser }) => {
+  const anna = await accedi(browser, 'anna.verdi@studenti.ittsrimini.edu.it', 'Anna Verdi', '/', { invitoInstalla: true })
+  await anna.context().addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', {
+      get: () => 'Mozilla/5.0 (Linux; Android 14; SAMSUNG SM-S911B) AppleWebKit/537.36 SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36',
+    })
+  })
+  await anna.reload()
+  await anna.evaluate(() => {
+    const e = new Event('beforeinstallprompt') as Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
+    e.prompt = async () => {}
+    e.userChoice = Promise.resolve({ outcome: 'dismissed' })
+    window.dispatchEvent(e)
+  })
+
+  const invito = anna.getByRole('region', { name: "Installa l'app" })
+  await expect(invito.getByText('Apri il sito con')).toBeVisible()
+  await expect(invito.getByRole('button', { name: 'Installa', exact: true })).toHaveCount(0)
+  await invito.getByRole('button', { name: 'Copia il link' }).click()
+  await expect(invito.getByRole('button', { name: 'Link copiato' })).toBeVisible()
+  expect(await anna.evaluate(() => navigator.clipboard.readText())).toBe(new URL(anna.url()).origin)
+})
+
 // Le notifiche push non si provano qui: Chrome senza finestra nega sempre il permesso.
 // La logica del service worker (dati della push, link sicuri) è in sw/notifica.test.ts.

@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react'
 /** Evento di Chrome/Android per proporre l'installazione (non è nei tipi standard). */
 type EventoInstallazione = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
 
-export type Telefono = 'android' | 'iphone' | 'app-social' | null
+export type Telefono = 'android' | 'samsung' | 'iphone' | 'app-social' | null
 
 let evento: EventoInstallazione | null = null
 let installata = false
@@ -19,10 +19,11 @@ function aggiorna() {
   ascoltatori.forEach((f) => f())
 }
 
-export function tipoTelefono(): Telefono {
-  const ua = navigator.userAgent
+export function tipoTelefono(ua: string = navigator.userAgent): Telefono {
   // dentro Instagram, Facebook, TikTok… non si può installare: va aperto nel browser
   if (/Instagram|FBAN|FBAV|TikTok|Line\//i.test(ua)) return 'app-social'
+  // da Samsung Internet Play Protect blocca l'app creata dal browser ("App non sicura"): si installa da Chrome
+  if (/SamsungBrowser/i.test(ua)) return 'samsung'
   if (/iPhone|iPad|iPod/.test(ua)) return 'iphone'
   if (/Android/.test(ua)) return 'android'
   return null
