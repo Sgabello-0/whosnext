@@ -9,7 +9,7 @@ import { messaggioErrore } from '../lib/errori'
 import { useDocumento, useQuery } from '../lib/hooks'
 import { ETICHETTA_RUOLO } from '../lib/membri'
 import type { Classe, Membro } from '../lib/tipi'
-import { Badge, Bottone, Caricamento, Campo, Modulo, Pallino, Riquadro, RigaLink, Scheda } from '../components/ui'
+import { Badge, Bottone, Caricamento, Campo, Colonne, Modulo, Pallino, Riquadro, RigaLink, Scheda } from '../components/ui'
 import { useDesktop } from '../lib/useDesktop'
 import { ProviderRaccolta } from '../lib/raccolta'
 import { OsservaClasse } from '../components/osservatori/Osservatori'
@@ -64,25 +64,32 @@ export default function Classi() {
 
       {desktop && conClassi && <Riepilogo />}
 
-      {desktop ? (
-        <>
-          {/* sul computer "Le mie interrogazioni" prende tutta la larghezza, il resto sta nella riga sotto */}
-          {conClassi && <PannelloMie caricamento={!iscrizioni.dati} griglia />}
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(340px,1fr))] items-start gap-5">
+      <Colonne
+        desktop={desktop}
+        principale={
+          <>
+            {conClassi && <PannelloMie caricamento={!iscrizioni.dati} />}
+            {/* sul computer, senza classi, le due strade per iniziare stanno al centro */}
+            {!conClassi && classi}
+          </>
+        }
+        laterale={
+          <>
             <PannelloDaFare />
-            {classi}
             {conClassi && <InvitoNotifiche />}
-          </div>
-        </>
-      ) : (
-        <>
-          <PannelloDaFare />
-          {conClassi && <PannelloMie caricamento={!iscrizioni.dati} />}
-          {conClassi && <InvitoNotifiche />}
-          {classi}
-          {conClassi && <CalendarioInterrogazioni />}
-        </>
-      )}
+            {conClassi && classi}
+          </>
+        }
+        telefono={
+          <>
+            <PannelloDaFare />
+            {conClassi && <PannelloMie caricamento={!iscrizioni.dati} />}
+            {conClassi && <InvitoNotifiche />}
+            {classi}
+            {conClassi && <CalendarioInterrogazioni />}
+          </>
+        }
+      />
       {desktop && conClassi && <CalendarioInterrogazioni />}
     </ProviderRaccolta>
   )

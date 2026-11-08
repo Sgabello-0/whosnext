@@ -150,7 +150,7 @@ function SimboloMia({ v }: { v: VoceMia }) {
 }
 
 /** Tutte le interrogazioni dell'utente in tutte le classi, in un colpo d'occhio. */
-export function PannelloMie({ caricamento, griglia }: { caricamento: boolean; griglia?: boolean }) {
+export function PannelloMie({ caricamento }: { caricamento: boolean }) {
   const adesso = useAdesso()
   const tutte = useInterrogazioniOsservate()
   const voci = tutte
@@ -168,14 +168,7 @@ export function PannelloMie({ caricamento, griglia }: { caricamento: boolean; gr
           {caricamento ? 'Caricamento…' : 'Nessuna interrogazione in corso. Quando il capoclasse ne aggiunge una, la trovi qui.'}
         </Vuoto>
       ) : (
-        <ul
-          className={
-            griglia
-              ? 'grid grid-cols-2 gap-2.5 xl:grid-cols-3 2xl:grid-cols-4 [&>li>a]:mx-0 [&>li>a]:h-full [&>li>a]:rounded-xl [&>li>a]:border [&>li>a]:border-slate-200/80 [&>li>a]:px-3 dark:[&>li>a]:border-slate-800'
-              : 'divide-y divide-slate-100 dark:divide-slate-800'
-          }
-          aria-label="Le mie interrogazioni"
-        >
+        <ul className="divide-y divide-slate-100 dark:divide-slate-800" aria-label="Le mie interrogazioni">
           {voci.map(({ voce, d }) => (
             <RigaLink key={d.chiave} to={percorso(d)} sinistra={<SimboloMia v={voce} />}>
               <Titolo d={d} mostraClasse={piuClassi} />

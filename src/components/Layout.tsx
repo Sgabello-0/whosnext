@@ -43,8 +43,7 @@ function useDirezione(percorso: string): string {
  * impostazioni e gestione su due colonne, il resto come sul telefono.
  */
 function larghezza(percorso: string): string {
-  if (percorso === '/') return 'lg:max-w-none'
-  if (/^\/classe\/[^/]+\/?$/.test(percorso) || /\/interrogazione\//.test(percorso)) return 'lg:max-w-6xl'
+  if (percorso === '/' || /^\/classe\/[^/]+\/?$/.test(percorso) || /\/interrogazione\//.test(percorso)) return 'lg:max-w-6xl'
   if (percorso.startsWith('/impostazioni') || /\/gestione\/?$/.test(percorso)) return 'lg:max-w-5xl'
   return ''
 }
