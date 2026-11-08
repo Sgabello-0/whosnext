@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dividiMembri, nomeVisualizzato, puoGestireDSA, puoModificareListe } from './membri'
+import { chiaveCognome, confrontaCognomi, dividiMembri, nomeVisualizzato, puoGestireDSA, puoModificareListe } from './membri'
 import type { Membro, Ruolo } from './tipi'
 
 function m(nome: string, ruolo: Ruolo, permessoModifica = false): Membro {
@@ -15,10 +15,21 @@ function m(nome: string, ruolo: Ruolo, permessoModifica = false): Membro {
   }
 }
 
+describe('ordine di cognome', () => {
+  it('l\'ultima parola, con le particelle; a parità di cognome conta il nome', () => {
+    expect(chiaveCognome('Anna Maria Rossi')).toBe('Rossi Anna Maria')
+    expect(chiaveCognome('Mario De Rossi')).toBe('De Rossi Mario')
+    expect(chiaveCognome('Luca della Valle')).toBe('della Valle Luca')
+    expect(chiaveCognome('Anna')).toBe('Anna')
+    expect(chiaveCognome('  Sara   D\'Alessandro ')).toBe("D'Alessandro Sara")
+    expect(['Zoe Rossi', 'Ada Rossi', 'Ugo Àlberti'].sort(confrontaCognomi)).toEqual(['Ugo Àlberti', 'Ada Rossi', 'Zoe Rossi'])
+  })
+})
+
 describe('dividiMembri', () => {
-  it('mette prima il capo, poi i vice, poi gli studenti in ordine alfabetico', () => {
-    const { studenti } = dividiMembri([m('zeno', 'studente'), m('Bea', 'vice'), m('anna', 'studente'), m('Carlo', 'capo')])
-    expect(studenti.map((x) => x.nome)).toEqual(['Carlo', 'Bea', 'anna', 'zeno'])
+  it('tutti gli studenti in ordine di cognome, capoclasse e vice compresi', () => {
+    const { studenti } = dividiMembri([m('Zeno Abate', 'studente'), m('Bea Verdi', 'vice'), m('anna bianchi', 'studente'), m('Carlo Neri', 'capo')])
+    expect(studenti.map((x) => x.nome)).toEqual(['Zeno Abate', 'anna bianchi', 'Carlo Neri', 'Bea Verdi'])
   })
   it('separa i docenti dagli studenti', () => {
     const { studenti, docenti } = dividiMembri([m('Prof. Rossi', 'docente'), m('anna', 'studente'), m('Prof. Bianchi', 'docente')])

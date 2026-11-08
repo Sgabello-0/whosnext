@@ -6,6 +6,7 @@ import { impostaEsclusi, rifPreferenze } from '../../lib/configurazione'
 import { messaggioErrore } from '../../lib/errori'
 import type { Scelta } from '../../lib/generateList'
 import { useQuery } from '../../lib/hooks'
+import { confrontaCognomi } from '../../lib/membri'
 import { generaEPubblicaLista } from '../../lib/preferenze'
 import { ETICHETTA_SCELTA } from '../../lib/testiPreferenze'
 import type { DocPreferenza, Membro } from '../../lib/tipi'
@@ -115,9 +116,9 @@ export function PannelloPreferenze(p: {
             return (
               <li key={s}>
                 <strong>{ETICHETTA_SCELTA[s]}</strong> ({chi.length}):{' '}
-                {chi
+                {[...chi]
+                  .sort((a, b) => confrontaCognomi(nome(a.id), nome(b.id)))
                   .map((d) => (s === 'data' && d.dataDSA ? `${nome(d.id)} (${formattaGiorno(d.dataDSA).toLowerCase()})` : nome(d.id)))
-                  .sort((a, b) => a.localeCompare(b, 'it'))
                   .join(', ')}
               </li>
             )
@@ -125,7 +126,7 @@ export function PannelloPreferenze(p: {
           {senzaRisposta.length > 0 && (
             <li className="text-slate-600 dark:text-slate-400">
               <strong>Non hanno risposto</strong> ({senzaRisposta.length}):{' '}
-              {senzaRisposta.map((s) => s.nome).sort((a, b) => a.localeCompare(b, 'it')).join(', ')}
+              {senzaRisposta.map((s) => s.nome).sort(confrontaCognomi).join(', ')}
             </li>
           )}
         </ul>
@@ -141,7 +142,7 @@ export function PannelloPreferenze(p: {
           </p>
           <ul className="space-y-0.5" aria-label="Studenti in lista">
             {[...p.studenti]
-              .sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+              .sort((a, b) => confrontaCognomi(a.nome, b.nome))
               .map((s) => (
                 <li key={s.uid}>
                   <label className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60">

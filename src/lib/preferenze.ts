@@ -29,6 +29,7 @@ import {
 import { generaLista, preferenzeDa, semeCasuale, type Risultato, type Scelta } from './generateList'
 import { aggiungiVoceStorico } from './storico'
 import { senzaEsclusi } from './lista'
+import { confrontaCognomi } from './membri'
 import type { DocPreferenza, Interrogazione, Membro } from './tipi'
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
@@ -57,7 +58,7 @@ export async function creaDaModulo(db: Firestore, classId: string, subjectId: st
 
 /**
  * Interrogazione senza lista (decide il docente, giorno per giorno): nasce già "in corso",
- * con tutti gli studenti in ordine alfabetico, solo per tenere conto di chi è stato interrogato.
+ * con tutti gli studenti in ordine di cognome, solo per tenere conto di chi è stato interrogato.
  */
 export async function creaSenzaLista(db: Firestore, classId: string, subjectId: string, d: DatiInterrogazione, mioUid: string): Promise<string> {
   const adesso = new Date()
@@ -66,7 +67,7 @@ export async function creaSenzaLista(db: Firestore, classId: string, subjectId: 
   const ordine = membri.docs
     .map((m) => m.data() as Membro)
     .filter((m) => m.ruolo !== 'docente')
-    .sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+    .sort((a, b) => confrontaCognomi(a.nome, b.nome))
     .map((m) => m.uid)
   const rif = doc(rifInterrogazioni(db, classId, subjectId))
   const r = { classId, subjectId, interrogazioneId: rif.id }

@@ -5,6 +5,7 @@ import { formattaGiorno } from '../../lib/calendar'
 import { messaggioErrore } from '../../lib/errori'
 import { gestisciImprevisto, type Imprevisto } from '../../lib/gestioneLista'
 import { statoInLista, type Composizione } from '../../lib/lista'
+import { confrontaCognomi } from '../../lib/membri'
 import type { Membro } from '../../lib/tipi'
 import { useAvvisi } from '../Avvisi'
 import { useConferma } from '../Conferma'
@@ -38,7 +39,7 @@ export function Imprevisti(p: {
   // studenti della classe + chi è ancora in lista ma non è più della classe
   const studenti = [...p.membri.values()].filter((m) => m.ruolo !== 'docente').map((m) => m.uid)
   const ex = [...c.ordine, ...Object.keys(c.fissi)].filter((u) => !p.membri.has(u))
-  const persone = [...new Set([...studenti, ...ex])].sort((a, b) => nome(a).localeCompare(nome(b), 'it'))
+  const persone = [...new Set([...studenti, ...ex])].sort((a, b) => confrontaCognomi(nome(a), nome(b)))
   const fuori = persone.filter((u) => statoInLista(c, u) === 'fuori').length
   // aperto all'inizio se c'è qualcuno fuori lista; poi lo decide chi lo usa
   const [aperto] = useState(fuori > 0)
