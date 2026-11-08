@@ -81,10 +81,10 @@ test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ b
   await rigaCarla.getByRole('button', { name: 'Dai DSA/BES' }).click()
   await expect(rigaCarla.getByText('DSA/BES', { exact: true })).toBeVisible()
 
-  // 6. Carla vede il proprio badge, il docente no; Bruno (vice) vede il badge di Carla e la gestione
+  // 6. Carla vede il proprio badge, e anche il docente; Bruno (vice) vede il badge di Carla e la gestione
   await expect(carla.getByText('Hai il badge')).toBeVisible()
-  // di base il badge è nascosto: il docente non lo vede
-  await expect(rossi.getByText('DSA/BES', { exact: true })).toHaveCount(0)
+  // il badge lo vedono sempre anche i docenti
+  await expect(rossi.getByRole('listitem').filter({ hasText: 'Carla Blu' }).getByText('DSA/BES', { exact: true })).toBeVisible()
   await expect(bruno.getByRole('link', { name: 'Gestisci classe' })).toBeVisible()
   await expect(bruno.getByRole('listitem').filter({ hasText: 'Carla Blu' }).getByText('DSA/BES', { exact: true })).toBeVisible()
 

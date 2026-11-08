@@ -59,7 +59,7 @@ export default function Classe() {
             {!staff && dsa.has(io.uid) && (
               <Riquadro tono="info" icona={Sparkles}>
                 Hai il badge <strong>DSA/BES</strong>: per ogni interrogazione puoi scegliere il giorno in cui essere interrogato.
-                Lo vedono solo capoclasse e vice; se vuoi puoi mostrarlo ai compagni dalle{' '}
+                Lo vedono capoclasse, vice e docenti; se vuoi puoi mostrarlo ai compagni dalle{' '}
                 <Link to="/impostazioni" className="font-semibold underline">
                   Impostazioni
                 </Link>

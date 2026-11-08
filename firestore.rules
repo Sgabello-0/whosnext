@@ -286,12 +286,12 @@ service cloud.firestore {
 
       // ───── Badge DSA/BES ─────
       // dsa/{uid} → { impostatoDa, quando, visibile } esiste se lo studente ha il badge.
-      // Lo vedono capo, vice e il diretto interessato; tutta la classe solo se lo studente sceglie di mostrarlo.
+      // Lo vedono capo, vice, docenti e il diretto interessato; i compagni solo se lo studente sceglie di mostrarlo.
 
       match /dsa/{u} {
         allow read: if isMembro(c) && (
           u == request.auth.uid
-          || mioRuolo(c) in ['capo', 'vice']
+          || mioRuolo(c) in ['capo', 'vice', 'docente']
           || resource.data.get('visibile', false) == true
         );
         allow create: if isCapoOVice(c)

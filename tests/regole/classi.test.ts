@@ -370,7 +370,8 @@ describe('badge DSA/BES', () => {
     const { classId } = await classeDiProva()
     await impostaDSA(dbDi(env, anna), classId, 'carla', true, 'anna')
     await assertFails(getDoc(rifDSAMembro(dbDi(env, bruno), classId, 'carla')))
-    await assertFails(getDoc(rifDSAMembro(dbDi(env, rossi), classId, 'carla')))
+    await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, rossi), classId, 'carla'))) // i docenti sempre
+    await assertSucceeds(getDocs(rifDSA(dbDi(env, rossi), classId)))
     expect((await getDocs(query(rifDSA(dbDi(env, bruno), classId), where('visibile', '==', true)))).size).toBe(0)
     await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, carla), classId, 'carla')))
     await assertSucceeds(getDocs(rifDSA(dbDi(env, anna), classId)))
@@ -399,7 +400,7 @@ describe('badge DSA/BES', () => {
     await assertSucceeds(mostraMioDSA(dbDi(env, carla), [classId], 'carla', true))
     await assertSucceeds(mostraMioDSA(dbDi(env, carla), [classId], 'carla', false))
     await assertFails(getDoc(rifDSAMembro(dbDi(env, bruno), classId, 'carla')))
-    await assertFails(getDoc(rifDSAMembro(dbDi(env, rossi), classId, 'carla')))
+    await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, rossi), classId, 'carla')))
     expect((await getDocs(query(rifDSA(dbDi(env, bruno), classId), where('visibile', '==', true)))).size).toBe(0)
     await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, carla), classId, 'carla')))
     await assertSucceeds(getDocs(rifDSA(dbDi(env, anna), classId)))

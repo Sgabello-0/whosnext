@@ -42,7 +42,7 @@ stima la data per ciascuno e la tiene aggiornata con vacanze, lezioni saltate e 
 - **Da fare**: cosa scegliere, entro quando, e le richieste di scambio da guardare.
 - **Scambi di posto**: chiedi a un compagno di scambiare la posizione; basta che lui accetti. Massimo una richiesta aperta alla volta, e chi non vuole essere disturbato può rifiutarle tutte in automatico.
 - **Notifiche sul telefono** e **Notification Box** nel sito: nuova interrogazione, lista generata, richiesta di scambio, "domani sei interrogato" (o "possibile", se non si sa chi tocca) e, al capoclasse, le conferme di chi si è segnato da solo.
-- **Giorno scelto per DSA/BES**: chi ha il badge sceglie il giorno dell'interrogazione tra le lezioni disponibili; se quel giorno non viene interrogato, passa alla lezione dopo (dall'ora di uscita). Il badge è nascosto ai compagni, a meno che lo studente non scelga di mostrarlo.
+- **Giorno scelto per DSA/BES**: chi ha il badge sceglie il giorno dell'interrogazione tra le lezioni disponibili; se quel giorno non viene interrogato, passa alla lezione dopo (dall'ora di uscita). Il badge lo vedono capoclasse, vice e docenti; ai compagni è nascosto, a meno che lo studente non scelga di mostrarlo.
 - **Feedback** direttamente dalle Impostazioni.
 
 ### Per il capoclasse e il vice

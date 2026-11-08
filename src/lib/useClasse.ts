@@ -16,7 +16,7 @@ export type DatiClasse =
       classe: ConId<Classe>
       io: ConId<Membro>
       membri: ConId<Membro>[]
-      /** uid con badge DSA/BES che l'utente può vedere (tutti per capo e vice; per gli altri quelli visibili e il proprio) */
+      /** uid con badge DSA/BES che l'utente può vedere (tutti per capo, vice e docenti; per gli altri quelli visibili e il proprio) */
       dsa: Set<string>
     }
 
@@ -25,7 +25,8 @@ export function useClasse(classId: string): DatiClasse {
   const { uid } = useProfilo()
   const io = useDocumento<Membro>(db && rifMembro(db, classId, uid))
   const membro = io.dati ?? null
-  const staff = puoGestireDSA(membro)
+  // capo, vice e docenti vedono tutti i badge; i compagni solo quelli mostrati
+  const staff = puoGestireDSA(membro) || membro?.ruolo === 'docente'
 
   // Classe e membri si leggono solo da membri: si aspetta di sapere se lo si è.
   const classe = useDocumento<Classe>(db && membro ? rifClasse(db, classId) : null)

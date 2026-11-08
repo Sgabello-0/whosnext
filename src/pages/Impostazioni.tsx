@@ -79,7 +79,7 @@ export default function Impostazioni() {
         <Scheda titolo="Privacy" icona={ShieldCheck}>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             WhosNext usa solo nome, email e foto del tuo account della scuola. I compagni vedono il tuo nome e la tua posizione
-            nelle liste; il badge DSA/BES lo vedono capoclasse e vice e, solo se scegli di mostrarlo, i compagni.
+            nelle liste; il badge DSA/BES lo vedono capoclasse, vice e docenti e, solo se scegli di mostrarlo, i compagni.
           </p>
           <a
             href={PRIVACY}
@@ -257,7 +257,7 @@ function ImpostazioneScambi() {
 
 /**
  * Badge DSA/BES: lo studente decide se mostrarlo ai compagni (in tutte le classi in cui ce l'ha).
- * Capoclasse e vice lo vedono sempre. Compare solo a chi ha il badge.
+ * Capoclasse, vice e docenti lo vedono sempre. Compare solo a chi ha il badge.
  */
 function ImpostazioneDSA() {
   const profilo = useProfilo()
@@ -322,8 +322,8 @@ function ImpostazioneDSA() {
         titolo="Mostra il badge ai compagni"
         testo={
           visibile
-            ? 'I compagni vedono il badge accanto al tuo nome. Capoclasse e vice lo vedono sempre.'
-            : 'Il badge lo vedono solo capoclasse e vice. Nella lista compari comunque nel giorno che hai scelto.'
+            ? 'I compagni vedono il badge accanto al tuo nome. Capoclasse, vice e docenti lo vedono sempre.'
+            : 'Il badge lo vedono solo capoclasse, vice e docenti. Nella lista compari comunque nel giorno che hai scelto.'
         }
         icona={Sparkles}
         acceso={visibile}
