@@ -105,7 +105,7 @@ test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ b
   await expect(carla.getByRole('heading', { name: 'Codice non valido' })).toBeVisible()
 
   // 9. Anna rimuove Bruno: Bruno lo vede subito
-  await anna.getByRole('link', { name: /4ªB Informatica/ }).click()
+  await anna.getByRole('main').getByRole('link', { name: /4ªB Informatica/ }).click()
   await anna.getByRole('link', { name: 'Gestisci classe' }).click()
   await anna.getByRole('listitem').filter({ hasText: 'Bruno Neri' }).getByRole('button', { name: 'Rimuovi' }).click()
   await conferma(anna, 'Rimuovi')

@@ -1,6 +1,22 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getDoc } from 'firebase/firestore'
-import { ArrowLeftRight, Bell, CircleCheck, ExternalLink, LogOut, MessageSquareText, MonitorSmartphone, Moon, Palette, Send, ShieldCheck, Smartphone, Sparkles, Sun, UserRound } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  Bell,
+  CircleCheck,
+  ExternalLink,
+  LogOut,
+  MessageSquareText,
+  MonitorSmartphone,
+  Moon,
+  Palette,
+  Send,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Sun,
+  UserRound,
+} from 'lucide-react'
 import { useAuth, useProfilo } from '../lib/auth'
 import { db } from '../lib/firebase'
 import { mostraMioDSA, queryMieIscrizioni, rifDSAMembro, rifUtente } from '../lib/classi'
@@ -15,7 +31,7 @@ import { impostaTema, useTema, type Tema } from '../lib/tema'
 import type { ImpostazioniUtente, Membro } from '../lib/tipi'
 import { useAvvisi } from '../components/Avvisi'
 import { IstruzioniInstallazione, Vantaggi } from '../components/InstallaApp'
-import { Avatar, Badge, Bottone, CLASSE_INPUT, IntestazionePagina, Scheda } from '../components/ui'
+import { Avatar, Badge, Bottone, CLASSE_INPUT, GrigliaSchede, IntestazionePagina, Scheda } from '../components/ui'
 import { CREDITI } from '../lib/crediti'
 
 const PRIVACY = 'https://github.com/Sgabello-0/whosnext/blob/main/PRIVACY.md'
@@ -28,48 +44,54 @@ export default function Impostazioni() {
     <>
       <IntestazionePagina indietro={{ to: '/', testo: 'Home' }} titolo="Impostazioni" />
 
-      <Scheda titolo="Account" icona={UserRound}>
-        <div className="flex items-center gap-3">
-          <Avatar nome={profilo.nome} foto={profilo.foto} grande />
-          <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-2 font-semibold">
-              <span className="truncate">{profilo.nome}</span>
-              <Badge colore={profilo.tipo === 'docente' ? 'viola' : 'blu'}>{profilo.tipo === 'docente' ? 'Docente' : 'Studente'}</Badge>
-            </p>
-            <p className="truncate text-sm text-slate-600 dark:text-slate-400">{profilo.email}</p>
+      <GrigliaSchede>
+        <Scheda titolo="Account" icona={UserRound}>
+          <div className="flex items-center gap-3">
+            <Avatar nome={profilo.nome} foto={profilo.foto} grande />
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-wrap items-center gap-2 font-semibold">
+                <span className="truncate">{profilo.nome}</span>
+                <Badge colore={profilo.tipo === 'docente' ? 'viola' : 'blu'}>
+                  {profilo.tipo === 'docente' ? 'Docente' : 'Studente'}
+                </Badge>
+              </p>
+              <p className="truncate text-sm text-slate-600 dark:text-slate-400">{profilo.email}</p>
+            </div>
           </div>
-        </div>
-        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">Nome e foto sono quelli del tuo account Google della scuola.</p>
-        <div className="mt-4">
-          <Bottone variante="secondario" icona={LogOut} onClick={esci}>
-            Esci dall'account
-          </Bottone>
-        </div>
-      </Scheda>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+            Nome e foto sono quelli del tuo account Google della scuola.
+          </p>
+          <div className="mt-4">
+            <Bottone variante="secondario" icona={LogOut} onClick={esci}>
+              Esci dall'account
+            </Bottone>
+          </div>
+        </Scheda>
 
-      {/* finché il server delle notifiche non è collegato, gli interruttori non servirebbero a niente */}
-      {profilo.tipo === 'studente' && serverAttivo && <ImpostazioniNotifiche />}
-      {profilo.tipo === 'studente' && <ImpostazioneScambi />}
-      {profilo.tipo === 'studente' && <ImpostazioneDSA />}
-      <ImpostazioneTema />
-      <AppSulTelefono />
-      {feedbackAttivo && <Feedback />}
+        {/* finché il server delle notifiche non è collegato, gli interruttori non servirebbero a niente */}
+        {profilo.tipo === 'studente' && serverAttivo && <ImpostazioniNotifiche />}
+        {profilo.tipo === 'studente' && <ImpostazioneScambi />}
+        {profilo.tipo === 'studente' && <ImpostazioneDSA />}
+        <ImpostazioneTema />
+        <AppSulTelefono />
+        {feedbackAttivo && <Feedback />}
 
-      <Scheda titolo="Privacy" icona={ShieldCheck}>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          WhosNext usa solo nome, email e foto del tuo account della scuola. I compagni vedono il tuo nome e la tua posizione nelle
-          liste; il badge DSA/BES lo vedono capoclasse e vice e, se lo lasci visibile, i compagni.
-        </p>
-        <a
-          href={PRIVACY}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-accento hover:underline dark:text-blue-300"
-        >
-          Leggi l'informativa completa
-          <ExternalLink aria-hidden className="size-3.5" />
-        </a>
-      </Scheda>
+        <Scheda titolo="Privacy" icona={ShieldCheck}>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            WhosNext usa solo nome, email e foto del tuo account della scuola. I compagni vedono il tuo nome e la tua posizione
+            nelle liste; il badge DSA/BES lo vedono capoclasse e vice e, se lo lasci visibile, i compagni.
+          </p>
+          <a
+            href={PRIVACY}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-accento hover:underline dark:text-blue-300"
+          >
+            Leggi l'informativa completa
+            <ExternalLink aria-hidden className="size-3.5" />
+          </a>
+        </Scheda>
+      </GrigliaSchede>
 
       <p className="pt-2 text-center text-xs text-slate-600 dark:text-slate-400">WhosNext · {CREDITI}</p>
     </>
@@ -108,7 +130,7 @@ function Interruttore(p: {
 const TESTO_PUSH: Record<StatoPush, string> = {
   attive: 'Attive su questo dispositivo.',
   spente: 'Un avviso sul telefono anche quando il sito è chiuso.',
-  negate: 'Notifiche bloccate: riattivale dalle impostazioni del browser (il lucchetto accanto all\'indirizzo) e riprova.',
+  negate: "Notifiche bloccate: riattivale dalle impostazioni del browser (il lucchetto accanto all'indirizzo) e riprova.",
   'non-supportate': '',
 }
 
@@ -250,7 +272,12 @@ function ImpostazioneDSA() {
     if (!db || !iscrizioni.dati) return
     const d = db
     let attivo = true
-    Promise.all(chiave.split(',').filter(Boolean).map(async (c) => [c, await getDoc(rifDSAMembro(d, c, profilo.uid))] as const))
+    Promise.all(
+      chiave
+        .split(',')
+        .filter(Boolean)
+        .map(async (c) => [c, await getDoc(rifDSAMembro(d, c, profilo.uid))] as const),
+    )
       .then((risultati) => {
         if (!attivo) return
         setBadge(new Map(risultati.filter(([, s]) => s.exists()).map(([c, s]) => [c, s.data()?.visibile === true])))
@@ -320,7 +347,9 @@ function Feedback() {
     try {
       const esito = await inviaFeedback(testo)
       setTesto('')
-      avvisi.mostra(esito === 'inviato' ? 'Feedback inviato: grazie!' : 'Feedback ricevuto: grazie! Verrà letto appena possibile.')
+      avvisi.mostra(
+        esito === 'inviato' ? 'Feedback inviato: grazie!' : 'Feedback ricevuto: grazie! Verrà letto appena possibile.',
+      )
     } catch (err) {
       setErrore(messaggioErrore(err))
     } finally {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { db } from '../../lib/firebase'
 import { formattaGiorno, momentoLocale, oggiISO, type Calendario } from '../../lib/calendar'
 import { rifLista, rifRapporto } from '../../lib/configurazione'
@@ -10,7 +10,7 @@ import { useAdesso } from '../../lib/useAdesso'
 import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { useDocumento } from '../../lib/hooks'
 import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/tipi'
-import { Avatar, Badge, Bottone, Caricamento, Riquadro, Scheda, Soffietto } from '../ui'
+import { Avatar, Badge, Bottone, Caricamento, Colonne, Riquadro, Scheda, Soffietto } from '../ui'
 import { ArrowLeftRight, CalendarCheck, ChartPie, Check, ListOrdered, PartyPopper, Pencil, Undo2 } from 'lucide-react'
 import { useConferma } from '../Conferma'
 import { annullaScambio, chiediScambio, richiestaInAttesa, validita } from '../../lib/scambi'
@@ -39,6 +39,12 @@ type Props = {
   /** uid con il badge DSA/BES visibile a chi guarda */
   dsa: Set<string>
   nomeMateria: string
+  /** sul computer: due colonne */
+  desktop?: boolean
+  /** in cima (es. il modulo di modifica dell'interrogazione) */
+  sopra?: ReactNode
+  /** pannelli in più per la colonna di destra (o in fondo sul telefono) */
+  laterale?: ReactNode
 }
 
 /** La lista generata, con la data stimata per ognuno e gli strumenti per chi la gestisce. */
@@ -50,7 +56,11 @@ export function ListaInterrogazione(p: Props) {
   const conferma = useConferma()
   // si aggiorna da solo: all'ora di uscita chi non è stato interrogato slitta alla lezione dopo
   const adesso = useAdesso()
-  const r = { classId: p.classId, subjectId: p.subjectId, interrogazioneId: p.interrogazioneId }
+  const r = {
+    classId: p.classId,
+    subjectId: p.subjectId,
+    interrogazioneId: p.interrogazioneId,
+  }
   const ioMembro = p.membri.find((m) => m.uid === p.mioUid)
   const vuota: DocLista = { ordine: [], interrogati: {}, generataDa: '' }
   const datiLista = lista.dati ?? vuota
@@ -100,7 +110,7 @@ export function ListaInterrogazione(p: Props) {
     const aPos = ordine.indexOf(uid)
     // Una sola richiesta aperta: quella in attesa (se c'è) viene sostituita
     const inAttesa = scambi.mie.find((s) => s.stato === 'attesa' && validita(s, l) === 'valida')
-    const vecchio = inAttesa ? perUid.get(ordine[inAttesa.aPos] ?? '')?.nome ?? 'un compagno' : null
+    const vecchio = inAttesa ? (perUid.get(ordine[inAttesa.aPos] ?? '')?.nome ?? 'un compagno') : null
     const ok = await conferma({
       titolo: `Chiedere lo scambio a ${chi}?`,
       testo: `Tu passeresti dal n° ${miaPosizione + 1} al n° ${aPos + 1} (${stima(uid).toLowerCase()}). Finché ${chi} non accetta non cambia niente.${
@@ -112,7 +122,9 @@ export function ListaInterrogazione(p: Props) {
     try {
       const id = await chiediScambio(d, r, p.mioUid, l, aPos, scambi.mie, true)
       avvisaServer('scambio-richiesta', r, id)
-      avvisi.mostra(`Richiesta inviata a ${chi}`, { annulla: () => annullaScambio(d, r, id) })
+      avvisi.mostra(`Richiesta inviata a ${chi}`, {
+        annulla: () => annullaScambio(d, r, id),
+      })
     } catch (e) {
       avvisi.errore(messaggioErrore(e))
     }
@@ -133,15 +145,13 @@ export function ListaInterrogazione(p: Props) {
     }
   }
 
-  return (
+  const pezzoBanner = (
     <>
       {(miaPosizione >= 0 || miaData) && (
         <section
           role="status"
           className={`flex gap-4 rounded-2xl p-4 shadow-sm sm:p-5 ${
-            interrogati[p.mioUid]
-              ? 'bg-emerald-700 text-white'
-              : 'bg-gradient-to-br from-accento to-blue-700 text-white'
+            interrogati[p.mioUid] ? 'bg-emerald-700 text-white' : 'bg-gradient-to-br from-accento to-blue-700 text-white'
           }`}
         >
           <span
@@ -168,9 +178,7 @@ export function ListaInterrogazione(p: Props) {
                 : `Sei il n° ${miaPosizione + 1} di ${ordine.length}`}
             </p>
             {interrogati[p.mioUid] ? (
-              <p className="text-emerald-50">
-                Sei stato interrogato {formattaGiorno(interrogati[p.mioUid]!).toLowerCase()}.
-              </p>
+              <p className="text-emerald-50">Sei stato interrogato {formattaGiorno(interrogati[p.mioUid]!).toLowerCase()}.</p>
             ) : (
               <div className="space-y-3">
                 <p className="text-blue-50">
@@ -187,7 +195,10 @@ export function ListaInterrogazione(p: Props) {
           </div>
         </section>
       )}
-
+    </>
+  )
+  const pezzoScambi = (
+    <>
       {possoScambiare && (
         <PannelloScambi
           r={r}
@@ -202,18 +213,29 @@ export function ListaInterrogazione(p: Props) {
           rifiutoAutomatico={rifiutoAutomatico}
         />
       )}
-
+    </>
+  )
+  const pezzoConclusa = (
+    <>
       {p.interrogazione.stato === 'conclusa' && (
         <Riquadro tono="ok" titolo="Interrogazione conclusa" icona={PartyPopper}>
           Sono stati interrogati tutti.
         </Riquadro>
       )}
-
+    </>
+  )
+  const pezzoGestione = (
+    <>
       {p.puoModificare && !riordino && (
         <>
           <Segnalazioni r={r} membri={perUid} mioUid={p.mioUid} />
           <SegnaInterrogati
-            key={`${ordine.filter((u) => !interrogati[u]).slice(0, 10).join()}|${Object.keys(fissi).filter((u) => !interrogati[u]).join()}|${p.interrogazione.perLezione}`}
+            key={`${ordine
+              .filter((u) => !interrogati[u])
+              .slice(0, 10)
+              .join()}|${Object.keys(fissi)
+              .filter((u) => !interrogati[u])
+              .join()}|${p.interrogazione.perLezione}`}
             r={r}
             interrogazione={p.interrogazione}
             ordine={ordine}
@@ -225,7 +247,10 @@ export function ListaInterrogazione(p: Props) {
           />
         </>
       )}
-
+    </>
+  )
+  const pezzoLista = (
+    <>
       {riordino ? (
         <RiordinaLista
           r={r}
@@ -293,8 +318,12 @@ export function ListaInterrogazione(p: Props) {
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-400">{quando ? formattaGiorno(quando) : stima(uid)}</p>
                   </div>
-                  {possoScambiare && numero !== null && uid !== p.mioUid && !quando && !riordino && (
-                    richiestaInAttesa(scambi.mie, i, lista.dati!) ? (
+                  {possoScambiare &&
+                    numero !== null &&
+                    uid !== p.mioUid &&
+                    !quando &&
+                    !riordino &&
+                    (richiestaInAttesa(scambi.mie, i, lista.dati!) ? (
                       <Badge colore="viola">richiesta inviata</Badge>
                     ) : m && !m.rifiutaScambi ? (
                       <Bottone
@@ -305,8 +334,7 @@ export function ListaInterrogazione(p: Props) {
                       >
                         Scambia
                       </Bottone>
-                    ) : null
-                  )}
+                    ) : null)}
                   {quando && p.puoModificare && (
                     <Bottone
                       variante="piccolo"
@@ -340,7 +368,10 @@ export function ListaInterrogazione(p: Props) {
           </div>
         </Scheda>
       )}
-
+    </>
+  )
+  const pezzoImprevisti = (
+    <>
       {/* imprevisti: solo capoclasse e vice */}
       {p.staff && !riordino && p.interrogazione.stato !== 'raccolta' && (
         <Imprevisti
@@ -361,9 +392,49 @@ export function ListaInterrogazione(p: Props) {
           })}
         />
       )}
+    </>
+  )
+  const pezzoRapporto = (
+    <>
       {p.staff && <RapportoSoddisfazione {...p} />}
       <StoricoLista classId={p.classId} subjectId={p.subjectId} interrogazioneId={p.interrogazioneId} membri={perUid} />
     </>
+  )
+
+  return (
+    <Colonne
+      desktop={!!p.desktop}
+      principale={
+        <>
+          {p.sopra}
+          {pezzoBanner}
+          {pezzoScambi}
+          {pezzoConclusa}
+          {pezzoLista}
+        </>
+      }
+      laterale={
+        <>
+          {pezzoGestione}
+          {pezzoImprevisti}
+          {pezzoRapporto}
+          {p.laterale}
+        </>
+      }
+      telefono={
+        <>
+          {p.sopra}
+          {pezzoBanner}
+          {pezzoScambi}
+          {pezzoConclusa}
+          {pezzoGestione}
+          {pezzoLista}
+          {pezzoImprevisti}
+          {pezzoRapporto}
+          {p.laterale}
+        </>
+      }
+    />
   )
 }
 
@@ -393,8 +464,7 @@ function RapportoSoddisfazione(p: Props) {
           </li>
         )}
         <li className="text-xs text-slate-600 dark:text-slate-400">
-          Seme del sorteggio: {r.seme}. Il rapporto si riferisce alla lista appena generata, prima di eventuali
-          riordini.
+          Seme del sorteggio: {r.seme}. Il rapporto si riferisce alla lista appena generata, prima di eventuali riordini.
         </li>
       </ul>
     </Soffietto>

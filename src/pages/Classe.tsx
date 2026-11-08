@@ -16,12 +16,14 @@ import { useConferma } from '../components/Conferma'
 import { Invito } from '../components/Invito'
 import { InterrogazioniClasse } from '../components/InterrogazioniClasse'
 import { StatoClasse } from '../components/StatoClasse'
-import { Avatar, Bottone, IntestazionePagina, LinkBottone, Riquadro, Soffietto } from '../components/ui'
+import { Avatar, Bottone, Colonne, IntestazionePagina, LinkBottone, Riquadro, Soffietto } from '../components/ui'
+import { useDesktop } from '../lib/useDesktop'
 import { BadgeCheck, Eye, GraduationCap, LogOut, Settings, Sparkles, Users } from 'lucide-react'
 
 export default function Classe() {
   const { classId = '' } = useParams()
   const dati = useClasse(classId)
+  const desktop = useDesktop()
   if (dati.stato !== 'pronto') return <StatoClasse dati={dati} />
 
   const { classe, io, membri, dsa } = dati
@@ -49,44 +51,58 @@ export default function Classe() {
         }
       />
 
-      {io.ruolo === 'docente' && <PermessoDocente classId={classId} io={io} />}
-      {!staff && dsa.has(io.uid) && (
-        <Riquadro tono="info" icona={Sparkles}>
-          Hai il badge <strong>DSA/BES</strong>: per ogni interrogazione puoi scegliere il giorno in cui essere
-          interrogato. Puoi decidere se mostrarlo ai compagni dalle <Link to="/impostazioni" className="font-semibold underline">Impostazioni</Link>.
-        </Riquadro>
-      )}
+      <Colonne
+        desktop={desktop}
+        principale={
+          <>
+            {io.ruolo === 'docente' && <PermessoDocente classId={classId} io={io} />}
+            {!staff && dsa.has(io.uid) && (
+              <Riquadro tono="info" icona={Sparkles}>
+                Hai il badge <strong>DSA/BES</strong>: per ogni interrogazione puoi scegliere il giorno in cui essere interrogato.
+                Puoi decidere se mostrarlo ai compagni dalle{' '}
+                <Link to="/impostazioni" className="font-semibold underline">
+                  Impostazioni
+                </Link>
+                .
+              </Riquadro>
+            )}
 
-      {puoModificareListe(io) && (
-        <ProviderRaccolta>
-          <OsservaClasse classId={classId} membro={io} />
-          {io.ruolo === 'capo' && (
-            <Guida classId={classId} nomeClasse={classe.nome} codice={classe.codiceInvito} numeroMembri={membri.length} />
-          )}
-          <PannelloDaFare classId={classId} />
-        </ProviderRaccolta>
-      )}
+            {puoModificareListe(io) && (
+              <ProviderRaccolta>
+                <OsservaClasse classId={classId} membro={io} />
+                {io.ruolo === 'capo' && (
+                  <Guida classId={classId} nomeClasse={classe.nome} codice={classe.codiceInvito} numeroMembri={membri.length} />
+                )}
+                <PannelloDaFare classId={classId} />
+              </ProviderRaccolta>
+            )}
 
-      <InterrogazioniClasse classId={classId} staff={staff} mioUid={io.uid} />
+            <InterrogazioniClasse classId={classId} staff={staff} mioUid={io.uid} />
+          </>
+        }
+        laterale={
+          <>
+            <Soffietto
+              titolo={`Studenti (${studenti.length})`}
+              icona={Users}
+              aperto={studenti.length <= 6}
+              destra={<PilaAvatar membri={studenti} />}
+            >
+              <ListaMembri membri={studenti} mioUid={io.uid} dsa={dsa} />
+            </Soffietto>
 
-      <Soffietto
-        titolo={`Studenti (${studenti.length})`}
-        icona={Users}
-        aperto={studenti.length <= 6}
-        destra={<PilaAvatar membri={studenti} />}
-      >
-        <ListaMembri membri={studenti} mioUid={io.uid} dsa={dsa} />
-      </Soffietto>
+            {docenti.length > 0 && (
+              <Soffietto titolo={`Docenti (${docenti.length})`} icona={GraduationCap} aperto={docenti.length <= 3}>
+                <ListaMembri membri={docenti} mioUid={io.uid} dsa={new Set()} />
+              </Soffietto>
+            )}
 
-      {docenti.length > 0 && (
-        <Soffietto titolo={`Docenti (${docenti.length})`} icona={GraduationCap} aperto={docenti.length <= 3}>
-          <ListaMembri membri={docenti} mioUid={io.uid} dsa={new Set()} />
-        </Soffietto>
-      )}
+            <Invito codice={classe.codiceInvito} nomeClasse={classe.nome} />
 
-      <Invito codice={classe.codiceInvito} nomeClasse={classe.nome} />
-
-      {io.ruolo !== 'capo' && <EsciDallaClasse classId={classId} uid={io.uid} nomeClasse={classe.nome} />}
+            {io.ruolo !== 'capo' && <EsciDallaClasse classId={classId} uid={io.uid} nomeClasse={classe.nome} />}
+          </>
+        }
+      />
     </>
   )
 }

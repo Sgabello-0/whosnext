@@ -27,7 +27,7 @@ test('si apre anche senza connessione, con gli ultimi dati', async ({ browser },
   await anna.getByRole('button', { name: 'Crea classe' }).click()
   await expect(anna.getByRole('heading', { name: '4ªB offline' })).toBeVisible()
   await anna.goto('/')
-  await expect(anna.getByRole('link', { name: /4ªB offline/ })).toBeVisible()
+  await expect(anna.getByRole('main').getByRole('link', { name: /4ªB offline/ })).toBeVisible()
   await expect.poll(() => anna.evaluate(async () => !!(await navigator.serviceWorker.ready).active), { timeout: 20_000 }).toBe(true)
 
   // "Installa l'app": solo da cellulare, in basso dopo qualche secondo; con un tocco su Android
@@ -56,7 +56,7 @@ test('si apre anche senza connessione, con gli ultimi dati', async ({ browser },
   // Senza connessione: la pagina arriva dalla cache e la classe dai dati salvati sul dispositivo
   await anna.context().setOffline(true)
   await anna.reload()
-  await expect(anna.getByRole('link', { name: /4ªB offline/ })).toBeVisible({ timeout: 20_000 })
+  await expect(anna.getByRole('main').getByRole('link', { name: /4ªB offline/ })).toBeVisible({ timeout: 20_000 })
   await anna.context().setOffline(false)
 })
 

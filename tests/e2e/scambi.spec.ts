@@ -114,6 +114,6 @@ test('scambio di posto tra due compagni', async ({ browser }, info) => {
   await anna.screenshot({ path: info.outputPath('impostazioni-scuro.png'), fullPage: true })
   await anna.getByRole('radio', { name: 'Automatico' }).click()
   // tornando alla home la pagina arriva da sinistra
-  await anna.getByRole('link', { name: 'Home' }).click()
+  await anna.getByRole('main').getByRole('link', { name: 'Home' }).click()
   await expect(anna.locator('main > div')).toHaveClass(/pagina-indietro/)
 })

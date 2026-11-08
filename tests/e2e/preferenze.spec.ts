@@ -33,7 +33,7 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await expect(anna.getByRole('listitem').filter({ hasText: 'Carla Blu' }).getByText('DSA/BES', { exact: true })).toBeVisible()
 
   // Materia e interrogazione (1 studente per lezione, martedì e giovedì)
-  await anna.getByRole('link', { name: /4ªB/ }).click()
+  await anna.getByRole('main').getByRole('link', { name: /4ªB/ }).click()
   await anna.getByRole('link', { name: 'Materie e calendario' }).click()
   await anna.getByLabel('Nome', { exact: true }).fill('Storia')
   const giorni = anna.getByRole('group', { name: 'Giorni di lezione' })
@@ -42,7 +42,7 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
   await expect(anna.getByRole('link', { name: 'Storia' })).toBeVisible()
   // Nuova interrogazione direttamente dalla pagina della classe
-  await anna.getByRole('link', { name: /4ªB/ }).click()
+  await anna.getByRole('main').getByRole('link', { name: /4ªB/ }).click()
   await anna.getByRole('button', { name: 'Nuova interrogazione' }).click()
   await expect(anna.getByLabel('Materia')).toHaveValue(/.+/)
   await anna.getByLabel('Nome', { exact: true }).fill('Orale Risorgimento')

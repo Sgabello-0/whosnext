@@ -12,6 +12,7 @@ import { puoGestireDSA, puoModificareListe } from '../lib/membri'
 import { useCalendario } from '../lib/useCalendario'
 import { useClasse } from '../lib/useClasse'
 import { useAdesso } from '../lib/useAdesso'
+import { useDesktop } from '../lib/useDesktop'
 import type { Interrogazione as TipoInterrogazione, Materia } from '../lib/tipi'
 import { BadgeStato } from '../components/BadgeStato'
 import { FormInterrogazione } from '../components/FormInterrogazione'
@@ -22,7 +23,17 @@ import { useConferma } from '../components/Conferma'
 import { SceltaPreferenza } from '../components/interrogazione/SceltaPreferenza'
 import { PannelloPreferenze } from '../components/interrogazione/PannelloPreferenze'
 import { ListaInterrogazione } from '../components/interrogazione/ListaInterrogazione'
-import { Bottone, Caricamento, Info, IntestazionePagina, LinkBottone, Riquadro, Scheda, Soffietto } from '../components/ui'
+import {
+  Bottone,
+  Caricamento,
+  Colonne,
+  Info,
+  IntestazionePagina,
+  LinkBottone,
+  Riquadro,
+  Scheda,
+  Soffietto,
+} from '../components/ui'
 
 export default function Interrogazione() {
   const { classId = '', subjectId = '', interrogazioneId = '' } = useParams()
@@ -36,6 +47,7 @@ export default function Interrogazione() {
   const [modifica, setModifica] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const navigate = useNavigate()
+  const desktop = useDesktop()
 
   if (dati.stato !== 'pronto') return <StatoClasse dati={dati} />
   const erroreLettura = interr.errore ?? materia.errore
@@ -61,7 +73,7 @@ export default function Interrogazione() {
     if (!db) return
     const ok = await conferma({
       titolo: `Eliminare "${i.nome}"?`,
-      testo: 'Verranno eliminate anche preferenze e lista. L\'operazione non è reversibile.',
+      testo: "Verranno eliminate anche preferenze e lista. L'operazione non è reversibile.",
       pulsante: 'Elimina',
       pericolo: true,
     })
@@ -75,61 +87,51 @@ export default function Interrogazione() {
     }
   }
 
-  return (
-    <>
-      <IntestazionePagina
-        indietro={{ to: `/classe/${classId}/materia/${subjectId}`, testo: materia.dati.nome }}
-        titolo={i.nome}
-        badge={<BadgeStato stato={i.stato} />}
-        sottotitolo={i.descrizione ? <p className="whitespace-pre-line">{i.descrizione}</p> : undefined}
-        azioni={
-          staff &&
-          !modifica && (
-            <>
-              <Bottone variante="piccolo" icona={Pencil} onClick={() => setModifica(true)}>
-                Modifica
-              </Bottone>
-              <Bottone variante="piccolo" icona={Trash2} onClick={elimina}>
-                Elimina
-              </Bottone>
-            </>
-          )
-        }
+  const formModifica = modifica && db && (
+    <Scheda titolo="Modifica interrogazione" icona={Pencil}>
+      <FormInterrogazione
+        iniziale={{ ...i, scadenzaPreferenze: scadenza }}
+        giorniMateria={materia.dati.orario}
+        testoSalva="Salva modifiche"
+        onAnnulla={() => setModifica(false)}
+        onSalva={async (d) => {
+          await aggiornaInterrogazione(db!, classId, subjectId, interrogazioneId, d)
+          avvisi.mostra('Modifiche salvate')
+          setModifica(false)
+        }}
       />
+    </Scheda>
+  )
 
-      {errore && <Riquadro tono="errore">{errore}</Riquadro>}
-
-      {modifica && db ? (
-        <Scheda titolo="Modifica interrogazione" icona={Pencil}>
-          <FormInterrogazione
-            iniziale={{ ...i, scadenzaPreferenze: scadenza }}
-            giorniMateria={materia.dati.orario}
-            testoSalva="Salva modifiche"
-            onAnnulla={() => setModifica(false)}
-            onSalva={async (d) => {
-              await aggiornaInterrogazione(db!, classId, subjectId, interrogazioneId, d)
-              avvisi.mostra('Modifiche salvate')
-              setModifica(false)
-            }}
-          />
-        </Scheda>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {i.stato === 'raccolta' && (
-            <Info icona={Clock}>
-              Preferenze entro {formattaScadenza(scadenza)} <span className="text-slate-600 dark:text-slate-400">({tempoMancante(scadenza, adesso)})</span>
-            </Info>
-          )}
-          <Info icona={CalendarDays}>
-            {i.giorni.length ? i.giorni.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}
-          </Info>
-          <Info icona={Users}>
-            {i.perLezione ? `${i.perLezione} ${i.perLezione === 1 ? 'studente' : 'studenti'} per lezione` : 'per lezione: non indicato'}
-          </Info>
-        </div>
+  const dettagli = !modifica && (
+    <div className="flex flex-wrap gap-2">
+      {i.stato === 'raccolta' && (
+        <Info icona={Clock}>
+          Preferenze entro {formattaScadenza(scadenza)}{' '}
+          <span className="text-slate-600 dark:text-slate-400">({tempoMancante(scadenza, adesso)})</span>
+        </Info>
       )}
+      <Info icona={CalendarDays}>
+        {i.giorni.length ? i.giorni.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}
+      </Info>
+      <Info icona={Users}>
+        {i.perLezione
+          ? `${i.perLezione} ${i.perLezione === 1 ? 'studente' : 'studenti'} per lezione`
+          : 'per lezione: non indicato'}
+      </Info>
+    </div>
+  )
 
-      {i.stato === 'raccolta' && io.ruolo !== 'docente' && (
+  const prossime = (
+    <Soffietto titolo="Prossime lezioni" icona={CalendarDays} aperto={desktop}>
+      {cal ? <ProssimeLezioni giorni={i.giorni} subjectId={subjectId} cal={cal} /> : <Caricamento />}
+    </Soffietto>
+  )
+
+  // Preferenze aperte: la scelta dello studente, l'avviso per i docenti, il pannello per capo e vice
+  const preferenze = i.stato === 'raccolta' && (
+    <>
+      {io.ruolo !== 'docente' && (
         <SceltaPreferenza
           classId={classId}
           subjectId={subjectId}
@@ -154,12 +156,12 @@ export default function Interrogazione() {
           escluso={(i.esclusi ?? []).includes(io.uid)}
         />
       )}
-      {i.stato === 'raccolta' && io.ruolo === 'docente' && (
+      {io.ruolo === 'docente' && (
         <Riquadro tono="info" icona={Eye}>
           Gli studenti stanno scegliendo le preferenze. La lista comparirà qui dopo la scadenza.
         </Riquadro>
       )}
-      {i.stato === 'raccolta' && staff && (
+      {staff && (
         <PannelloPreferenze
           classId={classId}
           subjectId={subjectId}
@@ -173,7 +175,40 @@ export default function Interrogazione() {
           esclusi={i.esclusi ?? []}
         />
       )}
-      {i.stato !== 'raccolta' && cal && (
+    </>
+  )
+
+  const conLista = i.stato !== 'raccolta' && !!cal
+
+  return (
+    <>
+      <IntestazionePagina
+        indietro={{
+          to: `/classe/${classId}/materia/${subjectId}`,
+          testo: materia.dati.nome,
+        }}
+        titolo={i.nome}
+        badge={<BadgeStato stato={i.stato} />}
+        sottotitolo={i.descrizione ? <p className="whitespace-pre-line">{i.descrizione}</p> : undefined}
+        azioni={
+          staff &&
+          !modifica && (
+            <>
+              <Bottone variante="piccolo" icona={Pencil} onClick={() => setModifica(true)}>
+                Modifica
+              </Bottone>
+              <Bottone variante="piccolo" icona={Trash2} onClick={elimina}>
+                Elimina
+              </Bottone>
+            </>
+          )
+        }
+      />
+
+      {errore && <Riquadro tono="errore">{errore}</Riquadro>}
+
+      {conLista ? (
+        // la lista decide da sé le colonne (sul computer i suoi pannelli vanno a destra, con dettagli e lezioni)
         <ListaInterrogazione
           classId={classId}
           subjectId={subjectId}
@@ -181,17 +216,58 @@ export default function Interrogazione() {
           interrogazione={i}
           membri={dati.membri}
           mioUid={io.uid}
-          cal={cal}
+          cal={cal!}
           staff={staff}
           puoModificare={puoModificareListe(io)}
           dsa={dati.dsa}
           nomeMateria={materia.dati.nome}
+          desktop={desktop}
+          sopra={
+            desktop ? (
+              formModifica
+            ) : (
+              <>
+                {formModifica}
+                {dettagli}
+              </>
+            )
+          }
+          laterale={
+            desktop ? (
+              <>
+                {dettagli}
+                {prossime}
+              </>
+            ) : (
+              prossime
+            )
+          }
+        />
+      ) : (
+        <Colonne
+          desktop={desktop}
+          principale={
+            <>
+              {formModifica}
+              {preferenze}
+            </>
+          }
+          laterale={
+            <>
+              {dettagli}
+              {prossime}
+            </>
+          }
+          telefono={
+            <>
+              {formModifica}
+              {dettagli}
+              {preferenze}
+              {prossime}
+            </>
+          }
         />
       )}
-
-      <Soffietto titolo="Prossime lezioni" icona={CalendarDays}>
-        {cal ? <ProssimeLezioni giorni={i.giorni} subjectId={subjectId} cal={cal} /> : <Caricamento />}
-      </Soffietto>
     </>
   )
 }

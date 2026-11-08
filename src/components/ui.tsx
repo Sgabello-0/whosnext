@@ -147,6 +147,39 @@ export function Scheda(props: {
   )
 }
 
+/**
+ * Due colonne sul computer (contenuto principale a sinistra, pannelli a destra); sul telefono una sola,
+ * nell'ordine dato da `telefono` (di default prima il principale, poi i pannelli).
+ */
+export function Colonne(props: { desktop: boolean; principale: ReactNode; laterale: ReactNode; telefono?: ReactNode }) {
+  if (!props.desktop)
+    return (
+      <>
+        {props.telefono ?? (
+          <>
+            {props.principale}
+            {props.laterale}
+          </>
+        )}
+      </>
+    )
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(300px,380px)] items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="flex min-w-0 flex-col gap-5">{props.principale}</div>
+      <aside className="flex min-w-0 flex-col gap-5">{props.laterale}</aside>
+    </div>
+  )
+}
+
+/** Schede su due colonne sul computer (impostazioni, gestione), una sotto l'altra sul telefono. */
+export function GrigliaSchede(props: { children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-4 sm:gap-5 lg:block lg:columns-2 lg:gap-5 lg:[&>*]:mb-5 lg:[&>*]:break-inside-avoid">
+      {props.children}
+    </div>
+  )
+}
+
 /** Titolo della pagina, con il link per tornare indietro e le azioni a destra. */
 export function IntestazionePagina(props: {
   indietro?: { to: string; testo: string }

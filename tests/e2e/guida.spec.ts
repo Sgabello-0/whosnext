@@ -40,7 +40,7 @@ test('guida della classe nuova e orario a griglia', async ({ browser }, info) =>
   await anna.screenshot({ path: info.outputPath('orario.png'), fullPage: true })
 
   // 2. Calendario: "Va bene così"
-  await anna.getByRole('link', { name: /3ªA/ }).click()
+  await anna.getByRole('main').getByRole('link', { name: /3ªA/ }).click()
   await expect(anna.getByRole('heading', { name: 'Prepara la classe (1 di 4)' })).toBeVisible()
   await passi.getByRole('button', { name: 'Va bene così' }).click()
   await expect(anna.getByRole('heading', { name: 'Prepara la classe (2 di 4)' })).toBeVisible()
@@ -58,7 +58,7 @@ test('guida della classe nuova e orario a griglia', async ({ browser }, info) =>
   await anna.getByRole('button', { name: 'Crea interrogazione' }).click()
   await expect(anna.getByRole('heading', { name: 'Orale' })).toBeVisible()
   await anna.getByRole('link', { name: 'Matematica', exact: true }).click() // torna alla materia
-  await anna.getByRole('link', { name: /3ªA/ }).click()
+  await anna.getByRole('main').getByRole('link', { name: /3ªA/ }).click()
   await expect(anna.getByRole('heading', { name: 'Interrogazioni' })).toBeVisible()
   await expect(anna.getByRole('heading', { name: /Prepara la classe/ })).toHaveCount(0)
 })

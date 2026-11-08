@@ -2,14 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Crown, GraduationCap, KeyRound, Pencil, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react'
 import { db } from '../lib/firebase'
-import {
-  cambiaCodiceInvito,
-  impostaDSA,
-  impostaPermessoDocente,
-  impostaVice,
-  rimuoviMembro,
-  rinominaClasse,
-} from '../lib/classi'
+import { cambiaCodiceInvito, impostaDSA, impostaPermessoDocente, impostaVice, rimuoviMembro, rinominaClasse } from '../lib/classi'
 import { formattaCodice } from '../lib/codici'
 import { eliminaClasse } from '../lib/eliminaClasse'
 import { messaggioErrore } from '../lib/errori'
@@ -21,7 +14,7 @@ import { CediRuolo } from '../components/CediRuolo'
 import type { Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
 import { StatoClasse } from '../components/StatoClasse'
-import { Avatar, Bottone, Campo, IntestazionePagina, LinkBottone, Riquadro, Scheda } from '../components/ui'
+import { Avatar, Bottone, Campo, IntestazionePagina, LinkBottone, Riquadro, Scheda, GrigliaSchede } from '../components/ui'
 
 /** Gestione della classe: capoclasse (tutto) e vice (solo badge DSA/BES). */
 export default function AdminClasse() {
@@ -51,12 +44,7 @@ export default function AdminClasse() {
    * Esegue un'azione mostrando l'errore se fallisce; `chiave` disabilita i pulsanti di quel membro.
    * Se riesce mostra `avviso`, con "Annulla" quando c'è `annulla`.
    */
-  async function esegui(
-    chiave: string,
-    azione: () => Promise<unknown>,
-    avviso?: string,
-    annulla?: () => Promise<void>,
-  ) {
+  async function esegui(chiave: string, azione: () => Promise<unknown>, avviso?: string, annulla?: () => Promise<void>) {
     setErrore(null)
     setOccupato(chiave)
     try {
@@ -164,86 +152,72 @@ export default function AdminClasse() {
 
       {errore && <Riquadro tono="errore">{errore}</Riquadro>}
 
-      {capo && richieste.length > 0 && (
-        <Scheda titolo="Richieste di permesso dei docenti" icona={UserCheck} tono="avviso">
-          <ul className="space-y-3">
-            {richieste.map((m) => (
-              <li key={m.uid} className="flex flex-wrap items-center gap-3">
-                <Avatar nome={m.nome} foto={m.foto} />
-                <span className="min-w-0 flex-1">
-                  <strong>{m.nome}</strong> chiede di poter modificare le liste
-                </span>
-                <span className="flex gap-1.5">
-                  <Bottone
-                    variante="primario"
-                    disabled={occupato === m.uid}
-                    onClick={() =>
-                      db &&
-                      esegui(
-                        m.uid,
-                        () => impostaPermessoDocente(db!, classId, m.uid, true),
-                        `Permesso dato a ${m.nome}`,
-                      )
-                    }
-                  >
-                    Accetta
-                  </Bottone>
-                  <Bottone
-                    variante="secondario"
-                    disabled={occupato === m.uid}
-                    onClick={() =>
-                      db &&
-                      esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, false), 'Richiesta rifiutata')
-                    }
-                  >
-                    Rifiuta
-                  </Bottone>
-                </span>
-              </li>
-            ))}
-          </ul>
+      <GrigliaSchede>
+        {capo && richieste.length > 0 && (
+          <Scheda titolo="Richieste di permesso dei docenti" icona={UserCheck} tono="avviso">
+            <ul className="space-y-3">
+              {richieste.map((m) => (
+                <li key={m.uid} className="flex flex-wrap items-center gap-3">
+                  <Avatar nome={m.nome} foto={m.foto} />
+                  <span className="min-w-0 flex-1">
+                    <strong>{m.nome}</strong> chiede di poter modificare le liste
+                  </span>
+                  <span className="flex gap-1.5">
+                    <Bottone
+                      variante="primario"
+                      disabled={occupato === m.uid}
+                      onClick={() =>
+                        db && esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, true), `Permesso dato a ${m.nome}`)
+                      }
+                    >
+                      Accetta
+                    </Bottone>
+                    <Bottone
+                      variante="secondario"
+                      disabled={occupato === m.uid}
+                      onClick={() =>
+                        db && esegui(m.uid, () => impostaPermessoDocente(db!, classId, m.uid, false), 'Richiesta rifiutata')
+                      }
+                    >
+                      Rifiuta
+                    </Bottone>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Scheda>
+        )}
+
+        <Scheda
+          titolo={`Studenti (${studenti.length})`}
+          icona={Users}
+          sottotitolo="Con il badge DSA/BES lo studente sceglie il giorno dell'interrogazione. Lo vede tutta la classe, a meno che lo studente non lo nasconda dalle Impostazioni."
+        >
+          <ListaMembri membri={studenti} mioUid={io.uid} dsa={dsa} mostraEmail azioni={azioniStudente} />
         </Scheda>
-      )}
 
-      <Scheda
-        titolo={`Studenti (${studenti.length})`}
-        icona={Users}
-        sottotitolo="Con il badge DSA/BES lo studente sceglie il giorno dell'interrogazione. Lo vede tutta la classe, a meno che lo studente non lo nasconda dalle Impostazioni."
-      >
-        <ListaMembri membri={studenti} mioUid={io.uid} dsa={dsa} mostraEmail azioni={azioniStudente} />
-      </Scheda>
+        <Scheda
+          titolo={`Docenti (${docenti.length})`}
+          icona={GraduationCap}
+          sottotitolo="I docenti vedono le liste. Con il permesso possono anche riordinarle e segnare chi è stato interrogato."
+        >
+          <ListaMembri membri={docenti} mioUid={io.uid} dsa={new Set()} mostraEmail azioni={azioniDocente} />
+        </Scheda>
 
-      <Scheda
-        titolo={`Docenti (${docenti.length})`}
-        icona={GraduationCap}
-        sottotitolo="I docenti vedono le liste. Con il permesso possono anche riordinarle e segnare chi è stato interrogato."
-      >
-        <ListaMembri membri={docenti} mioUid={io.uid} dsa={new Set()} mostraEmail azioni={azioniDocente} />
-      </Scheda>
-
-      {capo && (
-        <ImpostazioniClasse
-          classId={classId}
-          nome={classe.nome}
-          codice={classe.codiceInvito}
-          cedi={<CediRuolo classId={classId} mioUid={io.uid} studenti={studenti} />}
-        />
-      )}
+        {capo && (
+          <ImpostazioniClasse
+            classId={classId}
+            nome={classe.nome}
+            codice={classe.codiceInvito}
+            cedi={<CediRuolo classId={classId} mioUid={io.uid} studenti={studenti} />}
+          />
+        )}
+      </GrigliaSchede>
     </>
   )
 }
 
-function ImpostazioniClasse({
-  classId,
-  nome,
-  codice,
-  cedi,
-}: {
-  classId: string
-  nome: string
-  codice: string
-  cedi: ReactNode
-}) {
+function ImpostazioniClasse({ classId, nome, codice, cedi }: { classId: string; nome: string; codice: string; cedi: ReactNode }) {
   const [nuovoNome, setNuovoNome] = useState(nome)
   const [inCorso, setInCorso] = useState(false)
   const avvisi = useAvvisi()
@@ -288,11 +262,7 @@ function ImpostazioniClasse({
           <div className="min-w-48 flex-1">
             <Campo etichetta="Nome della classe" valore={nuovoNome} onChange={setNuovoNome} maxLength={60} />
           </div>
-          <Bottone
-            type="submit"
-            variante="secondario"
-            disabled={inCorso || !nuovoNome.trim() || nuovoNome.trim() === nome}
-          >
+          <Bottone type="submit" variante="secondario" disabled={inCorso || !nuovoNome.trim() || nuovoNome.trim() === nome}>
             Rinomina
           </Bottone>
         </form>
@@ -309,11 +279,7 @@ function ImpostazioniClasse({
           </Bottone>
         </div>
       </Scheda>
-      <Scheda
-        titolo="Passa il ruolo di capoclasse"
-        icona={Crown}
-        sottotitolo="Per esempio a fine anno o se cambi classe."
-      >
+      <Scheda titolo="Passa il ruolo di capoclasse" icona={Crown} sottotitolo="Per esempio a fine anno o se cambi classe.">
         {cedi}
       </Scheda>
       <EliminaClasse classId={classId} nome={nome} codice={codice} />
@@ -331,7 +297,7 @@ function EliminaClasse({ classId, nome, codice }: { classId: string; nome: strin
     if (!db) return
     const ok = await conferma({
       titolo: `Eliminare ${nome}?`,
-      testo: 'Verranno eliminati per tutti membri, materie, interrogazioni e calendario. L\'operazione non è reversibile.',
+      testo: "Verranno eliminati per tutti membri, materie, interrogazioni e calendario. L'operazione non è reversibile.",
       pulsante: 'Elimina definitivamente',
       pericolo: true,
       richiediTesto: nome,

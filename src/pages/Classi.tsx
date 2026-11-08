@@ -9,11 +9,12 @@ import { messaggioErrore } from '../lib/errori'
 import { useDocumento, useQuery } from '../lib/hooks'
 import { ETICHETTA_RUOLO } from '../lib/membri'
 import type { Classe, Membro } from '../lib/tipi'
-import { Badge, Bottone, Caricamento, Campo, Modulo, Pallino, Riquadro, RigaLink, Scheda } from '../components/ui'
+import { Badge, Bottone, Caricamento, Campo, Colonne, Modulo, Pallino, Riquadro, RigaLink, Scheda } from '../components/ui'
+import { useDesktop } from '../lib/useDesktop'
 import { ProviderRaccolta } from '../lib/raccolta'
 import { OsservaClasse } from '../components/osservatori/Osservatori'
 import { InvitoNotifiche } from '../components/InvitoNotifiche'
-import { PannelloDaFare, PannelloMie } from '../components/osservatori/Pannelli'
+import { PannelloDaFare, PannelloMie, Riepilogo } from '../components/osservatori/Pannelli'
 
 /** classes/{classId}/members/{uid} → classId */
 function classIdDa(percorso: string): string {
@@ -36,6 +37,9 @@ export default function Classi() {
   const profilo = useProfilo()
   const iscrizioni = useQuery<Membro>(db && queryMieIscrizioni(db, profilo.uid), `iscrizioni/${profilo.uid}`)
   const nessuna = iscrizioni.dati?.length === 0
+  const desktop = useDesktop()
+  const conClassi = !!iscrizioni.dati && iscrizioni.dati.length > 0
+  const classi = <ElencoClassi iscrizioni={iscrizioni} nessuna={nessuna} />
 
   return (
     <ProviderRaccolta>
@@ -57,10 +61,42 @@ export default function Classi() {
         </p>
       </div>
 
-      <PannelloDaFare />
-      {iscrizioni.dati && iscrizioni.dati.length > 0 && <PannelloMie caricamento={!iscrizioni.dati} />}
-      {iscrizioni.dati && iscrizioni.dati.length > 0 && <InvitoNotifiche />}
+      {desktop && conClassi && <Riepilogo classi={iscrizioni.dati!.length} />}
 
+      <Colonne
+        desktop={desktop}
+        principale={
+          <>
+            {conClassi && <PannelloMie caricamento={!iscrizioni.dati} />}
+            {/* sul computer, senza classi, le due strade per iniziare stanno al centro */}
+            {!conClassi && classi}
+          </>
+        }
+        laterale={
+          <>
+            <PannelloDaFare />
+            {conClassi && <InvitoNotifiche />}
+            {conClassi && classi}
+          </>
+        }
+        telefono={
+          <>
+            <PannelloDaFare />
+            {conClassi && <PannelloMie caricamento={!iscrizioni.dati} />}
+            {conClassi && <InvitoNotifiche />}
+            {classi}
+          </>
+        }
+      />
+    </ProviderRaccolta>
+  )
+}
+
+function ElencoClassi(p: { iscrizioni: ReturnType<typeof useQuery<Membro>>; nessuna: boolean }) {
+  const iscrizioni = p.iscrizioni
+  const nessuna = p.nessuna
+  return (
+    <>
       {iscrizioni.errore ? (
         <Riquadro tono="errore">{messaggioErrore(iscrizioni.errore)}</Riquadro>
       ) : !iscrizioni.dati ? (
@@ -77,8 +113,7 @@ export default function Classi() {
           <AltraClasse />
         </Scheda>
       )}
-
-    </ProviderRaccolta>
+    </>
   )
 }
 
@@ -142,11 +177,7 @@ function AltraClasse() {
           </Bottone>
         )}
       </div>
-      {aperto && (
-        <Modulo>
-          {aperto === 'unisciti' ? <FormUnisciti autoFocus /> : <FormCreaClasse autoFocus />}
-        </Modulo>
-      )}
+      {aperto && <Modulo>{aperto === 'unisciti' ? <FormUnisciti autoFocus /> : <FormCreaClasse autoFocus />}</Modulo>}
     </div>
   )
 }
@@ -161,7 +192,7 @@ function FormUnisciti({ autoFocus }: { autoFocus?: boolean }) {
     e.preventDefault()
     const codice = codiceDaTesto(testo)
     if (!codice) {
-      setErrore('Il codice è di 6 caratteri, ad esempio ABC-DEF. Puoi anche incollare il link d\'invito.')
+      setErrore("Il codice è di 6 caratteri, ad esempio ABC-DEF. Puoi anche incollare il link d'invito.")
       return
     }
     navigate(`/unisciti/${codice}`)
@@ -179,7 +210,11 @@ function FormUnisciti({ autoFocus }: { autoFocus?: boolean }) {
         placeholder="ABC-DEF"
         maxLength={200}
         autoFocus={autoFocus}
-        aiuto={profilo.tipo === 'docente' ? "Chiedi il codice d'invito al capoclasse." : 'Lo fornisce il capoclasse, di solito su WhatsApp.'}
+        aiuto={
+          profilo.tipo === 'docente'
+            ? "Chiedi il codice d'invito al capoclasse."
+            : 'Lo fornisce il capoclasse, di solito su WhatsApp.'
+        }
       />
       {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
       <Bottone type="submit" disabled={!testo.trim()}>
