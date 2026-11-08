@@ -9,6 +9,7 @@ import type { DocSegnalazione, Membro } from '../../lib/tipi'
 import { Bottone, CLASSE_INPUT, Riquadro, Scheda } from '../ui'
 import { BellRing } from 'lucide-react'
 import { useAvvisi } from '../Avvisi'
+import { avvisaServer } from '../../lib/avvisaServer'
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
 
@@ -104,7 +105,10 @@ export function SonoStatoInterrogato(p: { r: Rif; uid: string }) {
             <span className="mb-2 block font-medium">Quando?</span>
             <input type="date" value={data} max={oggiISO()} onChange={(e) => setData(e.target.value)} className={`${CLASSE_INPUT} max-w-48`} />
           </label>
-          <Bottone onClick={() => db && esegui(() => segnalaInterrogato(db!, p.r, p.uid, data), 'Segnalazione inviata al capoclasse')}>
+          <Bottone onClick={() => db && esegui(async () => {
+            await segnalaInterrogato(db!, p.r, p.uid, data)
+            avvisaServer('segnalazione', p.r)
+          }, 'Segnalazione inviata al capoclasse')}>
             Segnala
           </Bottone>
           <Bottone variante="secondario" onClick={() => setAperto(false)}>

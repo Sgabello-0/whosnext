@@ -11,6 +11,7 @@ import { useDesktop } from '../lib/useDesktop'
 import { Avatar } from './ui'
 import { Logo } from './Logo'
 import { InstallaApp } from './InstallaApp'
+import { ScatolaNotifiche } from './ScatolaNotifiche'
 
 /** Quanto è "dentro" una pagina: home 0, classe 2, materia 4, interrogazione 6; le Impostazioni sempre sopra. */
 function profondita(percorso: string): number {
@@ -63,12 +64,15 @@ function BarraLaterale() {
     }`
   return (
     <aside className="fixed inset-y-0 left-0 z-20 flex w-64 flex-col border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950">
-      <Link to="/" className="flex items-center gap-2.5 px-5 py-4 font-bold tracking-tight">
-        <Logo />
-        <span className="text-lg">
-          Whos<span className="text-accento dark:text-blue-300">Next</span>
-        </span>
-      </Link>
+      <div className="flex items-center justify-between gap-2 py-3 pr-3 pl-5">
+        <Link to="/" className="flex items-center gap-2.5 font-bold tracking-tight">
+          <Logo />
+          <span className="text-lg">
+            Whos<span className="text-accento dark:text-blue-300">Next</span>
+          </span>
+        </Link>
+        <ScatolaNotifiche laterale />
+      </div>
       <nav aria-label="Menu principale" className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3">
         <NavLink to="/" end className={voce}>
           <House aria-hidden className="size-4.5 shrink-0" />
@@ -157,6 +161,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </Link>
           {profilo && (
             <div className="flex min-w-0 items-center gap-1">
+              {!desktop && <ScatolaNotifiche />}
               <Link
                 to="/impostazioni"
                 aria-label="Impostazioni"

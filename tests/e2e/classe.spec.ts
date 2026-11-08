@@ -138,3 +138,14 @@ test('il capoclasse elimina la classe', async ({ browser }, info) => {
   await bruno.goto(`/unisciti/${codice}`)
   await expect(bruno.getByRole('heading', { name: 'Codice non valido' })).toBeVisible()
 })
+
+test('chiudendo la finestra di Google il pulsante di accesso si riattiva subito', async ({ page }) => {
+  await page.goto('/')
+  const pulsante = page.getByRole('button', { name: 'Accedi con Google' })
+  const [popup] = await Promise.all([page.waitForEvent('popup'), pulsante.click()])
+  await expect(page.getByRole('button', { name: 'Accesso in corso…' })).toBeDisabled()
+  await popup.close()
+  await page.bringToFront()
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await expect(pulsante).toBeEnabled({ timeout: 3000 })
+})

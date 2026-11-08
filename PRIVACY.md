@@ -18,6 +18,7 @@ Non abbiamo accesso alla password, a Gmail, a Google Drive, al calendario o ad a
 - le preferenze per le interrogazioni (inizio, metà, fine, indifferente, oppure il giorno scelto per chi ha il badge DSA/BES);
 - le richieste di scambio di posizione e le relative risposte;
 - l'indicazione di chi è già stato interrogato;
+- le notifiche che ricevi, conservate nel tuo account per mostrarle nella campanella del sito;
 - le tue impostazioni (ad esempio notifiche email e push);
 - se attivi le notifiche push, un identificativo tecnico del dispositivo;
 - i feedback che invii dalle Impostazioni, insieme al tuo nome e al tuo indirizzo email (arrivano per email a chi ha creato WhosNext).

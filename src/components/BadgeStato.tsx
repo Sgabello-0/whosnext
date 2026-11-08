@@ -7,6 +7,10 @@ const TESTI: Record<StatoInterrogazione, string> = {
   conclusa: 'Conclusa',
 }
 
-export function BadgeStato({ stato }: { stato: StatoInterrogazione }) {
-  return <Badge colore={stato === 'raccolta' ? 'ambra' : stato === 'lista' ? 'verde' : 'grigio'}>{TESTI[stato]}</Badge>
+export function BadgeStato({ stato, senzaLista }: { stato: StatoInterrogazione; senzaLista?: boolean }) {
+  return (
+    <Badge colore={stato === 'raccolta' ? 'ambra' : stato === 'lista' ? 'verde' : 'grigio'}>
+      {senzaLista && stato === 'lista' ? 'In corso' : TESTI[stato]}
+    </Badge>
+  )
 }

@@ -117,7 +117,7 @@ function DescrizioneMia({ v, adesso }: { v: VoceMia; adesso: Date }) {
     case 'in-lista':
       return (
         <>
-          <strong>{v.posizione === null ? 'Data fissa' : `n° ${v.posizione} di ${v.totale}`}</strong> · {v.testo}
+          <strong>{v.senzaLista ? 'Da interrogare' : v.posizione === null ? 'Data fissa' : `n° ${v.posizione} di ${v.totale}`}</strong> · {v.testo}
         </>
       )
     case 'docente-lista':

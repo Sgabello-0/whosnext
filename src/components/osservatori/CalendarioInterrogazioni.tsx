@@ -22,7 +22,7 @@ function titoloMese(anno: number, mese: number): string {
 
 /** Chi tocca quel giorno: "tu" in evidenza, chi è già stato interrogato barrato. */
 function Persone({ v, brevi }: { v: VoceGiorno; brevi: boolean }) {
-  if (v.nota) return <span className="italic">{v.nota === 'lista-da-generare' ? 'Lista da generare' : 'Da definire'}</span>
+  if (v.nota) return <span className="italic">{v.nota === 'lista-da-generare' ? 'Lista da generare' : 'Possibile interrogazione'}</span>
   const nomi = brevi ? nomiBrevi(v.persone.map((p) => p.nome)) : v.persone.map((p) => p.nome)
   return (
     <>

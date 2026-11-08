@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { Timestamp } from 'firebase-admin/firestore'
 import { database } from '../../netlify/lib/admin'
-import { avvisaListaPronta, avvisaNuovaInterrogazione, ricordaDomani } from '../../netlify/lib/eventi'
+import { avvisaListaPronta, avvisaNuovaInterrogazione, avvisaSegnalazione, ricordaDomani } from '../../netlify/lib/eventi'
 import { riceviFeedback, type MessaggioFeedback } from '../../netlify/lib/feedback'
 import { generaScadute } from '../../netlify/lib/generazione'
 import { avvisa, type Postino } from '../../netlify/lib/postino'
@@ -272,6 +272,34 @@ describe('avvisi: casi difficili', () => {
     expect(push[0]).toMatchObject({ tokens: ['token-bruno'], n: { testo: 'Storia – Orale (martedì 10/11): sei il n° 2.' } })
   })
 
+  it('chi si segna da solo: la conferma arriva solo al capoclasse, una volta sola', async () => {
+    await classe({ ...TRE, vittoria: { ruolo: 'vice', nome: 'Vittoria Viola' } }, { stato: 'lista' })
+    await db.doc(`${INTERR}/list/current`).set({ ordine: ['anna', 'bruno', 'carla', 'vittoria'], interrogati: {}, generataDa: 'anna' })
+    const { p, push } = postinoFinto()
+    expect(await avvisaSegnalazione(db, p, R, 'bruno')).toBe('non-valido') // non ha segnalato niente
+    await db.doc(`${INTERR}/segnalazioni/bruno`).set({ data: '2026-11-10', quando: Timestamp.now() })
+    expect(await avvisaSegnalazione(db, p, R, 'carla')).toBe('non-valido') // non è la sua
+    expect(await avvisaSegnalazione(db, p, R, 'bruno')).toBe('mandata')
+    expect(await avvisaSegnalazione(db, p, R, 'bruno')).toBe('gia-mandata')
+    expect(push).toHaveLength(1)
+    expect(push[0]).toMatchObject({ tokens: ['token-anna'], n: { titolo: 'Da confermare: Bruno interrogato' } })
+    // nella Notification Box del capoclasse, e di nessun altro
+    const box = await db.collection('users/anna/notifiche').get()
+    expect(box.docs[0]!.data()).toMatchObject({ titolo: 'Da confermare: Bruno interrogato', letta: false, link: '/classe/c1/materia/s1/interrogazione/i1' })
+    expect((await db.collection('users/vittoria/notifiche').get()).size).toBe(0)
+  })
+
+  it('Notification Box: anche con le push spente, e un nuovo tentativo non la raddoppia', async () => {
+    await db.doc('users/anna').set({ nome: 'Anna', fcmTokens: ['t'], impostazioni: { notifichePush: false } })
+    const n = { titolo: 'T', testo: 'X', percorso: '/p' }
+    expect(await avvisa(db, postinoFinto().p, 'anna', 'prova/box', n)).toBe('mandata')
+    expect((await db.collection('users/anna/notifiche').get()).size).toBe(1)
+    await db.doc('users/bruno').set({ nome: 'Bruno', fcmTokens: ['t'] })
+    await expect(avvisa(db, postinoFinto({ rotto: true }).p, 'bruno', 'prova/box2', n)).rejects.toThrow()
+    await avvisa(db, postinoFinto().p, 'bruno', 'prova/box2', n)
+    expect((await db.collection('users/bruno/notifiche').get()).size).toBe(1)
+  })
+
   it('"domani": con 2 per lezione avvisa i primi due', async () => {
     await conLista(['anna', 'bruno', 'carla'], { perLezione: 2 })
     const { p, push } = postinoFinto()
@@ -279,9 +307,17 @@ describe('avvisi: casi difficili', () => {
     expect(push.map((x) => x.tokens[0])).toEqual(['token-anna', 'token-bruno'])
   })
 
-  it('"domani": niente senza numero per lezione, o se domani è vacanza', async () => {
-    await conLista(['anna', 'bruno', 'carla'], { perLezione: null })
-    expect(await ricordaDomani(db, postinoFinto().p, LUNEDI_SERA)).toBe(0)
+  it('"domani": senza numero per lezione o senza lista, "possibile" a chi manca; niente se domani non c\'è lezione', async () => {
+    await conLista(['anna', 'bruno', 'carla'], { perLezione: null, senzaLista: true }, { bruno: '2026-11-05' })
+    const { p, push } = postinoFinto()
+    expect(await ricordaDomani(db, p, LUNEDI_SERA)).toBe(2)
+    expect(push.map((x) => x.tokens[0])).toEqual(['token-anna', 'token-carla'])
+    expect(push[0]!.n).toMatchObject({ titolo: 'Domani possibile interrogazione', testo: 'Storia – Orale (martedì 10/11).' })
+    expect(await ricordaDomani(db, p, LUNEDI_SERA)).toBe(0) // una volta sola
+    // martedì sera: domani (mercoledì) non c'è Storia
+    await svuota()
+    await conLista(['anna'], { perLezione: null })
+    expect(await ricordaDomani(db, postinoFinto().p, new Date('2026-11-10T18:00:00Z'))).toBe(0)
     await svuota()
     await conLista(['anna', 'bruno', 'carla'])
     await db.doc(`${CLASSE}/calendar/settings`).set({

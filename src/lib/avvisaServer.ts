@@ -11,7 +11,7 @@ export const serverAttivo = !!URL_NOTIFICHE
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
 
-export function avvisaServer(tipo: 'nuova-interrogazione' | 'lista-pronta' | 'scambio-richiesta', r: Rif, id?: string): void {
+export function avvisaServer(tipo: 'nuova-interrogazione' | 'lista-pronta' | 'segnalazione' | 'scambio-richiesta', r: Rif, id?: string): void {
   const utente = auth?.currentUser
   if (!URL_NOTIFICHE || !utente) return
   void (async () => {

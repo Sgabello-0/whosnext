@@ -33,12 +33,22 @@ export default function Login() {
     if (!auth) return
     setErrore(null)
     setInCorso(true)
+    // Firebase si accorge della finestra chiusa solo dopo vari secondi (o mai, su alcuni telefoni): appena si torna
+    // sulla pagina il pulsante si riattiva. Un nuovo clic sostituisce la finestra di prima, senza errori.
+    const quandoTorna = () =>
+      window.setTimeout(() => {
+        if (document.visibilityState === 'visible' && document.hasFocus()) setInCorso(false)
+      }, 800)
+    window.addEventListener('focus', quandoTorna)
+    document.addEventListener('visibilitychange', quandoTorna)
     try {
       if (modo === 'redirect') await signInWithRedirect(auth, providerGoogle())
       else await signInWithPopup(auth, providerGoogle())
     } catch (e) {
       gestisciErrore(e)
     } finally {
+      window.removeEventListener('focus', quandoTorna)
+      document.removeEventListener('visibilitychange', quandoTorna)
       setInCorso(false)
     }
   }

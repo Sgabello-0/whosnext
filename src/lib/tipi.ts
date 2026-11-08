@@ -70,6 +70,8 @@ export type Interrogazione = {
   /** quanti studenti per lezione; null = non si sa */
   perLezione: number | null
   scadenzaPreferenze: Timestamp
+  /** senza lista: niente preferenze né ordine, si tiene solo conto di chi è stato interrogato */
+  senzaLista?: boolean
   /** studenti esclusi da capo o vice prima della generazione: non entrano in lista */
   esclusi?: string[]
   stato: StatoInterrogazione
@@ -98,6 +100,16 @@ export type DocLista = {
   ultimaModifica?: string
   /** id dell'ultimo scambio accettato */
   scambio?: string
+}
+
+/** Una voce della Notification Box (users/{uid}/notifiche/{id}). */
+export type DocNotifica = {
+  titolo: string
+  testo: string
+  /** pagina del sito da aprire */
+  link: string
+  quando?: Timestamp
+  letta: boolean
 }
 
 export type DocRapporto = import('./generateList').Rapporto & { generata?: Timestamp }

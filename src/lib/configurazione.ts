@@ -156,6 +156,8 @@ export type DatiInterrogazione = {
   giorni: number[]
   perLezione: number | null
   scadenzaPreferenze: Date
+  /** "Usa lista" spento: niente preferenze né ordine */
+  senzaLista?: boolean
 }
 
 /** Controlla e pulisce i dati del modulo. Messaggio d'errore comprensibile se qualcosa non va. */

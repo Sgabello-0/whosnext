@@ -11,7 +11,7 @@ import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { useDocumento } from '../../lib/hooks'
 import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/tipi'
 import { Avatar, Badge, Bottone, Caricamento, Colonne, Riquadro, Scheda, Soffietto } from '../ui'
-import { ArrowLeftRight, CalendarCheck, ChartPie, Check, ListOrdered, PartyPopper, Pencil, Undo2 } from 'lucide-react'
+import { ArrowLeftRight, CalendarCheck, ChartPie, Check, Hourglass, ListOrdered, PartyPopper, Pencil, Undo2 } from 'lucide-react'
 import { useConferma } from '../Conferma'
 import { annullaScambio, chiediScambio, richiestaInAttesa, validita } from '../../lib/scambi'
 import { PannelloScambi, useRifiutoAutomatico, useScambi } from './Scambi'
@@ -34,7 +34,7 @@ type Props = {
   cal: Calendario
   /** capo e vice: vedono il rapporto */
   staff: boolean
-  /** capo, vice e docenti con permesso: riordinano e segnano gli interrogati */
+  /** capo, vice e docenti con permesso: riordinano la lista (gli interrogati li segnano solo capo e vice) */
   puoModificare: boolean
   /** uid con il badge DSA/BES visibile a chi guarda */
   dsa: Set<string>
@@ -65,8 +65,9 @@ export function ListaInterrogazione(p: Props) {
   const vuota: DocLista = { ordine: [], interrogati: {}, generataDa: '' }
   const datiLista = lista.dati ?? vuota
   // Scambi: solo per chi è in lista, non ancora interrogato, finché la lista è in corso
+  const senzaLista = !!p.interrogazione.senzaLista
   const possoScambiare =
-    p.interrogazione.stato === 'lista' && datiLista.ordine.includes(p.mioUid) && !datiLista.interrogati[p.mioUid]
+    !senzaLista && p.interrogazione.stato === 'lista' && datiLista.ordine.includes(p.mioUid) && !datiLista.interrogati[p.mioUid]
   const scambi = useScambi(r, p.mioUid, datiLista, possoScambiare)
   const rifiutoAutomatico = !!ioMembro?.rifiutaScambi
   useRifiutoAutomatico(r, p.mioUid, rifiutoAutomatico, scambi.inArrivo)
@@ -92,6 +93,7 @@ export function ListaInterrogazione(p: Props) {
   const stimaDi = (uid: string) => programma.stime.get(uid) ?? null
   const stima = (uid: string) => {
     const s = stimaDi(uid)
+    if (senzaLista) return s?.tipo === 'non-disponibile' && s.prossimaLezione ? `Possibile: ${formattaGiorno(s.prossimaLezione)}` : 'Data non prevista'
     return s ? testoStima(s) : 'Stima non disponibile'
   }
   const totale = programma.righe.length
@@ -164,6 +166,8 @@ export function ListaInterrogazione(p: Props) {
                 <Check className="size-8" />
               ) : miaData ? (
                 <CalendarCheck className="size-8" />
+              ) : senzaLista ? (
+                <Hourglass className="size-8" />
               ) : (
                 miaPosizione + 1
               )}
@@ -175,7 +179,11 @@ export function ListaInterrogazione(p: Props) {
                 ? interrogati[p.mioUid]
                   ? 'Data scelta'
                   : `Interrogazione ${dataEffettiva ? formattaGiorno(dataEffettiva).toLowerCase() : 'da fissare'}`
-                : `Sei il n° ${miaPosizione + 1} di ${ordine.length}`}
+                : senzaLista
+                  ? interrogati[p.mioUid]
+                    ? 'Interrogato'
+                    : 'Non ancora interrogato'
+                  : `Sei il n° ${miaPosizione + 1} di ${ordine.length}`}
             </p>
             {interrogati[p.mioUid] ? (
               <p className="text-emerald-50">Sei stato interrogato {formattaGiorno(interrogati[p.mioUid]!).toLowerCase()}.</p>
@@ -189,7 +197,7 @@ export function ListaInterrogazione(p: Props) {
                     : stima(p.mioUid)}
                 </p>
                 {/* chi modifica le liste si segna da solo nella scheda qui sotto */}
-                {!p.puoModificare && <SonoStatoInterrogato r={r} uid={p.mioUid} />}
+                {!p.staff && <SonoStatoInterrogato r={r} uid={p.mioUid} />}
               </div>
             )}
           </div>
@@ -226,7 +234,7 @@ export function ListaInterrogazione(p: Props) {
   )
   const pezzoGestione = (
     <>
-      {p.puoModificare && !riordino && (
+      {p.staff && !riordino && (
         <>
           <Segnalazioni r={r} membri={perUid} mioUid={p.mioUid} />
           <SegnaInterrogati
@@ -240,6 +248,7 @@ export function ListaInterrogazione(p: Props) {
             interrogazione={p.interrogazione}
             ordine={ordine}
             fissi={fissi}
+            senzaLista={senzaLista}
             interrogati={interrogati}
             membri={perUid}
             cal={p.cal}
@@ -267,7 +276,7 @@ export function ListaInterrogazione(p: Props) {
           icona={ListOrdered}
           sottotitolo={`${fatti} su ${totale} interrogati`}
           azioni={
-            p.puoModificare && ordine.length > 1 ? (
+            p.puoModificare && !senzaLista && ordine.length > 1 ? (
               <Bottone variante="piccolo" icona={Pencil} aria-label="Modifica la lista" onClick={() => setRiordino(true)}>
                 Modifica
               </Bottone>
@@ -301,6 +310,8 @@ export function ListaInterrogazione(p: Props) {
                       <Check aria-label="interrogato" className="size-4" />
                     ) : fissa ? (
                       <CalendarCheck aria-label="data fissa" className="size-4" />
+                    ) : senzaLista ? (
+                      '•'
                     ) : (
                       numero
                     )}
@@ -335,7 +346,7 @@ export function ListaInterrogazione(p: Props) {
                         Scambia
                       </Bottone>
                     ) : null)}
-                  {quando && p.puoModificare && (
+                  {quando && p.staff && (
                     <Bottone
                       variante="piccolo"
                       icona={Undo2}
@@ -358,7 +369,7 @@ export function ListaInterrogazione(p: Props) {
                 interrogazione: p.interrogazione.nome,
                 link: linkAssoluto(percorsoInterrogazione(p.classId, p.subjectId, p.interrogazioneId)),
                 righe: programma.righe.map(({ uid, numero }) => ({
-                  numero,
+                  numero: senzaLista ? null : numero,
                   nome: perUid.get(uid)?.nome ?? 'Ex membro',
                   interrogato: !!interrogati[uid],
                   nota: interrogati[uid] ? `interrogato ${formattaGiorno(interrogati[uid]!)}` : stima(uid),
@@ -377,6 +388,7 @@ export function ListaInterrogazione(p: Props) {
         <Imprevisti
           r={r}
           composizione={{ ordine, fissi, interrogati }}
+          senzaLista={senzaLista}
           membri={perUid}
           mioUid={p.mioUid}
           date={dateDisponibili({

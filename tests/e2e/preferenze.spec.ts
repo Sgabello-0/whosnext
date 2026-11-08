@@ -359,3 +359,65 @@ test('imprevisti: escludere prima, poi rimettere, fissare una data e togliere (s
   await expect(storico.getByText(`Anna Verdi ha fissato l'interrogazione di Bruno Neri per ${giorno.toLowerCase()}`)).toBeVisible()
   await expect(storico.getByText('Anna Verdi ha tolto Carla Blu dalla lista')).toBeVisible()
 })
+
+test('senza lista: nessun ordine; si segnano gli interrogati, chi si segnala aspetta capo o vice; campanella', async ({ browser }) => {
+  const anna = await accedi(browser, 'anna.verdi@studenti.ittsrimini.edu.it', 'Anna Verdi')
+  await anna.getByLabel('Nome della classe').fill('4ªB')
+  await anna.getByRole('button', { name: 'Crea classe' }).click()
+  const codice = await leggiCodice(anna)
+  const classe = new URL(anna.url()).pathname
+  const carla = await accedi(browser, 'carla.blu@studenti.ittsrimini.edu.it', 'Carla Blu', `/unisciti/${codice}`)
+  await carla.getByRole('button', { name: 'Entra', exact: true }).click()
+  await expect(carla.getByRole('heading', { name: '4ªB' })).toBeVisible()
+  await anna.goto(`${classe}/configura`)
+  await anna.getByLabel('Nome', { exact: true }).fill('Storia')
+  const giorni = anna.getByRole('group', { name: 'Giorni di lezione' })
+  for (const g of ['lunedì', 'mercoledì', 'venerdì']) await giorni.getByRole('button', { name: g }).click()
+  await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
+  await expect(anna.getByRole('link', { name: 'Storia' })).toBeVisible()
+  await anna.goto(classe)
+  await anna.getByRole('button', { name: 'Nuova interrogazione' }).click()
+  await anna.getByLabel('Nome', { exact: true }).fill('Orale libero')
+  await anna.getByRole('switch', { name: /Usa lista/ }).uncheck()
+  await expect(anna.getByLabel('Scadenza per le preferenze')).toHaveCount(0)
+  await anna.getByRole('button', { name: 'Crea interrogazione' }).click()
+  await expect(anna.getByRole('heading', { name: 'Orale libero' })).toBeVisible()
+  await expect(anna.getByText('In corso', { exact: true })).toBeVisible()
+  await expect(anna.getByRole('button', { name: 'Modifica la lista' })).toHaveCount(0)
+  const interrogazione = anna.url()
+
+  await carla.goto(interrogazione)
+  await expect(carla.getByText('Non ancora interrogato')).toBeVisible()
+  await expect(carla.getByRole('radio')).toHaveCount(0)
+  await expect(carla.getByRole('button', { name: 'Scambia' })).toHaveCount(0)
+  await carla.getByRole('button', { name: 'Sono stato interrogato' }).click()
+  await carla.getByRole('button', { name: 'Segnala' }).click()
+  await expect(carla.getByText(/in attesa che il capoclasse confermi/)).toBeVisible()
+  await expect(anna.getByText(/Carla Blu segnala l'interrogazione di/)).toBeVisible()
+  await anna.getByRole('button', { name: 'Conferma', exact: true }).click()
+  await expect(carla.getByText(/Sei stato interrogato/)).toBeVisible()
+
+  // Notification Box: una notifica scritta dal server compare in tempo reale, si apre e diventa letta
+  const utenti = (await (
+    await fetch('http://127.0.0.1:8080/v1/projects/demo-whosnext/databases/(default)/documents/users', { headers: { Authorization: 'Bearer owner' } })
+  ).json()) as { documents: { name: string; fields: { email?: { stringValue: string } } }[] }
+  const percorsoAnna = utenti.documents.find((d) => d.fields.email?.stringValue.startsWith('anna'))!.name
+  const risposta = await fetch(`http://127.0.0.1:8080/v1/${percorsoAnna}/notifiche?documentId=n1`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fields: {
+        titolo: { stringValue: 'Da confermare: Carla interrogato' },
+        testo: { stringValue: 'Apri per confermare.' },
+        link: { stringValue: classe },
+        quando: { timestampValue: new Date().toISOString() },
+        letta: { booleanValue: false },
+      },
+    }),
+  })
+  expect(risposta.ok).toBe(true)
+  await anna.getByRole('button', { name: 'Notifiche (1 non lette)' }).click()
+  await anna.getByRole('dialog', { name: 'Notifiche' }).getByRole('button', { name: /Da confermare: Carla interrogato/ }).click()
+  await expect(anna).toHaveURL(new RegExp(`${classe}$`))
+  await expect(anna.getByRole('button', { name: 'Notifiche', exact: true })).toBeVisible()
+})

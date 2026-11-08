@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { getDoc, getDocs, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore'
+import { deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore'
 import { aggiungiVoceStorico } from '../../src/lib/storico'
 import { creaClasse, impostaDSA, impostaPermessoDocente, impostaVice, uniscitiConCodice } from '../../src/lib/classi'
 import {
@@ -9,12 +9,13 @@ import {
   eliminaInterrogazione,
   impostaEsclusi,
   rifInterrogazione,
+  rifInterrogazioni,
   rifLista,
   rifSegnalazione,
   rifSegnalazioni,
 } from '../../src/lib/configurazione'
 import { gestisciImprevisto, riordinaLista, segnaInterrogati, segnalaInterrogato, togliInterrogato, togliSegnalazione } from '../../src/lib/gestioneLista'
-import { generaEPubblicaLista, salvaPreferenza } from '../../src/lib/preferenze'
+import { creaSenzaLista, generaEPubblicaLista, salvaPreferenza } from '../../src/lib/preferenze'
 import { avviaAmbiente, dbDi, UTENTI } from './aiuti'
 
 const { anna, bruno, carla, rossi, bianchi } = UTENTI
@@ -100,12 +101,23 @@ describe('interrogati', () => {
     await assertSucceeds(segnaInterrogati(dbDi(env, anna), r, [ordine[0]!], '2026-11-03', 'anna'))
     expect((await lista(r)).interrogati).toEqual({ [ordine[0]!]: '2026-11-03' })
     expect(await stato(r)).toBe('lista')
-    await assertSucceeds(segnaInterrogati(dbDi(env, bianchi), r, ordine.slice(1), '2026-11-10', 'bianchi'))
+    await assertSucceeds(segnaInterrogati(dbDi(env, bruno), r, ordine.slice(1), '2026-11-10', 'bruno'))
     expect(await stato(r)).toBe('conclusa')
     // tolto uno, torna "lista"
     await assertSucceeds(togliInterrogato(dbDi(env, bruno), r, ordine[2]!, 'bruno'))
     expect(await stato(r)).toBe('lista')
     expect(Object.keys((await lista(r)).interrogati)).toHaveLength(2)
+  })
+
+  it('i docenti con permesso riordinano ma non segnano né confermano', async () => {
+    const { r, ordine } = await listaPronta()
+    await assertFails(segnaInterrogati(dbDi(env, bianchi), r, [ordine[0]!], '2026-11-03', 'bianchi'))
+    await segnalaInterrogato(dbDi(env, carla), r, 'carla', '2026-11-03')
+    await assertFails(getDocs(rifSegnalazioni(dbDi(env, bianchi), r.classId, r.subjectId, r.interrogazioneId)))
+    await assertFails(togliSegnalazione(dbDi(env, bianchi), r, 'carla'))
+    await assertSucceeds(riordinaLista(dbDi(env, bianchi), r, [...ordine].reverse(), 'bianchi'))
+    await segnaInterrogati(dbDi(env, anna), r, [ordine[0]!], '2026-11-03', 'anna')
+    await assertFails(togliInterrogato(dbDi(env, bianchi), r, ordine[0]!, 'bianchi'))
   })
 
   it('studenti e docenti senza permesso non segnano', async () => {
@@ -305,5 +317,64 @@ describe('esclusi prima della generazione', () => {
     // dopo, il capo la rimette in fondo
     await assertSucceeds(gestisciImprevisto(dbDi(env, anna), r, { tipo: 'aggiungi', uid: 'carla' }, 'anna'))
     expect((await lista(r)).ordine.at(-1)).toBe('carla')
+  })
+})
+
+describe('senza lista ("Usa lista" spento)', () => {
+  async function classe() {
+    const { classId, codice } = await creaClasse(dbDi(env, anna), anna, '4ªB', () => 'AAAAAA')
+    for (const p of [bruno, carla, rossi]) await uniscitiConCodice(dbDi(env, p), p, codice)
+    const subjectId = await creaMateria(dbDi(env, anna), classId, { nome: 'Storia', orario: [1] })
+    return { classId, subjectId }
+  }
+  const DATI = { nome: 'Orale', descrizione: '', giorni: [1], perLezione: 3, scadenzaPreferenze: new Date(), senzaLista: true }
+
+  it('capo e vice la creano: già in corso, tutti in elenco alfabetico (senza docenti), senza numero per lezione', async () => {
+    const { classId, subjectId } = await classe()
+    const id = await assertSucceeds(creaSenzaLista(dbDi(env, anna), classId, subjectId, DATI, 'anna'))
+    const r = { classId, subjectId, interrogazioneId: id }
+    expect(await stato(r)).toBe('lista')
+    const i = (await getDoc(rifInterrogazione(dbDi(env, carla), classId, subjectId, id))).data()!
+    expect(i).toMatchObject({ senzaLista: true, perLezione: null })
+    expect((await lista(r)).ordine).toEqual(['anna', 'bruno', 'carla'])
+    await assertSucceeds(segnaInterrogati(dbDi(env, anna), r, ['bruno'], '2026-11-03', 'anna'))
+    await assertSucceeds(segnalaInterrogato(dbDi(env, carla), r, 'carla', '2026-11-03'))
+  })
+
+  it('studenti e docenti no; e una interrogazione normale non può nascere "in corso"', async () => {
+    const { classId, subjectId } = await classe()
+    await assertFails(creaSenzaLista(dbDi(env, carla), classId, subjectId, DATI, 'carla'))
+    await assertFails(creaSenzaLista(dbDi(env, rossi), classId, subjectId, DATI, 'rossi'))
+    const db = dbDi(env, anna)
+    const rif = doc(rifInterrogazioni(db, classId, subjectId))
+    await assertFails(
+      setDoc(rif, {
+        nome: 'X', descrizione: '', giorni: [1], perLezione: 1, scadenzaPreferenze: Timestamp.now(),
+        stato: 'lista', creato: serverTimestamp(), creatoDa: 'anna', aggiornato: serverTimestamp(),
+      }),
+    )
+  })
+})
+
+describe('Notification Box', () => {
+  const NOTIFICA = { titolo: 't', testo: 'x', link: '/', letta: false }
+  const rif = (p: { uid: string; email: string }, di: string) => doc(dbDi(env, p), 'users', di, 'notifiche', 'n1')
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore() as unknown as Firestore, 'users', 'carla', 'notifiche', 'n1'), NOTIFICA)
+    })
+  })
+  it('ognuno vede solo le proprie, le segna come lette o le cancella', async () => {
+    await assertSucceeds(getDoc(rif(carla, 'carla')))
+    await assertFails(getDoc(rif(bruno, 'carla')))
+    await assertSucceeds(updateDoc(rif(carla, 'carla'), { letta: true }))
+    await assertFails(updateDoc(rif(bruno, 'carla'), { letta: true }))
+    await assertSucceeds(deleteDoc(rif(carla, 'carla')))
+  })
+  it('non si cambia il contenuto e non se ne creano di finte', async () => {
+    await assertFails(updateDoc(rif(carla, 'carla'), { titolo: 'finta' }))
+    await assertFails(updateDoc(rif(carla, 'carla'), { letta: 'sì' }))
+    await assertFails(setDoc(doc(dbDi(env, carla), 'users', 'carla', 'notifiche', 'n2'), NOTIFICA))
+    await assertFails(setDoc(doc(dbDi(env, anna), 'users', 'carla', 'notifiche', 'n2'), NOTIFICA))
   })
 })

@@ -41,13 +41,14 @@ stima la data per ciascuno e la tiene aggiornata con vacanze, lezioni saltate e 
 - **Le mie interrogazioni**: in un colpo d'occhio, per tutte le materie, la tua posizione e la data stimata.
 - **Da fare**: cosa scegliere, entro quando, e le richieste di scambio da guardare.
 - **Scambi di posto**: chiedi a un compagno di scambiare la posizione; basta che lui accetti. Massimo una richiesta aperta alla volta, e chi non vuole essere disturbato può rifiutarle tutte in automatico.
-- **Notifiche sul telefono**, solo quattro: nuova interrogazione, lista generata, richiesta di scambio e "domani sei interrogato" la sera prima.
+- **Notifiche sul telefono** e **Notification Box** nel sito: nuova interrogazione, lista generata, richiesta di scambio, "domani sei interrogato" (o "possibile", se non si sa chi tocca) e, al capoclasse, le conferme di chi si è segnato da solo.
 - **Giorno scelto per DSA/BES**: chi ha il badge sceglie il giorno dell'interrogazione tra le lezioni disponibili; se quel giorno non viene interrogato, passa alla lezione dopo (dall'ora di uscita). Il badge si può nascondere ai compagni.
 - **Feedback** direttamente dalle Impostazioni.
 
 ### Per il capoclasse e il vice
 - **Configurazione guidata** della classe nuova, orario a griglia, calendario con vacanze e lezioni saltate.
-- **Generazione della lista** automatica alla scadenza (o subito, a mano), segna chi è stato interrogato.
+- **Generazione della lista** automatica alla scadenza (o subito, a mano), segna chi è stato interrogato (solo capoclasse e vice).
+- **"Usa lista" facoltativa**: se il docente non vuole un ordine, si tiene solo conto di chi è stato interrogato.
 - **Modifica della lista** a piacere: trascina i nomi o mandali in fondo con un tocco, poi conferma.
 - **Escludi studenti** prima della generazione (vale anche per quella automatica) e **imprevisti** dopo: rimettere in lista chi era fuori o è entrato in classe dopo, fissare l'interrogazione di qualcuno in un giorno preciso, togliere chi non deve più esserci. Tutto finisce nello storico.
 - **Calendario con l'ora di uscita** per ogni giorno: da quell'ora la lezione conta come fatta e le date si aggiornano. Il giorno in cui si crea un'interrogazione non conta.

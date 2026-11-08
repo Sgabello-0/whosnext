@@ -96,8 +96,8 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
     raccolta && c.staff ? `preferenze/${chiave}` : null,
   )
   const segnalazioni = useQuery<object>(
-    db && inLista && c.puoModificare ? rifSegnalazioni(db, c.classId, materia.id, i.id) : null,
-    inLista && c.puoModificare ? `segnalazioni/${chiave}` : null,
+    db && inLista && c.staff ? rifSegnalazioni(db, c.classId, materia.id, i.id) : null,
+    inLista && c.staff ? `segnalazioni/${chiave}` : null,
   )
 
   // Richieste di scambio per la mia posizione (studenti in lista, non ancora interrogati)
@@ -139,6 +139,7 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
       mia.dati === undefined ? undefined : mia.dati === null ? null : { scelta: mia.dati.scelta, dataDSA: mia.dati.dataDSA ?? null },
     creata: i.creato ? oggiISO(i.creato.toDate()) : null,
     esclusi: i.esclusi,
+    senzaLista: i.senzaLista,
     nomi: c.nomi,
     lista:
       lista.dati === undefined

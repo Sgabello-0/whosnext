@@ -15,6 +15,8 @@ type Props = {
   ordine: string[]
   /** DSA/BES: uid → data scelta */
   fissi: Record<string, string>
+  /** senza lista: si spunta a mano chi è stato interrogato, nessuna proposta */
+  senzaLista: boolean
   interrogati: Record<string, string>
   membri: Map<string, Membro>
   cal: Calendario
@@ -30,8 +32,12 @@ export function SegnaInterrogati(p: Props) {
   const [data, setData] = useState(
     () => ultimaLezione(p.interrogazione.giorni, p.r.subjectId, p.cal, oggiISO()) ?? oggiISO(),
   )
-  const [proposta] = useState(() => propostaLezione(p.ordine, p.interrogati, p.interrogazione.perLezione, p.fissi, data))
-  const [scelti, setScelti] = useState<Set<string>>(() => new Set(proposta))
+  const [proposta] = useState(() =>
+    p.senzaLista
+      ? [...nonInterrogati(p.ordine, p.interrogati), ...nonInterrogati(Object.keys(p.fissi), p.interrogati)]
+      : propostaLezione(p.ordine, p.interrogati, p.interrogazione.perLezione, p.fissi, data),
+  )
+  const [scelti, setScelti] = useState<Set<string>>(() => new Set(p.senzaLista ? [] : proposta))
   const [aggiunti, setAggiunti] = useState<string[]>([])
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
@@ -80,7 +86,11 @@ export function SegnaInterrogati(p: Props) {
           <input type="date" value={data} max={oggiISO()} onChange={(e) => setData(e.target.value)} className={`${CLASSE_INPUT} max-w-48`} />
         </Etichetta>
         <div className="space-y-2">
-          <p>Interrogati previsti: togli la spunta a chi era assente (resterà in testa alla lista).</p>
+          <p>
+            {p.senzaLista
+              ? 'Spunta chi è stato interrogato.'
+              : 'Interrogati previsti: togli la spunta a chi era assente (resterà in testa alla lista).'}
+          </p>
           <ul className="space-y-0.5">
             {elenco.map((u) => (
               <li key={u}>

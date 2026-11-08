@@ -4,7 +4,8 @@ import { CalendarDays, CheckCheck, ClipboardList, Hourglass, ListOrdered, Plus }
 import { orderBy, query } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { avvisaServer } from '../lib/avvisaServer'
-import { creaInterrogazione, rifInterrogazioni, rifMateria } from '../lib/configurazione'
+import { rifInterrogazioni, rifMateria } from '../lib/configurazione'
+import { creaDaModulo } from '../lib/preferenze'
 import { messaggioErrore } from '../lib/errori'
 import { formattaScadenza } from '../lib/formatoDate'
 import { useDocumento, useQuery } from '../lib/hooks'
@@ -69,9 +70,9 @@ export default function Materia() {
                 testoSalva="Crea interrogazione"
                 onAnnulla={() => setNuova(false)}
                 onSalva={async (d) => {
-                  const id = await creaInterrogazione(db!, classId, subjectId, d, dati.io.uid)
-                  avvisaServer('nuova-interrogazione', { classId, subjectId, interrogazioneId: id })
-                  avvisi.mostra('Interrogazione creata: ora tutti possono scegliere la preferenza')
+                  const id = await creaDaModulo(db!, classId, subjectId, d, dati.io.uid)
+                  if (!d.senzaLista) avvisaServer('nuova-interrogazione', { classId, subjectId, interrogazioneId: id })
+                  avvisi.mostra(d.senzaLista ? 'Interrogazione creata, senza lista' : 'Interrogazione creata: ora tutti possono scegliere la preferenza')
                   navigate(`/classe/${classId}/materia/${subjectId}/interrogazione/${id}`)
                 }}
               />

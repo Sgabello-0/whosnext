@@ -341,8 +341,10 @@ service cloud.firestore {
         // interrogations/{i} → { nome, descrizione, giorni, perLezione, scadenzaPreferenze, stato, creato, creatoDa, aggiornato }
         match /interrogations/{i} {
           function interrogazioneValida(d) {
-            return d.keys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'esclusi', 'stato', 'creato', 'creatoDa', 'aggiornato'])
+            return d.keys().hasOnly(['nome', 'descrizione', 'giorni', 'perLezione', 'scadenzaPreferenze', 'esclusi', 'senzaLista', 'stato', 'creato', 'creatoDa', 'aggiornato'])
               && testo(d.nome, 60)
+              // senza lista: nessuna preferenza né ordine, si tiene solo conto di chi è stato interrogato
+              && (!('senzaLista' in d) || d.senzaLista is bool)
               // studenti esclusi prima della generazione (li sceglie il capoclasse o il vice)
               && (!('esclusi' in d) || (d.esclusi is list && d.esclusi.size() <= 200))
               && d.descrizione is string && d.descrizione.size() <= 500
@@ -356,12 +358,19 @@ service cloud.firestore {
           allow create: if isCapoOVice(c)
             && exists(/databases/$(database)/documents/classes/$(c)/subjects/$(s))
             && interrogazioneValida(request.resource.data)
-            && request.resource.data.stato == 'raccolta'
+            && (
+              (request.resource.data.stato == 'raccolta' && request.resource.data.get('senzaLista', false) == false)
+              // senza lista: nasce già "in corso", insieme al suo elenco
+              || (
+                request.resource.data.stato == 'lista' && request.resource.data.get('senzaLista', false) == true
+                && existsAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current)
+              )
+            )
             && request.resource.data.creato == request.time
             && request.resource.data.creatoDa == request.auth.uid;
           allow update: if (
-              // Tutti interrogati (o non più): lista ↔ conclusa, anche per i docenti con permesso
-              puoModificareListe(c)
+              // Tutti interrogati (o non più): lista ↔ conclusa
+              isCapoOVice(c)
               && interrogazioneValida(request.resource.data)
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'aggiornato'])
               && resource.data.stato in ['lista', 'conclusa']
@@ -434,7 +443,11 @@ service cloud.firestore {
             allow read: if isMembro(c) && (documento == 'current' || isCapoOVice(c));
             allow create: if isCapoOVice(c)
               && getAfter(interrogazionePath(c, s, i)).data.stato == 'lista'
-              && get(interrogazionePath(c, s, i)).data.stato == 'raccolta'
+              && (
+                (exists(interrogazionePath(c, s, i)) && get(interrogazionePath(c, s, i)).data.stato == 'raccolta')
+                // senza lista: l'elenco nasce insieme all'interrogazione
+                || (!exists(interrogazionePath(c, s, i)) && getAfter(interrogazionePath(c, s, i)).data.get('senzaLista', false) == true)
+              )
               && (
                 (
                   documento == 'current'
@@ -452,6 +465,8 @@ service cloud.firestore {
             // Riordino e interrogati: stesse persone, interrogati solo tra chi è in lista
             allow update: if puoModificareListe(c) && documento == 'current'
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'interrogati', 'aggiornato', 'aggiornatoDa', 'ultimaModifica'])
+              // chi è stato interrogato lo segnano solo capo e vice (i docenti con permesso riordinano soltanto)
+              && (isCapoOVice(c) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['interrogati']))
               // ogni modifica lascia una voce nuova nello storico, scritta nello stesso batch
               && request.resource.data.get('ultimaModifica', null) != resource.data.get('ultimaModifica', null)
               && voceStoricoNuova(request.resource.data.get('ultimaModifica', null))
@@ -618,14 +633,14 @@ service cloud.firestore {
           }
 
           // ───── "Sono stato interrogato" ─────
-          // segnalazioni/{uid} → { data, quando }: lo studente lo segnala, chi modifica le liste conferma.
+          // segnalazioni/{uid} → { data, quando }: lo studente lo segnala, capo o vice confermano.
 
           match /segnalazioni/{u} {
             function lista() {
               return get(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data;
             }
-            allow get: if isMembro(c) && (u == request.auth.uid || puoModificareListe(c));
-            allow list: if puoModificareListe(c);
+            allow get: if isMembro(c) && (u == request.auth.uid || isCapoOVice(c));
+            allow list: if isCapoOVice(c);
             allow create: if isMembro(c) && u == request.auth.uid
               && (u in lista().ordine || u in lista().get('fissi', {}))
               && !(u in lista().interrogati)
@@ -633,10 +648,21 @@ service cloud.firestore {
               && dataISO(request.resource.data.data)
               && request.resource.data.quando == request.time;
             allow update: if false;
-            allow delete: if (isMembro(c) && u == request.auth.uid) || puoModificareListe(c);
+            allow delete: if (isMembro(c) && u == request.auth.uid) || isCapoOVice(c);
           }
         }
       }
+    }
+
+    // ───────────── Notification Box ─────────────
+    // users/{uid}/notifiche/{id} → { titolo, testo, link, quando, letta }: le scrive il server.
+    // Ognuno vede solo le proprie, può segnarle come lette o cancellarle.
+
+    match /users/{u}/notifiche/{id} {
+      allow read, delete: if signedIn() && u == request.auth.uid;
+      allow update: if signedIn() && u == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['letta'])
+        && request.resource.data.letta is bool;
     }
 
     // ───────────── Le mie classi (query su tutti i "members") ─────────────

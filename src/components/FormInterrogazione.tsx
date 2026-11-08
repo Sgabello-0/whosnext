@@ -19,18 +19,20 @@ export function FormInterrogazione(props: {
   const [giorni, setGiorni] = useState<number[]>(i?.giorni ?? props.giorniMateria)
   const [perLezione, setPerLezione] = useState(i?.perLezione ? String(i.perLezione) : '')
   const [scadenza, setScadenza] = useState(aInputDataOra(i?.scadenzaPreferenze ?? scadenzaPredefinita()))
+  // "Usa lista" si sceglie solo quando si crea; dopo non si cambia
+  const [usaLista, setUsaLista] = useState(!i?.senzaLista)
   const [errore, setErrore] = useState<string | null>(null)
   const [inCorso, setInCorso] = useState(false)
 
   async function invia(e: FormEvent) {
     e.preventDefault()
-    const data = daInputDataOra(scadenza)
+    const data = usaLista ? daInputDataOra(scadenza) : new Date()
     if (!data) return setErrore('Indica la scadenza per le preferenze.')
-    const numero = perLezione.trim() === '' ? null : Number(perLezione)
+    const numero = !usaLista || perLezione.trim() === '' ? null : Number(perLezione)
     setErrore(null)
     setInCorso(true)
     try {
-      await props.onSalva({ nome, descrizione, giorni, perLezione: numero, scadenzaPreferenze: data })
+      await props.onSalva({ nome, descrizione, giorni, perLezione: numero, scadenzaPreferenze: data, senzaLista: !usaLista })
     } catch (err) {
       setErrore(messaggioErrore(err))
     } finally {
@@ -57,6 +59,27 @@ export function FormInterrogazione(props: {
           Proposti quelli della materia. Se li togli tutti, la stima dirà solo "tra N lezioni".
         </p>
       </div>
+      {!i && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={usaLista}
+            onChange={(e) => setUsaLista(e.target.checked)}
+            className="mt-0.5 size-5 shrink-0 accent-accento"
+          />
+          <span className="min-w-0 text-sm">
+            <span className="block font-medium">Usa lista</span>
+            <span className="block text-slate-600 dark:text-slate-400">
+              {usaLista
+                ? 'Ognuno sceglie inizio, metà o fine e si genera un ordine.'
+                : 'Niente preferenze né ordine: decide il docente, si tiene solo conto di chi è stato interrogato.'}
+            </span>
+          </span>
+        </label>
+      )}
+      {usaLista && (
+      <>
       <Etichetta testo="Interrogati per lezione (facoltativo)" aiuto="Se non lo sai lascia vuoto: la data stimata non sarà disponibile.">
         <input
           type="number"
@@ -77,6 +100,8 @@ export function FormInterrogazione(props: {
           className={`${CLASSE_INPUT} max-w-64`}
         />
       </Etichetta>
+      </>
+      )}
       {errore && <p className="text-sm text-rose-700 dark:text-rose-300">{errore}</p>}
       <div className="flex flex-wrap gap-2 pt-1">
         <Bottone type="submit" disabled={inCorso || !nome.trim()}>

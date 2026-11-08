@@ -101,9 +101,16 @@ describe('vociDaFare', () => {
     expect(vociDaFare(d, new Date(2026, 10, 4, 9, 0))).toEqual([])
   })
 
-  it('segnalazioni da confermare, anche per i docenti con permesso', () => {
-    const d = interr({ ruolo: 'docente', staff: false, puoModificare: true, stato: 'lista', segnalazioni: 2, lista: lista(['a'], {}, '2026-11-04') })
-    expect(vociDaFare(d, new Date(2026, 10, 4, 9, 0))).toEqual([{ tipo: 'segnalazioni', quante: 2 }])
+  it('segnalazioni da confermare: solo per capo e vice, non per i docenti con permesso', () => {
+    const base = { stato: 'lista' as const, segnalazioni: 2, lista: lista(['a'], {}, '2026-11-04') }
+    const giorno = new Date(2026, 10, 4, 9, 0)
+    expect(vociDaFare(interr({ ...capo, ...base }), giorno)).toEqual([{ tipo: 'segnalazioni', quante: 2 }])
+    expect(vociDaFare(interr({ ruolo: 'docente', staff: false, puoModificare: true, ...base }), giorno)).toEqual([])
+  })
+
+  it('senza lista: si sa solo chi manca e la prossima lezione possibile', () => {
+    const d = interr({ stato: 'lista', senzaLista: true, perLezione: null, lista: lista(['a', 'io']) })
+    expect(voceMia(d, ADESSO)).toMatchObject({ tipo: 'in-lista', posizione: null, senzaLista: true, testo: 'Possibile: Martedì 03/11' })
   })
 
   it('richieste di scambio in arrivo, per tutti', () => {

@@ -114,11 +114,15 @@ export default function Interrogazione() {
       <Info icona={CalendarDays}>
         {i.giorni.length ? i.giorni.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}
       </Info>
+      {i.senzaLista ? (
+        <Info icona={Users}>Senza lista: decide il docente</Info>
+      ) : (
       <Info icona={Users}>
         {i.perLezione
           ? `${i.perLezione} ${i.perLezione === 1 ? 'studente' : 'studenti'} per lezione`
           : 'per lezione: non indicato'}
       </Info>
+      )}
     </div>
   )
 
@@ -188,7 +192,7 @@ export default function Interrogazione() {
           testo: materia.dati.nome,
         }}
         titolo={i.nome}
-        badge={<BadgeStato stato={i.stato} />}
+        badge={<BadgeStato stato={i.stato} senzaLista={i.senzaLista} />}
         sottotitolo={i.descrizione ? <p className="whitespace-pre-line">{i.descrizione}</p> : undefined}
         azioni={
           staff &&

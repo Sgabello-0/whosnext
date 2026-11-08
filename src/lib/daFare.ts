@@ -2,7 +2,7 @@
  * "Le mie interrogazioni" e "Da fare": dai dati di ogni interrogazione osservata
  * decide cosa mostrare allo studente e cosa deve fare chi gestisce la classe. Logica pura.
  */
-import { momentoLocale, oggiISO, type Calendario, type DataISO } from './calendar'
+import { formattaGiorno, momentoLocale, oggiISO, type Calendario, type DataISO } from './calendar'
 import { testoStima, type Stima } from './estimate'
 import { programmaLista } from './programma'
 import { ultimaLezione } from './lista'
@@ -36,6 +36,8 @@ export type InterrogazioneOsservata = {
   creata?: DataISO | null
   /** esclusi da capo o vice prima della generazione */
   esclusi?: string[]
+  /** senza lista: nessun ordine, si sa solo chi manca */
+  senzaLista?: boolean
   /** uid → nome dei membri della classe (per il calendario) */
   nomi?: Record<string, string>
   /** solo con stato "lista": undefined finché non arriva */
@@ -59,7 +61,7 @@ export type VoceMia =
   | { tipo: 'scelta'; scelta: Scelta; dataDSA: string | null; scadenza: number }
   | { tipo: 'attesa-lista' }
   /** posizione null = data fissa (DSA/BES) */
-  | { tipo: 'in-lista'; posizione: number | null; totale: number; stima: Stima; testo: string }
+  | { tipo: 'in-lista'; posizione: number | null; totale: number; stima: Stima; testo: string; senzaLista?: boolean }
   | { tipo: 'docente-lista'; interrogati: number; totale: number }
 
 export type VoceDaFare =
@@ -100,10 +102,16 @@ export function voceMia(d: InterrogazioneOsservata, adesso: Date): VoceMia | nul
   const stima = stime.get(d.mioUid) ?? { tipo: 'non-disponibile', prossimaLezione: null }
   return {
     tipo: 'in-lista',
-    posizione: posizione >= 0 ? posizione + 1 : null,
+    posizione: posizione >= 0 && !d.senzaLista ? posizione + 1 : null,
     totale: ordine.length,
     stima,
-    testo: testoStima(stima),
+    testo:
+      d.senzaLista && stima.tipo === 'non-disponibile'
+        ? stima.prossimaLezione
+          ? `Possibile: ${formattaGiorno(stima.prossimaLezione)}`
+          : 'Data non prevista'
+        : testoStima(stima),
+    senzaLista: d.senzaLista,
   }
 }
 
@@ -117,7 +125,7 @@ export function vociDaFare(d: InterrogazioneOsservata, adesso: Date): VoceDaFare
       voci.push({ tipo: 'risposte', risposte: d.risposte, totale: d.numeroStudenti, scadenza: d.scadenza })
     }
   }
-  if (d.stato === 'lista' && d.puoModificare && d.lista) {
+  if (d.stato === 'lista' && d.staff && d.lista) {
     if (d.segnalazioni) voci.push({ tipo: 'segnalazioni', quante: d.segnalazioni })
     const { ordine, interrogati, generata } = d.lista
     const lezione = ultimaLezione(d.giorni, d.subjectId, d.cal, oggiISO(adesso))

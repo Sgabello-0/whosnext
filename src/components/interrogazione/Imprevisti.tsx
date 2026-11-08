@@ -24,6 +24,8 @@ export function Imprevisti(p: {
   mioUid: string
   /** le date tra cui scegliere per fissare un'interrogazione */
   date: string[]
+  /** senza lista: niente numeri */
+  senzaLista?: boolean
 }) {
   const avvisi = useAvvisi()
   const conferma = useConferma()
@@ -97,7 +99,9 @@ export function Imprevisti(p: {
                     {fatto
                       ? 'già interrogato'
                       : dove === 'ordine'
-                        ? `in lista, n° ${c.ordine.indexOf(uid) + 1}`
+                        ? p.senzaLista
+                          ? 'da interrogare'
+                          : `in lista, n° ${c.ordine.indexOf(uid) + 1}`
                         : dove === 'fissa'
                           ? `data fissa: ${formattaGiorno(c.fissi[uid]!).toLowerCase()}`
                           : 'fuori dalla lista'}

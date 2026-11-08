@@ -186,8 +186,9 @@ function ImpostazioniNotifiche() {
           <ul className="list-disc space-y-0.5 pl-5">
             <li>c'è una nuova interrogazione: scegli il posto</li>
             <li>la lista è generata, con la tua posizione</li>
-            <li>domani sei interrogato (la sera prima)</li>
+            <li>domani sei interrogato (la sera prima), o domani è possibile se non si sa chi tocca</li>
             <li>un compagno ti richiede uno scambio</li>
+            <li>capoclasse: qualcuno si è segnato come interrogato e va confermato</li>
           </ul>
         </div>
       </div>

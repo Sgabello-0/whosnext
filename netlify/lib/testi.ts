@@ -1,6 +1,7 @@
 /**
  * Testi delle notifiche (push ed email). Logica pura.
- * Le notifiche sono solo quattro: nuova interrogazione, lista generata, richiesta di scambio, domani sei interrogato.
+ * Le notifiche: nuova interrogazione, lista generata, richiesta di scambio, domani sei interrogato (o possibile),
+ * e al capoclasse la conferma di chi si è segnato da solo.
  */
 import { formattaGiorno, type DataISO } from '../../src/lib/calendar'
 import type { Email } from './email'
@@ -78,6 +79,24 @@ export function richiestaScambio(o: Interr & { chi: string; mia: number; sua: nu
       pulsante: 'Rispondi',
       link: o.link,
     },
+  }
+}
+
+/** Quando non si può sapere chi tocca (senza lista, o senza numero per lezione). */
+export function domaniPossibile(o: Interr & { giorno: DataISO }): Notifica {
+  return {
+    titolo: 'Domani possibile interrogazione',
+    testo: `${o.materia} – ${o.nome} (${formattaGiorno(o.giorno).toLowerCase()}).`,
+    percorso: o.percorso,
+  }
+}
+
+/** Al capoclasse: uno studente dice di essere stato interrogato. */
+export function confermaInterrogato(o: Interr & { chi: string; giorno: DataISO }): Notifica {
+  return {
+    titolo: `Da confermare: ${nomeBreve(o.chi)} interrogato`,
+    testo: `${o.materia} – ${o.nome}: segnala di essere stato interrogato ${formattaGiorno(o.giorno).toLowerCase()}. Apri per confermare.`,
+    percorso: o.percorso,
   }
 }
 

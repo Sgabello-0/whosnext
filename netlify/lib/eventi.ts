@@ -11,7 +11,7 @@ import { programmaLista } from '../../src/lib/programma'
 import { percorsoDi, rifDa, type Rif } from './generazione'
 import { dataItalia, domaniItalia, momentoItalia, oraItalia, scadenzaItalia } from './ora'
 import { avvisa, type Postino } from './postino'
-import { listaPronta, nuovaInterrogazione, richiestaScambio, toccaDomani } from './testi'
+import { confermaInterrogato, domaniPossibile, listaPronta, nuovaInterrogazione, richiestaScambio, toccaDomani } from './testi'
 import { SITO } from './http'
 
 
@@ -141,15 +141,13 @@ async function avvisoDomani(db: Firestore, postino: Postino, d: QueryDocumentSna
   const c = await contesto(db, r)
   const lista = (await c.rifLista.get()).data() as Lista | undefined
   if (!c.dati || !lista) return 0
+  const dati = { materia: c.materia, nome: c.dati.nome, percorso: c.percorso, giorno: domani }
   for (const { uid, numero, stima } of programma(c, r, lista, adesso).righe) {
-    if (stima?.tipo !== 'data' || stima.data !== domani) continue
-    const n = toccaDomani({
-      materia: c.materia,
-      nome: c.dati.nome,
-      percorso: c.percorso,
-      giorno: domani,
-      posizione: numero,
-    })
+    // data certa: "domani sei interrogato"; non si sa chi tocca ma c'è lezione: "possibile"
+    const sicuro = stima?.tipo === 'data' && stima.data === domani
+    const possibile = stima?.tipo === 'non-disponibile' && stima.prossimaLezione === domani
+    if (!sicuro && !possibile) continue
+    const n = sicuro ? toccaDomani({ ...dati, posizione: numero }) : domaniPossibile(dati)
     if ((await avvisa(db, postino, uid, `domani/${d.ref.path}/${uid}/${domani}`, n)) === 'mandata') mandate++
   }
   return mandate
@@ -187,4 +185,21 @@ export async function avvisaNuovaInterrogazione(db: Firestore, postino: Postino,
     }
   }
   return mandate
+}
+
+/** Al solo capoclasse: uno studente si è segnato come interrogato (solo se a chiederlo è proprio lui). */
+export async function avvisaSegnalazione(db: Firestore, postino: Postino, r: Rif, chiamante: string) {
+  const seg = (await db.doc(`${percorsoDi(r)}/segnalazioni/${chiamante}`).get()).data() as { data?: string } | undefined
+  if (!seg?.data) return 'non-valido'
+  const c = await contesto(db, r)
+  const capo = (await db.doc(`classes/${r.classId}`).get()).data()?.capoclasseUid as string | undefined
+  if (!c.dati || !capo || capo === chiamante) return 'non-valido'
+  const n = confermaInterrogato({
+    materia: c.materia,
+    nome: c.dati.nome,
+    percorso: c.percorso,
+    chi: await nome(db, r.classId, chiamante),
+    giorno: seg.data,
+  })
+  return avvisa(db, postino, capo, `segnalazione/${percorsoDi(r)}/${chiamante}/${seg.data}`, n)
 }

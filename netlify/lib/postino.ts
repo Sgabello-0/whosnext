@@ -28,7 +28,7 @@ export async function avvisa(db: Firestore, postino: Postino, uid: string, chiav
     throw e
   }
   try {
-    return await consegna(db, postino, uid, n)
+    return await consegna(db, postino, uid, n, idSicuro(chiave))
   } catch (e) {
     // non consegnata (rete, servizio delle push…): si toglie il segno, così un'altra esecuzione può riprovare
     await invio.delete().catch(() => {})
@@ -36,12 +36,18 @@ export async function avvisa(db: Firestore, postino: Postino, uid: string, chiav
   }
 }
 
-async function consegna(db: Firestore, postino: Postino, uid: string, n: Notifica): Promise<Esito> {
+async function consegna(db: Firestore, postino: Postino, uid: string, n: Notifica, id: string): Promise<Esito> {
   const utente = await db.collection('users').doc(uid).get()
   const u = utente.data() as
     | { email?: string; fcmTokens?: string[]; impostazioni?: { notifichePush?: boolean; notificheEmail?: boolean } }
     | undefined
   if (!u) return 'nessun-utente'
+  // Notification Box: anche con le push spente. Stesso id della notifica, così un nuovo tentativo non la raddoppia.
+  await utente.ref
+    .collection('notifiche')
+    .doc(id)
+    .set({ titolo: n.titolo, testo: n.testo, link: n.percorso, quando: FieldValue.serverTimestamp(), letta: false })
+    .catch((e: unknown) => console.error(`Notification Box non aggiornata per ${uid}:`, e))
   const tokens = u.fcmTokens ?? []
   if (u.impostazioni?.notifichePush !== false && tokens.length > 0) {
     const nonValidi = await postino.push(tokens, n)

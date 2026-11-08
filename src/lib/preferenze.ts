@@ -4,6 +4,8 @@
  */
 import {
   deleteDoc,
+  doc,
+  Timestamp,
   getDoc,
   getDocs,
   serverTimestamp,
@@ -13,7 +15,17 @@ import {
 } from 'firebase/firestore'
 import { dataValida } from './calendar'
 import { ErroreApp, rifDSA, rifMembri } from './classi'
-import { rifInterrogazione, rifLista, rifPreferenza, rifPreferenze, rifRapporto } from './configurazione'
+import {
+  creaInterrogazione,
+  pulisciInterrogazione,
+  rifInterrogazione,
+  rifInterrogazioni,
+  rifLista,
+  rifPreferenza,
+  rifPreferenze,
+  rifRapporto,
+  type DatiInterrogazione,
+} from './configurazione'
 import { generaLista, preferenzeDa, semeCasuale, type Risultato, type Scelta } from './generateList'
 import { aggiungiVoceStorico } from './storico'
 import { senzaEsclusi } from './lista'
@@ -36,6 +48,49 @@ export async function salvaPreferenza(
     dataDSA: scelta === 'data' ? dataDSA : null,
     aggiornato: serverTimestamp(),
   })
+}
+
+/** Crea l'interrogazione dal modulo: con la lista (raccolta delle preferenze) o senza. */
+export async function creaDaModulo(db: Firestore, classId: string, subjectId: string, d: DatiInterrogazione, mioUid: string): Promise<string> {
+  return d.senzaLista ? creaSenzaLista(db, classId, subjectId, d, mioUid) : creaInterrogazione(db, classId, subjectId, d, mioUid)
+}
+
+/**
+ * Interrogazione senza lista (decide il docente, giorno per giorno): nasce già "in corso",
+ * con tutti gli studenti in ordine alfabetico, solo per tenere conto di chi è stato interrogato.
+ */
+export async function creaSenzaLista(db: Firestore, classId: string, subjectId: string, d: DatiInterrogazione, mioUid: string): Promise<string> {
+  const adesso = new Date()
+  const p = pulisciInterrogazione({ ...d, perLezione: null, scadenzaPreferenze: adesso })
+  const membri = await getDocs(rifMembri(db, classId))
+  const ordine = membri.docs
+    .map((m) => m.data() as Membro)
+    .filter((m) => m.ruolo !== 'docente')
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+    .map((m) => m.uid)
+  const rif = doc(rifInterrogazioni(db, classId, subjectId))
+  const r = { classId, subjectId, interrogazioneId: rif.id }
+  const batch = writeBatch(db)
+  const voce = aggiungiVoceStorico(db, batch, r, mioUid, 'generata', {})
+  batch.set(rif, {
+    ...p,
+    scadenzaPreferenze: Timestamp.fromDate(adesso),
+    senzaLista: true,
+    stato: 'lista',
+    creato: serverTimestamp(),
+    creatoDa: mioUid,
+    aggiornato: serverTimestamp(),
+  })
+  batch.set(rifLista(db, classId, subjectId, rif.id), {
+    ordine,
+    fissi: {},
+    interrogati: {},
+    generata: serverTimestamp(),
+    generataDa: mioUid,
+    ultimaModifica: voce,
+  })
+  await batch.commit()
+  return rif.id
 }
 
 export async function togliPreferenza(db: Firestore, r: Rif, uid: string): Promise<void> {
