@@ -333,6 +333,10 @@ function TermineAssenze({ classId, giorni }: { classId: string; giorni: number }
           Salva
         </Bottone>
       </form>
+      <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
+        I giorni comprendono quello dell'interrogazione. Con 2 contano il giorno dell'interrogazione e il giorno prima, che serve per
+        studiare: per un'interrogazione di giovedì si può dire fino a martedì.
+      </p>
     </Scheda>
   )
 }
