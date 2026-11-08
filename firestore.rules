@@ -181,6 +181,13 @@ service cloud.firestore {
         )
       );
 
+      // Il capoclasse decide entro quanti giorni prima si può dire "non ci sarò".
+      allow update: if isCapo(c)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assenzaGiorni'])
+        && request.resource.data.assenzaGiorni is int
+        && request.resource.data.assenzaGiorni >= 0
+        && request.resource.data.assenzaGiorni <= 30;
+
       // Solo il capoclasse, e nello stesso batch spariscono anche il codice d'invito e il suo documento membro
       // (il sito cancella insieme anche gli altri membri, materie, calendario e badge).
       allow delete: if isCapo(c)
@@ -496,7 +503,31 @@ service cloud.firestore {
                 .hasAll(request.resource.data.interrogati.keys());
             // Scambio: chi riceve la richiesta la accetta e scambia SOLO le due posizioni
             allow update: if documento == 'current' && isMembro(c) && scambioAccettato();
+            // "Non ci sarò": lo studente esce dall'ordine e prende una data fissa (solo la propria, mai più indietro)
+            allow update: if documento == 'current' && isMembro(c) && assenzaDichiarata();
             allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
+
+            function assenzaDichiarata() {
+              let io = request.auth.uid;
+              let prima = resource.data;
+              let dopo = request.resource.data;
+              let fissiPrima = prima.get('fissi', {});
+              return dopo.diff(prima).affectedKeys().hasOnly(['ordine', 'fissi', 'ultimaModifica', 'aggiornato', 'aggiornatoDa'])
+                && dopo.get('ultimaModifica', null) != prima.get('ultimaModifica', null)
+                && voceStoricoNuova(dopo.get('ultimaModifica', null))
+                && dopo.aggiornato == request.time
+                && dopo.aggiornatoDa == io
+                && get(interrogazionePath(c, s, i)).data.stato == 'lista'
+                && get(interrogazionePath(c, s, i)).data.get('senzaLista', false) == false
+                && !(io in prima.interrogati)
+                && (io in prima.ordine || io in fissiPrima)
+                && dopo.ordine == prima.ordine.removeAll([io])
+                && dopo.fissi is map
+                && io in dopo.fissi
+                && dataISO(dopo.fissi[io])
+                && dopo.fissi.diff(fissiPrima).affectedKeys().hasOnly([io])
+                && (!(io in fissiPrima) || dopo.fissi[io] > fissiPrima[io]);
+            }
 
             function scambioAccettato() {
               let id = request.resource.data.get('scambio', null);
@@ -562,6 +593,15 @@ service cloud.firestore {
               && request.resource.data.dettagli is map
               && getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('ultimaModifica', null) == voce
               && scambioInCorso(getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('scambio', ''));
+            // "Non ci sarò": la voce va insieme alla lista che la indica
+            allow create: if isMembro(c)
+              && request.resource.data.keys().hasOnly(['tipo', 'chi', 'quando', 'dettagli'])
+              && request.resource.data.tipo == 'assenza'
+              && request.resource.data.chi == request.auth.uid
+              && request.resource.data.quando == request.time
+              && request.resource.data.dettagli is map
+              && request.resource.data.dettagli.get('uid', null) == request.auth.uid
+              && getAfter(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data.get('ultimaModifica', null) == voce;
             allow update: if false;
             allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
           }

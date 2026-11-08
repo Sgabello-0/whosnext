@@ -1,7 +1,7 @@
 /**
  * Testi delle notifiche (push ed email). Logica pura.
  * Le notifiche: nuova interrogazione, lista generata, richiesta di scambio, domani sei interrogato (o possibile),
- * e al capoclasse la conferma di chi si è segnato da solo.
+ * cambio di posto, e a capoclasse e vice le segnalazioni da controllare.
  */
 import { formattaGiorno, type DataISO } from '../../src/lib/calendar'
 import type { Email } from './email'
@@ -100,6 +100,26 @@ export function confermaInterrogato(o: Interr & { chi: string; giorno: DataISO }
   }
 }
 
+/** A chi viene spostato da altri. posizione null = data fissa; uscito = non è più in lista. */
+export function cambioPosto(o: Interr & { uscito: boolean; posizione: number | null; totale: number; stima: string }): Notifica {
+  const dove = o.uscito
+    ? 'non sei più in lista.'
+    : o.posizione === null
+      ? `ora hai una data fissa. ${o.stima}.`
+      : `ora sei il n° ${o.posizione} di ${o.totale}. ${o.stima}.`
+  return { titolo: 'Il tuo posto è cambiato', testo: `${o.materia} – ${o.nome}: ${dove}`, percorso: o.percorso }
+}
+
+/** A capoclasse e vice: uno studente ha detto dopo il termine che non ci sarà. */
+export function assenzaInRitardo(o: Interr & { chi: string; giorno: DataISO; nuova: DataISO }): Notifica {
+  const g = (d: DataISO) => formattaGiorno(d).toLowerCase()
+  return {
+    titolo: `${nomeBreve(o.chi)} non ci sarà: avviso in ritardo`,
+    testo: `${o.materia} – ${o.nome}: assente ${g(o.giorno)}, passa a ${g(o.nuova)}.`,
+    percorso: o.percorso,
+  }
+}
+
 /** posizione null = data scelta (DSA/BES) */
 export function toccaDomani(o: Interr & { giorno: DataISO; posizione: number | null }): Notifica {
   const giorno = formattaGiorno(o.giorno).toLowerCase()
@@ -107,7 +127,7 @@ export function toccaDomani(o: Interr & { giorno: DataISO; posizione: number | n
     titolo: 'Domani sei interrogato',
     testo:
       o.posizione === null
-        ? `${o.materia} – ${o.nome} (${giorno}): è la data che hai scelto.`
+        ? `${o.materia} – ${o.nome} (${giorno}): è la tua data fissa.`
         : `${o.materia} – ${o.nome} (${giorno}): sei il n° ${o.posizione}.`,
     percorso: o.percorso,
   }

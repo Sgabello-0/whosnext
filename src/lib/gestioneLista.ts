@@ -12,6 +12,7 @@ import {
   writeBatch,
   type Firestore,
 } from 'firebase/firestore'
+import { avvisaServer } from './avvisaServer'
 import { dataValida } from './calendar'
 import { ErroreApp } from './classi'
 import { rifInterrogazione, rifLista, rifSegnalazione } from './configurazione'
@@ -32,6 +33,8 @@ type Rif = { classId: string; subjectId: string; interrogazioneId: string }
 
 const listaDi = (db: Firestore, r: Rif) => rifLista(db, r.classId, r.subjectId, r.interrogazioneId)
 const interrogazioneDi = (db: Firestore, r: Rif) => rifInterrogazione(db, r.classId, r.subjectId, r.interrogazioneId)
+/** La lista com'era: va nello storico, così il server sa chi ha cambiato posto. */
+const fotografia = (l: DocLista): Composizione => ({ ordine: l.ordine, fissi: l.fissi ?? {}, interrogati: l.interrogati })
 
 async function leggi(db: Firestore, r: Rif): Promise<{ lista: DocLista; stato: Interrogazione['stato'] }> {
   const [lista, interr] = await Promise.all([getDoc(listaDi(db, r)), getDoc(interrogazioneDi(db, r))])
@@ -46,7 +49,7 @@ export async function riordinaLista(db: Firestore, r: Rif, nuovoOrdine: string[]
     throw new ErroreApp('dati-non-validi', 'La lista è cambiata nel frattempo: ricarica la pagina e riprova.')
   }
   const batch = writeBatch(db)
-  const voce = aggiungiVoceStorico(db, batch, r, mioUid, 'riordino', { spostati: spostati(lista.ordine, nuovoOrdine) })
+  const voce = aggiungiVoceStorico(db, batch, r, mioUid, 'riordino', { spostati: spostati(lista.ordine, nuovoOrdine), prima: fotografia(lista) })
   batch.update(listaDi(db, r), {
     ordine: nuovoOrdine,
     aggiornato: serverTimestamp(),
@@ -54,6 +57,7 @@ export async function riordinaLista(db: Firestore, r: Rif, nuovoOrdine: string[]
     ultimaModifica: voce,
   })
   await batch.commit()
+  avvisaServer('cambio-lista', r, voce)
 }
 
 /**
@@ -123,7 +127,7 @@ export type Imprevisto =
 export async function gestisciImprevisto(db: Firestore, r: Rif, i: Imprevisto, mioUid: string): Promise<void> {
   if (i.tipo === 'fissa' && !dataValida(i.data)) throw new ErroreApp('dati-non-validi', 'Scegli il giorno.')
   const { lista, stato } = await leggi(db, r)
-  const prima: Composizione = { ordine: lista.ordine, fissi: lista.fissi ?? {}, interrogati: lista.interrogati }
+  const prima = fotografia(lista)
   const dove = statoInLista(prima, i.uid)
   const dopo =
     i.tipo === 'aggiungi' ? aggiungiInFondo(prima, i.uid) : i.tipo === 'fissa' ? conDataFissa(prima, i.uid, i.data) : togliDallaLista(prima, i.uid)
@@ -131,10 +135,10 @@ export async function gestisciImprevisto(db: Firestore, r: Rif, i: Imprevisto, m
   const batch = writeBatch(db)
   const voce =
     i.tipo === 'aggiungi'
-      ? aggiungiVoceStorico(db, batch, r, mioUid, dove === 'fissa' ? 'liberato' : 'aggiunto', { uid: i.uid })
+      ? aggiungiVoceStorico(db, batch, r, mioUid, dove === 'fissa' ? 'liberato' : 'aggiunto', { uid: i.uid, prima })
       : i.tipo === 'fissa'
-        ? aggiungiVoceStorico(db, batch, r, mioUid, 'fissato', { uid: i.uid, data: i.data })
-        : aggiungiVoceStorico(db, batch, r, mioUid, 'tolto', { uid: i.uid })
+        ? aggiungiVoceStorico(db, batch, r, mioUid, 'fissato', { uid: i.uid, data: i.data, prima })
+        : aggiungiVoceStorico(db, batch, r, mioUid, 'tolto', { uid: i.uid, prima })
   batch.update(listaDi(db, r), {
     ordine: dopo.ordine,
     fissi: dopo.fissi,
@@ -148,6 +152,31 @@ export async function gestisciImprevisto(db: Firestore, r: Rif, i: Imprevisto, m
   if (stato === 'conclusa' && !tutti) batch.update(interrogazioneDi(db, r), { stato: 'lista', aggiornato: serverTimestamp() })
   if (i.tipo === 'togli') batch.delete(rifSegnalazione(db, r.classId, r.subjectId, r.interrogazioneId, i.uid))
   await batch.commit()
+  avvisaServer('cambio-lista', r, voce)
+}
+
+/**
+ * "Non ci sarò": lo studente esce dall'ordine e prende una data fissa, `nuova`.
+ * Vale per chiunque sia in lista e non ancora interrogato; chi avvisare lo decide il server.
+ */
+export async function dichiaraAssenza(db: Firestore, r: Rif, uid: string, data: string, nuova: string): Promise<void> {
+  if (!dataValida(data) || !dataValida(nuova)) throw new ErroreApp('dati-non-validi', 'Scegli il giorno.')
+  const { lista, stato } = await leggi(db, r)
+  const fissi = lista.fissi ?? {}
+  if (stato !== 'lista' || lista.interrogati[uid] || !(lista.ordine.includes(uid) || uid in fissi)) {
+    throw new ErroreApp('dati-non-validi', 'Non sei più tra chi deve essere interrogato.')
+  }
+  const batch = writeBatch(db)
+  const voce = aggiungiVoceStorico(db, batch, r, uid, 'assenza', { uid, data, nuova, prima: fotografia(lista) })
+  batch.update(listaDi(db, r), {
+    ordine: lista.ordine.filter((u) => u !== uid),
+    fissi: { ...fissi, [uid]: nuova },
+    aggiornato: serverTimestamp(),
+    aggiornatoDa: uid,
+    ultimaModifica: voce,
+  })
+  await batch.commit()
+  avvisaServer('cambio-lista', r, voce)
 }
 
 /** Lo studente segnala di essere stato interrogato; capo o vice confermeranno. */

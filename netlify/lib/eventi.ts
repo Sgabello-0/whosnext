@@ -1,6 +1,6 @@
 /**
  * Chi avvisare e con quale testo: nuova interrogazione, lista generata, richiesta di scambio,
- * "domani sei interrogato". Ogni avviso ha una chiave, così rifare un'operazione
+ * "domani sei interrogato", cambio di posto. Ogni avviso ha una chiave, così rifare un'operazione
  * (o due esecuzioni insieme) non lo manda due volte.
  */
 import type { Firestore, QueryDocumentSnapshot, Timestamp } from 'firebase-admin/firestore'
@@ -8,10 +8,11 @@ import { calendarioDa, type Calendario } from '../../src/lib/calendar'
 import { testoStima, type Stima } from '../../src/lib/estimate'
 import { percorsoInterrogazione } from '../../src/lib/messaggi'
 import { programmaLista } from '../../src/lib/programma'
+import { assenzaInRitardo as inRitardo, chiSiSposta, giorniAssenza } from '../../src/lib/spostamenti'
 import { percorsoDi, rifDa, type Rif } from './generazione'
 import { dataItalia, domaniItalia, momentoItalia, oraItalia, scadenzaItalia } from './ora'
 import { avvisa, type Postino } from './postino'
-import { confermaInterrogato, domaniPossibile, listaPronta, nuovaInterrogazione, richiestaScambio, toccaDomani } from './testi'
+import { assenzaInRitardo, cambioPosto, confermaInterrogato, domaniPossibile, listaPronta, nuovaInterrogazione, richiestaScambio, toccaDomani } from './testi'
 import { SITO } from './http'
 
 
@@ -21,6 +22,7 @@ type DatiInterrogazione = {
   stato: string
   giorni: number[]
   perLezione: number | null
+  senzaLista?: boolean
   scadenzaPreferenze: Timestamp
   creato?: Timestamp
   creatoDa?: string
@@ -202,4 +204,66 @@ export async function avvisaSegnalazione(db: Firestore, postino: Postino, r: Rif
     giorno: seg.data,
   })
   return avvisa(db, postino, capo, `segnalazione/${percorsoDi(r)}/${chiamante}/${seg.data}`, n)
+}
+
+type VoceStorico = {
+  tipo: string
+  chi: string
+  quando?: Timestamp
+  dettagli?: { uid?: string; data?: string; nuova?: string; prima?: Lista & { fissi: Record<string, string> } }
+}
+
+/**
+ * Dopo una modifica della lista: a chi ha cambiato posto per mano d'altri e, se uno studente
+ * ha detto "non ci sarò" dopo il termine, a capoclasse e vice. Solo se a chiederlo è chi l'ha fatta.
+ */
+export async function avvisaCambioLista(db: Firestore, postino: Postino, r: Rif, id: string, chiamante: string, adesso: Date) {
+  const v = (await db.doc(`${percorsoDi(r)}/storico/${id}`).get()).data() as VoceStorico | undefined
+  const d = v?.dettagli
+  if (!v || !d?.prima || v.chi !== chiamante) return 'non-valido'
+  if (v.tipo === 'assenza' && d.uid !== chiamante) return 'non-valido'
+  const c = await contesto(db, r)
+  const lista = (await c.rifLista.get()).data() as Lista | undefined
+  if (!c.dati || !lista) return 'non-valido'
+
+  const interr = { materia: c.materia, nome: c.dati.nome, percorso: c.percorso }
+  const dopo = programma(c, r, lista, adesso)
+  // senza lista non ci sono posti: conta solo la data fissata a qualcuno
+  const toccati = c.dati.senzaLista
+    ? v.tipo === 'fissato' && d.uid && d.uid !== chiamante
+      ? [d.uid]
+      : []
+    : chiSiSposta({ tipo: v.tipo, uid: d.uid, chi: chiamante, prima: programma(c, r, d.prima, adesso), dopo })
+  let mandate = 0
+  const manda = async (uid: string, chiave: string, n: Parameters<typeof avvisa>[4]) => {
+    try {
+      if ((await avvisa(db, postino, uid, chiave, n)) === 'mandata') mandate++
+    } catch (e) {
+      console.error(`Avviso "${chiave}" non consegnato:`, e)
+    }
+  }
+  for (const uid of toccati) {
+    const riga = dopo.righe.find((x) => x.uid === uid)
+    const n = cambioPosto({
+      ...interr,
+      uscito: !riga,
+      posizione: riga?.numero ?? null,
+      totale: lista.ordine.length,
+      stima: testoStima(riga?.stima ?? SENZA_STIMA),
+    })
+    await manda(uid, `posto/${percorsoDi(r)}/${id}/${uid}`, n)
+  }
+
+  if (v.tipo === 'assenza' && d.data && d.nuova && v.quando) {
+    const classe = (await db.doc(`classes/${r.classId}`).get()).data()
+    if (inRitardo(dataItalia(v.quando.toDate()), d.data, giorniAssenza(classe?.assenzaGiorni))) {
+      const chi = await nome(db, r.classId, chiamante)
+      const staff = await db.collection(`classes/${r.classId}/members`).where('ruolo', 'in', ['capo', 'vice']).get()
+      for (const m of staff.docs) {
+        if (m.id === chiamante) continue
+        await manda(m.id, `assenza/${percorsoDi(r)}/${id}/${m.id}`, assenzaInRitardo({ ...interr, chi, giorno: d.data, nuova: d.nuova }))
+      }
+    }
+  }
+  return mandate
 }

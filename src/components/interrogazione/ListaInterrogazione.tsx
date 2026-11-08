@@ -4,8 +4,9 @@ import { formattaGiorno, momentoLocale, oggiISO, type Calendario } from '../../l
 import { rifLista, rifRapporto } from '../../lib/configurazione'
 import { messaggioErrore } from '../../lib/errori'
 import { testoStima } from '../../lib/estimate'
-import { dateDisponibili, programmaLista } from '../../lib/programma'
+import { dateDisponibili, programmaLista, type DatiProgramma } from '../../lib/programma'
 import { Imprevisti } from './Imprevisti'
+import { NonCiSaro } from './NonCiSaro'
 import { useAdesso } from '../../lib/useAdesso'
 import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { useDocumento } from '../../lib/hooks'
@@ -38,6 +39,8 @@ type Props = {
   puoModificare: boolean
   /** uid con il badge DSA/BES visibile a chi guarda */
   dsa: Set<string>
+  /** entro quanti giorni prima si può dire "non ci sarò" */
+  giorniAnticipo: number
   nomeMateria: string
   /** sul computer: due colonne */
   desktop?: boolean
@@ -79,7 +82,7 @@ export function ListaInterrogazione(p: Props) {
   const { ordine, interrogati } = lista.dati
   const fissi = lista.dati.fissi ?? {}
   const perUid = new Map(p.membri.map((m) => [m.uid, m]))
-  const programma = programmaLista({
+  const datiProgramma: DatiProgramma = {
     ordine,
     fissi,
     interrogati,
@@ -89,7 +92,8 @@ export function ListaInterrogazione(p: Props) {
     cal: p.cal,
     adesso: momentoLocale(adesso),
     creata: p.interrogazione.creato ? oggiISO(p.interrogazione.creato.toDate()) : null,
-  })
+  }
+  const programma = programmaLista(datiProgramma)
   const stimaDi = (uid: string) => programma.stime.get(uid) ?? null
   const stima = (uid: string) => {
     const s = stimaDi(uid)
@@ -177,7 +181,7 @@ export function ListaInterrogazione(p: Props) {
             <p className="text-lg font-bold">
               {miaData
                 ? interrogati[p.mioUid]
-                  ? 'Data scelta'
+                  ? 'Data fissa'
                   : `Interrogazione ${dataEffettiva ? formattaGiorno(dataEffettiva).toLowerCase() : 'da fissare'}`
                 : senzaLista
                   ? interrogati[p.mioUid]
@@ -192,12 +196,15 @@ export function ListaInterrogazione(p: Props) {
                 <p className="text-blue-50">
                   {miaData
                     ? dataEffettiva && dataEffettiva !== miaData
-                      ? `Avevi scelto ${formattaGiorno(miaData).toLowerCase()}: non sei stato interrogato, quindi passi alla lezione successiva.`
-                      : 'Hai scelto tu la data (DSA/BES): resta fissa anche se la lista cambia.'
+                      ? `La tua data era ${formattaGiorno(miaData).toLowerCase()}: non sei stato interrogato, quindi passi alla lezione successiva.`
+                      : 'Hai una data fissa: resta questa anche se la lista cambia.'
                     : stima(p.mioUid)}
                 </p>
                 {/* chi modifica le liste si segna da solo nella scheda qui sotto */}
                 {!p.staff && <SonoStatoInterrogato r={r} uid={p.mioUid} />}
+                {!senzaLista && p.interrogazione.stato === 'lista' && (
+                  <NonCiSaro r={r} uid={p.mioUid} programma={datiProgramma} giorniAnticipo={p.giorniAnticipo} />
+                )}
               </div>
             )}
           </div>

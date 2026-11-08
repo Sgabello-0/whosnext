@@ -17,6 +17,8 @@ export type Classe = {
   nome: string
   codiceInvito: string
   capoclasseUid: string
+  /** entro quanti giorni prima dell'interrogazione si può dire "non ci sarò" (di base 2) */
+  assenzaGiorni?: number
   creato?: Timestamp
 }
 
@@ -121,7 +123,7 @@ export type DocSegnalazione = {
 }
 
 export type DocStorico = {
-  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato' | 'scambio' | 'aggiunto' | 'tolto' | 'fissato' | 'liberato'
+  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato' | 'scambio' | 'aggiunto' | 'tolto' | 'fissato' | 'liberato' | 'assenza'
   chi: string
   quando?: Timestamp
   dettagli: {
@@ -132,6 +134,10 @@ export type DocStorico = {
     data?: string
     /** scambio: posizioni (da 1) di uids[0] e uids[1] prima dello scambio */
     posizioni?: number[]
+    /** "non ci sarò": la data in cui non c'è (data) e quella nuova */
+    nuova?: string
+    /** com'era la lista prima della modifica: serve al server per sapere chi avvisare */
+    prima?: { ordine: string[]; fissi: Record<string, string>; interrogati: Record<string, string> }
   }
 }
 

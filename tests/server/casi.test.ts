@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { Timestamp } from 'firebase-admin/firestore'
 import { database } from '../../netlify/lib/admin'
-import { avvisaListaPronta, avvisaNuovaInterrogazione, avvisaSegnalazione, ricordaDomani } from '../../netlify/lib/eventi'
+import { avvisaCambioLista, avvisaListaPronta, avvisaNuovaInterrogazione, avvisaSegnalazione, ricordaDomani } from '../../netlify/lib/eventi'
 import { riceviFeedback, type MessaggioFeedback } from '../../netlify/lib/feedback'
 import { generaScadute } from '../../netlify/lib/generazione'
 import { avvisa, type Postino } from '../../netlify/lib/postino'
@@ -244,7 +244,7 @@ describe('avvisi: casi difficili', () => {
     expect(await ricordaDomani(db, p, LUNEDI_SERA)).toBe(1)
     expect(push[0]).toMatchObject({
       tokens: ['token-carla'],
-      n: { titolo: 'Domani sei interrogato', testo: 'Storia – Orale (martedì 10/11): è la data che hai scelto.' },
+      n: { titolo: 'Domani sei interrogato', testo: 'Storia – Orale (martedì 10/11): è la tua data fissa.' },
     })
   })
 
@@ -545,5 +545,77 @@ describe('feedback', () => {
     expect(await ok.json()).toEqual({ esito: 'salvato' })
     for (let i = 0; i < 4; i++) await feedback(richiesta({ token: t, corpo: { testo: 'Ancora uno' } }))
     expect((await feedback(richiesta({ token: t, corpo: { testo: 'Troppi' } }))).status).toBe(429)
+  })
+})
+
+describe('cambi di posto', () => {
+  // lunedì 09/11 sera. Prima: Anna martedì 10, Bruno giovedì 12, Carla martedì 17
+  const PRIMA = { ordine: ['anna', 'bruno', 'carla'], fissi: {}, interrogati: {} }
+  const IL = (giorno: string) => Timestamp.fromDate(new Date(`${giorno}T09:00:00Z`))
+
+  async function assenza(quando: string, extra: Record<string, unknown> = {}) {
+    await conLista(['anna', 'carla'], {}, {}, { bruno: '2026-11-17' })
+    await db.doc(CLASSE).set(extra, { merge: true })
+    await db.doc(`${INTERR}/storico/v1`).set({
+      tipo: 'assenza',
+      chi: 'bruno',
+      quando: IL(quando),
+      dettagli: { uid: 'bruno', data: '2026-11-12', nuova: '2026-11-17', prima: PRIMA },
+    })
+  }
+
+  it('"non ci sarò" nei termini: avvisa solo chi finisce sopra di lui', async () => {
+    await assenza('2026-11-09')
+    const { p, push } = postinoFinto()
+    expect(await avvisaCambioLista(db, p, R, 'v1', 'bruno', LUNEDI_SERA)).toBe(1)
+    expect(push[0]).toMatchObject({
+      tokens: ['token-carla'],
+      n: { titolo: 'Il tuo posto è cambiato', testo: 'Storia – Orale: ora sei il n° 2 di 2. Stimata: Giovedì 12/11.' },
+    })
+  })
+
+  it('oltre il termine: avvisati anche capoclasse e vice, una volta sola', async () => {
+    await assenza('2026-11-11')
+    const { p, push } = postinoFinto()
+    expect(await avvisaCambioLista(db, p, R, 'v1', 'bruno', LUNEDI_SERA)).toBe(2)
+    expect(push.map((x) => x.tokens[0]).sort()).toEqual(['token-anna', 'token-carla'])
+    expect(push.find((x) => x.tokens[0] === 'token-anna')!.n).toMatchObject({
+      titolo: 'Bruno non ci sarà: avviso in ritardo',
+      testo: 'Storia – Orale: assente giovedì 12/11, passa a martedì 17/11.',
+    })
+    expect(await avvisaCambioLista(db, p, R, 'v1', 'bruno', LUNEDI_SERA)).toBe(0)
+  })
+
+  it('il termine è quello della classe', async () => {
+    await assenza('2026-11-11', { assenzaGiorni: 1 })
+    const { p, push } = postinoFinto()
+    await avvisaCambioLista(db, p, R, 'v1', 'bruno', LUNEDI_SERA)
+    expect(push.map((x) => x.tokens[0])).toEqual(['token-carla'])
+  })
+
+  it('modifica della lista: avvisa chi cambia posto, non chi l\'ha fatta', async () => {
+    await conLista(['anna', 'carla', 'bruno'])
+    await db.doc(`${INTERR}/storico/v2`).set({ tipo: 'riordino', chi: 'anna', quando: IL('2026-11-09'), dettagli: { spostati: [], prima: PRIMA } })
+    const { p, push } = postinoFinto()
+    expect(await avvisaCambioLista(db, p, R, 'v2', 'anna', LUNEDI_SERA)).toBe(2)
+    expect(push.map((x) => x.tokens[0]).sort()).toEqual(['token-bruno', 'token-carla'])
+  })
+
+  it('chi viene tolto lo sa', async () => {
+    await conLista(['anna', 'carla'])
+    await db.doc(`${INTERR}/storico/v3`).set({ tipo: 'tolto', chi: 'anna', quando: IL('2026-11-09'), dettagli: { uid: 'bruno', prima: PRIMA } })
+    const { p, push } = postinoFinto()
+    await avvisaCambioLista(db, p, R, 'v3', 'anna', LUNEDI_SERA)
+    expect(push.find((x) => x.tokens[0] === 'token-bruno')!.n.testo).toBe('Storia – Orale: non sei più in lista.')
+  })
+
+  it('senza lista non ci sono posti; non vale se a chiederlo è un altro', async () => {
+    await assenza('2026-11-11')
+    const { p, push } = postinoFinto()
+    expect(await avvisaCambioLista(db, p, R, 'v1', 'carla', LUNEDI_SERA)).toBe('non-valido')
+    expect(await avvisaCambioLista(db, p, R, 'manca', 'bruno', LUNEDI_SERA)).toBe('non-valido')
+    await db.doc(INTERR).set({ senzaLista: true }, { merge: true })
+    expect(await avvisaCambioLista(db, p, R, 'v1', 'bruno', LUNEDI_SERA)).toBe(1) // solo l'avviso del ritardo
+    expect(push.map((x) => x.tokens[0])).toEqual(['token-anna'])
   })
 })

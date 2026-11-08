@@ -165,6 +165,11 @@ export async function uniscitiConCodice(db: Firestore, p: Profilo, codice: strin
 }
 
 /** Il capoclasse rinomina la classe (aggiorna anche il nome mostrato con il codice d'invito). */
+/** Entro quanti giorni prima dell'interrogazione si può dire "non ci sarò". */
+export async function impostaGiorniAssenza(db: Firestore, classId: string, giorni: number): Promise<void> {
+  await updateDoc(rifClasse(db, classId), { assenzaGiorni: giorni })
+}
+
 export async function rinominaClasse(db: Firestore, classId: string, codiceAttuale: string, nome: string): Promise<void> {
   const nomeClasse = pulisciNomeClasse(nome)
   const batch = writeBatch(db)

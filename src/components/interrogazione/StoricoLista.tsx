@@ -46,6 +46,8 @@ export function StoricoLista(p: { classId: string; subjectId: string; interrogaz
         return `${chi} ha fissato l'interrogazione di ${nome(d.uid)}${d.data ? ` per ${formattaGiorno(d.data).toLowerCase()}` : ''}`
       case 'tolto':
         return `${chi} ha tolto ${nome(d.uid)} dalla lista`
+      case 'assenza':
+        return `${chi} ha detto che non ci sarà${d.data ? ` ${formattaGiorno(d.data).toLowerCase()}` : ''}${d.nuova ? `: passa a ${formattaGiorno(d.nuova).toLowerCase()}` : ''}`
     }
   }
 

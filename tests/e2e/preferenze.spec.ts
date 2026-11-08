@@ -351,6 +351,13 @@ test('imprevisti: escludere prima, poi rimettere, fissare una data e togliere (s
   await expect(bruno.getByText(`Interrogazione ${giorno.toLowerCase()}`)).toBeVisible()
   await expect(bruno.getByRole('button', { name: /Fissa una data/ })).toHaveCount(0) // gli studenti non hanno gli imprevisti
 
+  // Carla non ci sarà il giorno previsto: passa alla prima data disponibile, con data fissa
+  await carla.getByRole('button', { name: 'Non ci sarò' }).click()
+  await conferma(carla, 'Conferma')
+  await expect(carla.getByText('Hai una data fissa: resta questa anche se la lista cambia.')).toBeVisible()
+  await expect(ordine.getByRole('listitem').filter({ hasText: 'Carla Blu' })).toContainText('data fissa')
+  await expect(anna.getByRole('button', { name: 'Rimetti in lista Carla Blu' })).toBeVisible()
+
   // Imprevisto 3: Carla si ritira, la si toglie
   await anna.getByRole('button', { name: 'Togli dalla lista Carla Blu' }).click()
   await conferma(anna, 'Togli dalla lista')
@@ -363,6 +370,17 @@ test('imprevisti: escludere prima, poi rimettere, fissare una data e togliere (s
   await expect(storico.getByText('Anna Verdi ha aggiunto Carla Blu in fondo alla lista')).toBeVisible()
   await expect(storico.getByText(`Anna Verdi ha fissato l'interrogazione di Bruno Neri per ${giorno.toLowerCase()}`)).toBeVisible()
   await expect(storico.getByText('Anna Verdi ha tolto Carla Blu dalla lista')).toBeVisible()
+  await expect(storico.getByText(/^Carla Blu ha detto che non ci sarà .*: passa a /)).toBeVisible()
+
+  // Il termine per dirlo si cambia dalla gestione della classe
+  await anna.goto(`${classe}/gestione`)
+  const termine = anna.getByLabel('Si può dire "non ci sarò" entro quanti giorni prima')
+  await expect(termine).toHaveValue('2')
+  await termine.fill('4')
+  await anna.getByRole('button', { name: 'Salva', exact: true }).click()
+  await expect(anna.getByText('Termine aggiornato')).toBeVisible()
+  await anna.reload()
+  await expect(termine).toHaveValue('4')
 })
 
 test('senza lista: nessun ordine; si segnano gli interrogati, chi si segnala aspetta capo o vice; campanella', async ({ browser }) => {

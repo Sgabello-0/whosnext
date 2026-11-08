@@ -1,12 +1,13 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { Crown, GraduationCap, KeyRound, Pencil, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react'
+import { CalendarX, Crown, GraduationCap, KeyRound, Pencil, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react'
 import { db } from '../lib/firebase'
-import { cambiaCodiceInvito, impostaDSA, impostaPermessoDocente, impostaVice, rimuoviMembro, rinominaClasse } from '../lib/classi'
+import { cambiaCodiceInvito, impostaDSA, impostaGiorniAssenza, impostaPermessoDocente, impostaVice, rimuoviMembro, rinominaClasse } from '../lib/classi'
 import { formattaCodice } from '../lib/codici'
 import { eliminaClasse } from '../lib/eliminaClasse'
 import { messaggioErrore } from '../lib/errori'
 import { dividiMembri, puoGestireDSA } from '../lib/membri'
+import { giorniAssenza, GIORNI_ASSENZA_MAX } from '../lib/spostamenti'
 import { useClasse } from '../lib/useClasse'
 import { useAvvisi } from '../components/Avvisi'
 import { useConferma } from '../components/Conferma'
@@ -14,7 +15,7 @@ import { CediRuolo } from '../components/CediRuolo'
 import type { Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
 import { StatoClasse } from '../components/StatoClasse'
-import { Avatar, Bottone, Campo, IntestazionePagina, LinkBottone, Riquadro, Scheda, GrigliaSchede } from '../components/ui'
+import { Avatar, Bottone, Campo, CLASSE_INPUT, IntestazionePagina, LinkBottone, Riquadro, Scheda, GrigliaSchede } from '../components/ui'
 
 /** Gestione della classe: capoclasse (tutto) e vice (solo badge DSA/BES). */
 export default function AdminClasse() {
@@ -209,6 +210,7 @@ export default function AdminClasse() {
             classId={classId}
             nome={classe.nome}
             codice={classe.codiceInvito}
+            giorni={giorniAssenza(classe.assenzaGiorni)}
             cedi={<CediRuolo classId={classId} mioUid={io.uid} studenti={studenti} />}
           />
         )}
@@ -217,7 +219,7 @@ export default function AdminClasse() {
   )
 }
 
-function ImpostazioniClasse({ classId, nome, codice, cedi }: { classId: string; nome: string; codice: string; cedi: ReactNode }) {
+function ImpostazioniClasse({ classId, nome, codice, giorni, cedi }: { classId: string; nome: string; codice: string; giorni: number; cedi: ReactNode }) {
   const [nuovoNome, setNuovoNome] = useState(nome)
   const [inCorso, setInCorso] = useState(false)
   const avvisi = useAvvisi()
@@ -279,11 +281,59 @@ function ImpostazioniClasse({ classId, nome, codice, cedi }: { classId: string; 
           </Bottone>
         </div>
       </Scheda>
+      <TermineAssenze classId={classId} giorni={giorni} />
       <Scheda titolo="Passa il ruolo di capoclasse" icona={Crown} sottotitolo="Per esempio a fine anno o se cambi classe.">
         {cedi}
       </Scheda>
       <EliminaClasse classId={classId} nome={nome} codice={codice} />
     </>
+  )
+}
+
+function TermineAssenze({ classId, giorni }: { classId: string; giorni: number }) {
+  const avvisi = useAvvisi()
+  const [valore, setValore] = useState(String(giorni))
+  const [inCorso, setInCorso] = useState(false)
+  const n = Number(valore)
+  const valido = valore !== '' && Number.isInteger(n) && n >= 0 && n <= GIORNI_ASSENZA_MAX
+
+  async function salva(e: FormEvent) {
+    e.preventDefault()
+    if (!db || !valido) return
+    setInCorso(true)
+    try {
+      await impostaGiorniAssenza(db, classId, n)
+      avvisi.mostra('Termine aggiornato')
+    } catch (err) {
+      avvisi.errore(messaggioErrore(err))
+    } finally {
+      setInCorso(false)
+    }
+  }
+
+  return (
+    <Scheda
+      titolo="Assenze il giorno dell'interrogazione"
+      icona={CalendarX}
+      sottotitolo="Dopo il termine lo studente passa comunque alla prima data disponibile, ma capoclasse e vice ricevono un avviso."
+    >
+      <form onSubmit={salva} className="flex flex-wrap items-end gap-2">
+        <label className="text-sm">
+          <span className="mb-2 block font-medium">Si può dire "non ci sarò" entro quanti giorni prima</span>
+          <input
+            type="number"
+            min={0}
+            max={GIORNI_ASSENZA_MAX}
+            value={valore}
+            onChange={(e) => setValore(e.target.value)}
+            className={`${CLASSE_INPUT} max-w-28`}
+          />
+        </label>
+        <Bottone type="submit" variante="secondario" disabled={inCorso || !valido || n === giorni}>
+          Salva
+        </Bottone>
+      </form>
+    </Scheda>
   )
 }
 

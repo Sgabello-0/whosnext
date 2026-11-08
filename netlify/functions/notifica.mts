@@ -1,13 +1,13 @@
 /**
  * Il sito chiama questo indirizzo subito dopo un'azione che merita un avviso:
  * POST /api/notifica { tipo, classId, subjectId, interrogazioneId, id? } con il token di Firebase.
- * tipo: 'nuova-interrogazione' | 'lista-pronta' | 'segnalazione' | 'scambio-richiesta' (id = richiesta).
+ * tipo: 'nuova-interrogazione' | 'lista-pronta' | 'segnalazione' | 'scambio-richiesta' (id = richiesta) | 'cambio-lista' (id = voce dello storico).
  * Il server controlla nel database che l'azione sia davvero avvenuta, e da chi, prima di avvisare.
  */
 import type { Config } from '@netlify/functions'
 import { database } from '../lib/admin'
 import { risposta } from '../lib/http'
-import { avvisaListaPronta, avvisaNuovaInterrogazione, avvisaRichiestaScambio, avvisaSegnalazione } from '../lib/eventi'
+import { avvisaCambioLista, avvisaListaPronta, avvisaNuovaInterrogazione, avvisaRichiestaScambio, avvisaSegnalazione } from '../lib/eventi'
 import { postinoVero } from '../lib/postinoVero'
 import { uidDalToken } from '../lib/token'
 
@@ -44,6 +44,8 @@ export default async function notifica(req: Request) {
   else if (tipo === 'segnalazione') esito = await avvisaSegnalazione(db, postino, r, uid)
   else if (tipo === 'scambio-richiesta' && typeof id === 'string' && ID.test(id)) {
     esito = await avvisaRichiestaScambio(db, postino, r, id, uid)
+  } else if (tipo === 'cambio-lista' && typeof id === 'string' && ID.test(id)) {
+    esito = await avvisaCambioLista(db, postino, r, id, uid, new Date())
   } else return risposta(400, { errore: 'tipo sconosciuto' }, origine)
   return risposta(200, { esito }, origine)
 }

@@ -10,6 +10,7 @@ import { formattaScadenza, tempoMancante } from '../lib/formatoDate'
 import { useDocumento } from '../lib/hooks'
 import { puoGestireDSA, puoModificareListe } from '../lib/membri'
 import { useCalendario } from '../lib/useCalendario'
+import { giorniAssenza } from '../lib/spostamenti'
 import { useClasse } from '../lib/useClasse'
 import { useAdesso } from '../lib/useAdesso'
 import { useDesktop } from '../lib/useDesktop'
@@ -224,6 +225,7 @@ export default function Interrogazione() {
           staff={staff}
           puoModificare={puoModificareListe(io)}
           dsa={dati.dsa}
+          giorniAnticipo={giorniAssenza(dati.classe.assenzaGiorni)}
           nomeMateria={materia.dati.nome}
           desktop={desktop}
           sopra={

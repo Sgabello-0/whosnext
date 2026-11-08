@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore'
 import { aggiungiVoceStorico } from '../../src/lib/storico'
-import { creaClasse, impostaDSA, impostaPermessoDocente, impostaVice, uniscitiConCodice } from '../../src/lib/classi'
+import { creaClasse, impostaDSA, impostaGiorniAssenza, impostaPermessoDocente, impostaVice, uniscitiConCodice } from '../../src/lib/classi'
 import {
   creaInterrogazione,
   creaMateria,
@@ -13,8 +13,9 @@ import {
   rifLista,
   rifSegnalazione,
   rifSegnalazioni,
+  rifStorico,
 } from '../../src/lib/configurazione'
-import { gestisciImprevisto, riordinaLista, segnaInterrogati, segnalaInterrogato, togliInterrogato, togliSegnalazione } from '../../src/lib/gestioneLista'
+import { dichiaraAssenza, gestisciImprevisto, riordinaLista, segnaInterrogati, segnalaInterrogato, togliInterrogato, togliSegnalazione } from '../../src/lib/gestioneLista'
 import { creaSenzaLista, generaEPubblicaLista, salvaPreferenza } from '../../src/lib/preferenze'
 import { avviaAmbiente, dbDi, UTENTI } from './aiuti'
 
@@ -285,6 +286,74 @@ describe('imprevisti (solo capo e vice)', () => {
     await assertFails(prova({ ordine: [...ordine, 'nuovo'] }, false))
     await assertFails(prova({ interrogati: { estraneo: '2026-11-03' } }))
     await assertSucceeds(prova({ ordine: [...ordine, 'nuovo'] }))
+  })
+})
+
+describe('"non ci sarò"', () => {
+  type R = { classId: string; subjectId: string; interrogazioneId: string }
+  /** Scrive direttamente, come farebbe qualcuno che salta il sito. */
+  async function scrivi(r: R, chi: { uid: string; email: string }, campi: Record<string, unknown>, uid: string = chi.uid) {
+    const d = dbDi(env, chi)
+    const batch = writeBatch(d)
+    const voce = aggiungiVoceStorico(d, batch, r, chi.uid, 'assenza', { uid })
+    batch.update(rifLista(d, r.classId, r.subjectId, r.interrogazioneId), {
+      aggiornato: serverTimestamp(),
+      aggiornatoDa: chi.uid,
+      ultimaModifica: voce,
+      ...campi,
+    })
+    return batch.commit()
+  }
+
+  it('lo studente in lista esce dall\'ordine e prende la data fissa; resta traccia nello storico', async () => {
+    const { r } = await listaPronta()
+    const voci = () => getDocs(rifStorico(dbDi(env, carla), r.classId, r.subjectId, r.interrogazioneId))
+    const prima = (await voci()).size
+    await assertSucceeds(dichiaraAssenza(dbDi(env, carla), r, 'carla', '2026-11-10', '2026-11-17'))
+    const l = await lista(r)
+    expect(l.ordine).not.toContain('carla')
+    expect(l.fissi).toEqual({ carla: '2026-11-17' })
+    expect((await voci()).size).toBe(prima + 1)
+  })
+  it('chi ha già una data fissa può solo spostarla più avanti', async () => {
+    const { r } = await listaPronta({ carlaConData: true })
+    await assertFails(scrivi(r, carla, { fissi: { carla: '2026-11-03' } }))
+    await assertSucceeds(dichiaraAssenza(dbDi(env, carla), r, 'carla', '2026-11-10', '2026-11-17'))
+  })
+  it('solo per sé stessi, e mai toccando gli altri', async () => {
+    const { r, ordine } = await listaPronta()
+    const senza = (u: string) => ordine.filter((x) => x !== u)
+    await assertFails(scrivi(r, carla, { ordine: senza('bruno'), fissi: { bruno: '2026-11-17' } }, 'bruno'))
+    await assertFails(scrivi(r, carla, { ordine: senza('carla'), fissi: { carla: '2026-11-17', bruno: '2026-11-17' } }))
+    await assertFails(scrivi(r, carla, { ordine: [...senza('carla')].reverse(), fissi: { carla: '2026-11-17' } }))
+    await assertFails(scrivi(r, carla, { ordine: senza('carla'), fissi: { carla: 'domani' } }))
+    await assertFails(scrivi(r, rossi, { ordine, fissi: { prof: '2026-11-17' } }))
+  })
+  it('chi è già stato interrogato non può più', async () => {
+    const { r, ordine } = await listaPronta()
+    await segnaInterrogati(dbDi(env, anna), r, ['carla'], '2026-11-03', 'anna')
+    await assertFails(scrivi(r, carla, { ordine: ordine.filter((x) => x !== 'carla'), fissi: { carla: '2026-11-17' } }))
+  })
+  it('senza storico non passa', async () => {
+    const { r, ordine } = await listaPronta()
+    const d = dbDi(env, carla)
+    await assertFails(
+      updateDoc(rifLista(d, r.classId, r.subjectId, r.interrogazioneId), {
+        ordine: ordine.filter((x) => x !== 'carla'),
+        fissi: { carla: '2026-11-17' },
+        aggiornato: serverTimestamp(),
+        aggiornatoDa: 'carla',
+      }),
+    )
+  })
+  it('il termine lo decide solo il capoclasse, tra 0 e 30 giorni', async () => {
+    const { r } = await listaPronta()
+    await assertSucceeds(impostaGiorniAssenza(dbDi(env, anna), r.classId, 3))
+    await assertSucceeds(impostaGiorniAssenza(dbDi(env, anna), r.classId, 0))
+    await assertFails(impostaGiorniAssenza(dbDi(env, anna), r.classId, 31))
+    await assertFails(impostaGiorniAssenza(dbDi(env, anna), r.classId, 1.5))
+    await assertFails(impostaGiorniAssenza(dbDi(env, bruno), r.classId, 5))
+    await assertFails(impostaGiorniAssenza(dbDi(env, carla), r.classId, 5))
   })
 })
 

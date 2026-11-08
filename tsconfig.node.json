@@ -9,6 +9,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": [
+      "vite/client",
       "node"
     ],
     "strict": true,
