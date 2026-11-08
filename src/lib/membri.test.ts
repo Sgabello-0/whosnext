@@ -27,9 +27,9 @@ describe('ordine di cognome', () => {
 })
 
 describe('dividiMembri', () => {
-  it('tutti gli studenti in ordine di cognome, capoclasse e vice compresi', () => {
+  it('prima il capoclasse, poi i vice, poi gli altri in ordine di cognome', () => {
     const { studenti } = dividiMembri([m('Zeno Abate', 'studente'), m('Bea Verdi', 'vice'), m('anna bianchi', 'studente'), m('Carlo Neri', 'capo')])
-    expect(studenti.map((x) => x.nome)).toEqual(['Zeno Abate', 'anna bianchi', 'Carlo Neri', 'Bea Verdi'])
+    expect(studenti.map((x) => x.nome)).toEqual(['Carlo Neri', 'Bea Verdi', 'Zeno Abate', 'anna bianchi'])
   })
   it('separa i docenti dagli studenti', () => {
     const { studenti, docenti } = dividiMembri([m('Prof. Rossi', 'docente'), m('anna', 'studente'), m('Prof. Bianchi', 'docente')])

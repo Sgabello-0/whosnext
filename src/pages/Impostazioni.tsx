@@ -79,7 +79,7 @@ export default function Impostazioni() {
         <Scheda titolo="Privacy" icona={ShieldCheck}>
           <p className="text-sm text-slate-600 dark:text-slate-400">
             WhosNext usa solo nome, email e foto del tuo account della scuola. I compagni vedono il tuo nome e la tua posizione
-            nelle liste; il badge DSA/BES lo vedono capoclasse e vice e, se lo lasci visibile, i compagni.
+            nelle liste; il badge DSA/BES lo vedono capoclasse e vice e, solo se scegli di mostrarlo, i compagni.
           </p>
           <a
             href={PRIVACY}

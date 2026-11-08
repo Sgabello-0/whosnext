@@ -193,7 +193,7 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await expect(carla.getByText(/Sei stato interrogato/)).toBeVisible()
 })
 
-test('DSA/BES: si sceglie il giorno, in lista resta fisso; il badge si può nascondere ai compagni', async ({ browser }, info) => {
+test('DSA/BES: si sceglie il giorno, in lista resta fisso; il badge i compagni lo vedono solo se lo studente lo mostra', async ({ browser }, info) => {
   const anna = await accedi(browser, 'anna.verdi@studenti.ittsrimini.edu.it', 'Anna Verdi')
   await anna.getByLabel('Nome della classe').fill('4ªB')
   await anna.getByRole('button', { name: 'Crea classe' }).click()
@@ -206,9 +206,10 @@ test('DSA/BES: si sceglie il giorno, in lista resta fisso; il badge si può nasc
   await anna.goto(`${classe}/gestione`)
   await anna.getByRole('listitem').filter({ hasText: 'Carla Blu' }).getByRole('button', { name: 'Dai DSA/BES' }).click()
   await expect(anna.getByRole('listitem').filter({ hasText: 'Carla Blu' }).getByText('DSA/BES', { exact: true })).toBeVisible()
-  // il badge è visibile anche ai compagni
+  // di base i compagni non lo vedono
   await bruno.goto(classe)
-  await expect(bruno.getByRole('listitem').filter({ hasText: 'Carla Blu' }).getByText('DSA/BES', { exact: true })).toBeVisible()
+  await expect(bruno.getByRole('listitem').filter({ hasText: 'Carla Blu' })).toBeVisible()
+  await expect(bruno.getByRole('listitem').filter({ hasText: 'Carla Blu' }).getByText('DSA/BES', { exact: true })).toHaveCount(0)
 
   // Storia tutti i giorni, 1 per lezione
   await anna.goto(`${classe}/configura`)
@@ -266,12 +267,16 @@ test('DSA/BES: si sceglie il giorno, in lista resta fisso; il badge si può nasc
   await expect(anna.getByText('Con la data fissa (DSA/BES), non si spostano')).toBeVisible()
   await anna.getByRole('button', { name: 'Annulla', exact: true }).click()
 
-  // Carla nasconde il badge: Bruno non lo vede più (la data fissa resta), Anna sì
+  // Carla mostra il badge e poi lo nasconde di nuovo: Bruno lo vede solo nel frattempo (la data fissa resta), Anna sempre
   const rigaPerBruno = bruno.getByRole('list', { name: 'Ordine delle interrogazioni' }).getByRole('listitem').filter({ hasText: 'Carla Blu' })
-  await expect(rigaPerBruno.getByText('DSA/BES', { exact: true })).toBeVisible()
+  await expect(rigaPerBruno).toContainText('data fissa')
+  await expect(rigaPerBruno.getByText('DSA/BES', { exact: true })).toHaveCount(0)
   await carla.goto('/impostazioni')
   const interruttore = carla.getByRole('switch', { name: /Mostra il badge ai compagni/ })
-  await expect(interruttore).toBeChecked()
+  await expect(interruttore).not.toBeChecked()
+  await interruttore.check()
+  await expect(carla.getByText('Il badge DSA/BES ora è visibile ai compagni')).toBeVisible()
+  await expect(rigaPerBruno.getByText('DSA/BES', { exact: true })).toBeVisible()
   await interruttore.uncheck()
   await expect(carla.getByText('Il badge DSA/BES ora è nascosto ai compagni')).toBeVisible()
   await expect(rigaPerBruno.getByText('DSA/BES', { exact: true })).toHaveCount(0)

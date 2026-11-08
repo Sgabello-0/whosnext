@@ -23,7 +23,7 @@ Non abbiamo accesso alla password, a Gmail, a Google Drive, al calendario o ad a
 - se attivi le notifiche push, un identificativo tecnico del dispositivo;
 - i feedback che invii dalle Impostazioni, insieme al tuo nome e al tuo indirizzo email (arrivano per email a chi ha creato WhosNext).
 
-Il capoclasse o il vice possono assegnare un'indicazione "DSA/BES" ad alcuni studenti. Questa indicazione serve solo a permettere loro di scegliere il giorno della propria interrogazione. La vedono sempre il capoclasse, il vice e lo studente interessato; i compagni e i professori della classe la vedono solo se lo studente la lascia visibile (si può nascondere in qualsiasi momento dalle Impostazioni). Anche con l'indicazione nascosta, nella lista lo studente compare nel giorno che ha scelto.
+Il capoclasse o il vice possono assegnare un'indicazione "DSA/BES" ad alcuni studenti. Questa indicazione serve solo a permettere loro di scegliere il giorno della propria interrogazione. La vedono sempre il capoclasse, il vice e lo studente interessato; i compagni e i professori della classe la vedono solo se lo studente sceglie di mostrarla dalle Impostazioni (di base è nascosta). Anche con l'indicazione nascosta, nella lista lo studente compare nel giorno che ha scelto.
 
 ## Perché li usiamo
 

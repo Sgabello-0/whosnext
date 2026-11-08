@@ -191,7 +191,7 @@ export default function AdminClasse() {
         <Scheda
           titolo={`Studenti (${studenti.length})`}
           icona={Users}
-          sottotitolo="Con il badge DSA/BES lo studente sceglie il giorno dell'interrogazione. Lo vede tutta la classe, a meno che lo studente non lo nasconda dalle Impostazioni."
+          sottotitolo="Con il badge DSA/BES lo studente sceglie il giorno dell'interrogazione. Lo vedono solo capoclasse, vice e lo studente, che può decidere di mostrarlo alla classe dalle Impostazioni."
         >
           <ListaMembri membri={studenti} mioUid={io.uid} dsa={dsa} mostraEmail azioni={azioniStudente} />
         </Scheda>

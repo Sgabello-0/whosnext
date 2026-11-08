@@ -1,5 +1,7 @@
 import type { Membro, Ruolo } from './tipi'
 
+const PRIORITA: Record<Ruolo, number> = { capo: 0, vice: 1, studente: 2, docente: 3 }
+
 const PARTICELLE = new Set(['de', 'di', 'del', 'dello', 'della', 'dei', 'degli', 'delle', 'da', 'dal', 'dalla', 'lo', 'la', 'li', 'le', 'van', 'von'])
 
 /** "Cognome Nome" per ordinare: il cognome è l'ultima parola, con le particelle che lo precedono ("Mario De Rossi" → De Rossi). */
@@ -15,10 +17,13 @@ export function confrontaCognomi(a: string, b: string): number {
   return chiaveCognome(a).localeCompare(chiaveCognome(b), 'it', { sensitivity: 'base' })
 }
 
-/** Divide i membri in studenti e docenti, in ordine di cognome. I docenti non fanno parte delle liste delle interrogazioni. */
+/**
+ * Divide i membri in studenti (capo, poi vice, poi gli altri per cognome) e docenti (per cognome).
+ * I docenti non fanno parte delle liste delle interrogazioni.
+ */
 export function dividiMembri(membri: Membro[]): { studenti: Membro[]; docenti: Membro[] } {
   const perCognome = (a: Membro, b: Membro) => confrontaCognomi(a.nome, b.nome)
-  const studenti = membri.filter((m) => m.ruolo !== 'docente').sort(perCognome)
+  const studenti = membri.filter((m) => m.ruolo !== 'docente').sort((a, b) => PRIORITA[a.ruolo] - PRIORITA[b.ruolo] || perCognome(a, b))
   const docenti = membri.filter((m) => m.ruolo === 'docente').sort(perCognome)
   return { studenti, docenti }
 }

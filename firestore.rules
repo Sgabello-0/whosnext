@@ -286,7 +286,7 @@ service cloud.firestore {
 
       // ───── Badge DSA/BES ─────
       // dsa/{uid} → { impostatoDa, quando, visibile } esiste se lo studente ha il badge.
-      // Lo vedono capo, vice e il diretto interessato; tutta la classe se lo studente lo lascia visibile.
+      // Lo vedono capo, vice e il diretto interessato; tutta la classe solo se lo studente sceglie di mostrarlo.
 
       match /dsa/{u} {
         allow read: if isMembro(c) && (
@@ -299,7 +299,8 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['impostatoDa', 'quando', 'visibile'])
           && request.resource.data.impostatoDa == request.auth.uid
           && request.resource.data.quando == request.time
-          && request.resource.data.get('visibile', false) is bool;
+          // nasce nascosto: mostrarlo lo decide solo lo studente
+          && request.resource.data.get('visibile', false) == false;
         // Solo il diretto interessato decide se mostrarlo
         allow update: if isMembro(c) && u == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['visibile'])

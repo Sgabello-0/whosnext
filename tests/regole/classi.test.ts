@@ -366,9 +366,23 @@ describe('badge DSA/BES', () => {
     await assertFails(impostaDSA(dbDi(env, anna), classId, 'carla', true, 'bruno'))
   })
 
-  it('visibile: lo vede tutta la classe (anche i docenti); chi è fuori no', async () => {
+  it('di base è nascosto, e capo e vice non possono farlo nascere visibile', async () => {
     const { classId } = await classeDiProva()
     await impostaDSA(dbDi(env, anna), classId, 'carla', true, 'anna')
+    await assertFails(getDoc(rifDSAMembro(dbDi(env, bruno), classId, 'carla')))
+    await assertFails(getDoc(rifDSAMembro(dbDi(env, rossi), classId, 'carla')))
+    expect((await getDocs(query(rifDSA(dbDi(env, bruno), classId), where('visibile', '==', true)))).size).toBe(0)
+    await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, carla), classId, 'carla')))
+    await assertSucceeds(getDocs(rifDSA(dbDi(env, anna), classId)))
+    await assertFails(
+      setDoc(rifDSAMembro(dbDi(env, anna), classId, 'bruno'), { impostatoDa: 'anna', quando: serverTimestamp(), visibile: true }),
+    )
+  })
+
+  it('se lo studente lo mostra: lo vede tutta la classe (anche i docenti); chi è fuori no', async () => {
+    const { classId } = await classeDiProva()
+    await impostaDSA(dbDi(env, anna), classId, 'carla', true, 'anna')
+    await assertSucceeds(mostraMioDSA(dbDi(env, carla), [classId], 'carla', true))
     await assertSucceeds(getDocs(rifDSA(dbDi(env, anna), classId)))
     await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, carla), classId, 'carla')))
     await assertSucceeds(getDoc(rifDSAMembro(dbDi(env, bruno), classId, 'carla')))
@@ -382,6 +396,7 @@ describe('badge DSA/BES', () => {
   it('nascosto dal diretto interessato: lo vedono solo capo, vice e lui', async () => {
     const { classId } = await classeDiProva()
     await impostaDSA(dbDi(env, anna), classId, 'carla', true, 'anna')
+    await assertSucceeds(mostraMioDSA(dbDi(env, carla), [classId], 'carla', true))
     await assertSucceeds(mostraMioDSA(dbDi(env, carla), [classId], 'carla', false))
     await assertFails(getDoc(rifDSAMembro(dbDi(env, bruno), classId, 'carla')))
     await assertFails(getDoc(rifDSAMembro(dbDi(env, rossi), classId, 'carla')))
