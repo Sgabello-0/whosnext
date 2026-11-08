@@ -22,6 +22,7 @@ function titoloMese(anno: number, mese: number): string {
 
 /** Chi tocca quel giorno: "tu" in evidenza, chi è già stato interrogato barrato. */
 function Persone({ v, brevi }: { v: VoceGiorno; brevi: boolean }) {
+  if (v.nota) return <span className="italic">{v.nota === 'lista-da-generare' ? 'Lista da generare' : 'Da definire'}</span>
   const nomi = brevi ? nomiBrevi(v.persone.map((p) => p.nome)) : v.persone.map((p) => p.nome)
   return (
     <>
@@ -43,7 +44,6 @@ export function CalendarioInterrogazioni() {
   const oggi = oggiISO(adesso)
   const [mese, setMese] = useState({ anno: adesso.getFullYear(), mese: adesso.getMonth() })
   const giorni = vociPerGiorno(osservate, momentoLocale(adesso))
-  if (giorni.size === 0) return null
 
   const caselle = caselleMese(mese.anno, mese.mese)
   const delMese = caselle.filter((d): d is string => !!d && giorni.has(d))
@@ -64,6 +64,11 @@ export function CalendarioInterrogazioni() {
       sottotitolo="In evidenza i giorni in cui tocca a te. Le date sono stimate e si aggiornano da sole."
       azioni={navigazione}
     >
+      {giorni.size === 0 && (
+        <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">
+          Ancora nessuna interrogazione: appena il capoclasse ne crea una, le date compaiono qui.
+        </p>
+      )}
       {desktop ? (
         <div role="group" aria-label={`Calendario di ${titoloMese(mese.anno, mese.mese)}`} className="grid grid-cols-7 gap-1.5">
           {INTESTAZIONI.map((g) => (
@@ -114,7 +119,7 @@ export function CalendarioInterrogazioni() {
           })}
         </div>
       ) : delMese.length === 0 ? (
-        <p className="text-sm text-slate-600 dark:text-slate-400">Nessuna interrogazione prevista in questo mese.</p>
+        giorni.size > 0 && <p className="text-sm text-slate-600 dark:text-slate-400">Nessuna interrogazione prevista in questo mese.</p>
       ) : (
         <ol className="space-y-2" aria-label={`Agenda di ${titoloMese(mese.anno, mese.mese)}`}>
           {delMese.map((d) => {

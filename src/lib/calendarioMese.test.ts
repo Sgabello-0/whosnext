@@ -37,9 +37,23 @@ describe('calendario del mese', () => {
     const voci = vociPerGiorno([altra, mia], ADESSO).get('2026-11-03')!
     expect(voci.map((v) => v.materia)).toEqual(['Storia', 'Arte'])
     expect(voci[0]!.persone.map((p) => p.uid)).toEqual(['io', 'a'])
-    expect(vociPerGiorno([interr({ stato: 'raccolta' })], ADESSO).size).toBe(0)
     expect(vociPerGiorno([interr({ lista: undefined })], ADESSO).size).toBe(0)
-    expect(vociPerGiorno([interr({ perLezione: null })], ADESSO).size).toBe(0)
+  })
+  it('lista non ancora generata: le lezioni possibili, senza nomi', () => {
+    const g = vociPerGiorno([interr({ stato: 'raccolta', scadenza: new Date(2026, 10, 3, 9, 0).getTime() })], ADESSO)
+    expect(g.get('2026-11-03')![0]).toMatchObject({ persone: [], mia: false, nota: 'lista-da-generare' })
+    expect(g.size).toBe(15)
+    // il giorno scelto da chi ha il badge è già suo
+    const dsa = vociPerGiorno(
+      [interr({ stato: 'raccolta', scadenza: new Date(2026, 10, 3, 9, 0).getTime(), miaScelta: { scelta: 'data', dataDSA: '2026-11-05' } })],
+      ADESSO,
+    )
+    expect(dsa.get('2026-11-05')![0]).toMatchObject({ mia: true, nota: null })
+  })
+  it('senza numero per lezione: le lezioni possibili; chi ha la data fissa resta nel suo giorno', () => {
+    const g = vociPerGiorno([interr({ perLezione: null, lista: { ordine: ['a'], fissi: { io: '2026-11-05' }, interrogati: {}, generata: null } })], ADESSO)
+    expect(g.get('2026-11-03')![0]).toMatchObject({ persone: [], nota: 'non-stimabile' })
+    expect(g.get('2026-11-05')![0]).toMatchObject({ mia: true, nota: null })
   })
   it('nomi brevi: l\'iniziale del cognome solo se serve', () => {
     expect(nomiBrevi(['Anna Verdi', 'Bruno Neri'])).toEqual(['Anna', 'Bruno'])

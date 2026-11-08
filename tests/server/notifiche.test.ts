@@ -107,7 +107,7 @@ describe('avvisi', () => {
     expect(await avvisaListaPronta(db, p, R, LUNEDI_SERA)).toBe(3)
     expect(push.map((x) => x.tokens)).toEqual([['token-anna'], ['token-carla', 'scaduto']]) // Bruno ha spento le push
     expect(push[0]!.n).toMatchObject({
-      titolo: 'Lista generata: Storia – Orale',
+      titolo: 'Storia – Orale',
       testo: 'Sei il n° 1 di 3. Stimata: Martedì 10/11.',
       percorso: '/classe/c1/materia/s1/interrogazione/i1',
     })

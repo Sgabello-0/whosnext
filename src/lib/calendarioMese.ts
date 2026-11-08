@@ -2,9 +2,9 @@
  * Il calendario delle interrogazioni: per ogni giorno, quali interrogazioni sono previste e di chi.
  * Logica pura: le date sono le stesse della lista (programma.ts).
  */
-import type { DataISO, Momento } from './calendar'
+import { momentoLocale, type DataISO, type Momento } from './calendar'
 import type { InterrogazioneOsservata } from './daFare'
-import { programmaLista } from './programma'
+import { dateDisponibili, programmaLista } from './programma'
 
 export type PersonaGiorno = { uid: string; nome: string; io: boolean; fatto: boolean }
 
@@ -19,6 +19,8 @@ export type VoceGiorno = {
   persone: PersonaGiorno[]
   /** in questa voce c'è anche chi guarda */
   mia: boolean
+  /** quando non si sa ancora chi tocca: lista non generata, o numero per lezione non indicato */
+  nota: 'lista-da-generare' | 'non-stimabile' | null
 }
 
 /** Nome breve: il primo nome, con l'iniziale del cognome se due persone della stessa lista si chiamano uguale. */
@@ -34,29 +36,45 @@ export function nomiBrevi(nomi: readonly string[]): string[] {
   })
 }
 
-/** Tutte le interrogazioni con la lista, giorno per giorno. Ogni giorno: prima le mie, poi per materia. */
+/** Quante lezioni mostrare quando non si sa chi tocca. */
+const LEZIONI_SENZA_NOMI = 15
+
+/**
+ * Tutte le interrogazioni in corso, giorno per giorno. Ogni giorno: prima le mie, poi per materia.
+ * Con la lista: chi tocca in quel giorno. Senza lista o senza numero per lezione: le lezioni possibili, senza nomi.
+ */
 export function vociPerGiorno(osservate: readonly InterrogazioneOsservata[], adesso: Momento): Map<DataISO, VoceGiorno[]> {
   const giorni = new Map<DataISO, VoceGiorno[]>()
+
   for (const d of osservate) {
-    if (d.stato !== 'lista' || !d.lista) continue
-    const { righe } = programmaLista({
-      ordine: d.lista.ordine,
-      fissi: d.lista.fissi,
-      interrogati: d.lista.interrogati,
-      perLezione: d.perLezione,
-      giorni: d.giorni,
-      subjectId: d.subjectId,
-      cal: d.cal,
-      adesso,
-      creata: d.creata,
-    })
     const perData = new Map<DataISO, PersonaGiorno[]>()
-    for (const r of righe) {
-      const data = r.interrogato ?? (r.stima?.tipo === 'data' ? r.stima.data : null)
-      if (!data) continue
-      const persona = { uid: r.uid, nome: d.nomi?.[r.uid] ?? 'Ex membro', io: r.uid === d.mioUid, fatto: !!r.interrogato }
-      perData.set(data, [...(perData.get(data) ?? []), persona])
-    }
+    let nota: VoceGiorno['nota'] = null
+    const base = { giorni: d.giorni, subjectId: d.subjectId, cal: d.cal, adesso, creata: d.creata, perLezione: d.perLezione }
+    const lezioni = (quante: number) =>
+      dateDisponibili({ ...base, numeroStudenti: 1, quante, scadenza: d.stato === 'raccolta' ? momentoLocale(new Date(d.scadenza)) : null })
+
+    if (d.stato === 'raccolta') {
+      nota = 'lista-da-generare'
+      for (const data of lezioni(LEZIONI_SENZA_NOMI)) perData.set(data, [])
+      // il giorno scelto da chi ha il badge DSA/BES è già suo
+      if (d.miaScelta?.scelta === 'data' && d.miaScelta.dataDSA) {
+        perData.set(d.miaScelta.dataDSA, [{ uid: d.mioUid, nome: d.nomi?.[d.mioUid] ?? 'Tu', io: true, fatto: false }])
+      }
+    } else if (d.stato === 'lista' && d.lista) {
+      const { righe } = programmaLista({ ...base, ordine: d.lista.ordine, fissi: d.lista.fissi, interrogati: d.lista.interrogati })
+      for (const r of righe) {
+        const data = r.interrogato ?? (r.stima?.tipo === 'data' ? r.stima.data : null)
+        if (!data) continue
+        const persona = { uid: r.uid, nome: d.nomi?.[r.uid] ?? 'Ex membro', io: r.uid === d.mioUid, fatto: !!r.interrogato }
+        perData.set(data, [...(perData.get(data) ?? []), persona])
+      }
+      // senza numero per lezione non si sa chi tocca: restano le lezioni possibili
+      if (righe.some((r) => !r.interrogato && (r.stima?.tipo === 'non-disponibile' || r.stima?.tipo === 'lezioni'))) {
+        nota = 'non-stimabile'
+        for (const data of lezioni(LEZIONI_SENZA_NOMI)) if (!perData.has(data)) perData.set(data, [])
+      }
+    } else continue
+
     for (const [data, persone] of perData) {
       const voce: VoceGiorno = {
         chiave: d.chiave,
@@ -68,6 +86,7 @@ export function vociPerGiorno(osservate: readonly InterrogazioneOsservata[], ade
         classe: d.nomeClasse,
         persone,
         mia: persone.some((p) => p.io),
+        nota: persone.length === 0 ? nota : null,
       }
       giorni.set(data, [...(giorni.get(data) ?? []), voce])
     }

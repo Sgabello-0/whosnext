@@ -43,7 +43,7 @@ export function nuovaInterrogazione(o: Interr & { scadenza: string; dsa: boolean
 
 /** posizione null = data scelta (DSA/BES) */
 export function listaPronta(o: Interr & { posizione: number | null; totale: number; stima: string; link: string }): Notifica {
-  const titolo = `Lista generata: ${o.materia} – ${o.nome}`
+  const titolo = `${o.materia} – ${o.nome}`
   const dove = o.posizione === null ? 'Hai la data che hai scelto' : `Sei il n° ${o.posizione} di ${o.totale}`
   const testo = `${dove}. ${o.stima}.`
   return {
