@@ -110,11 +110,11 @@ export function cambioPosto(o: Interr & { uscito: boolean; posizione: number | n
   return { titolo: 'Il tuo posto è cambiato', testo: `${o.materia} – ${o.nome}: ${dove}`, percorso: o.percorso }
 }
 
-/** A capoclasse e vice: uno studente ha detto dopo il termine che non ci sarà. */
-export function assenzaInRitardo(o: Interr & { chi: string; giorno: DataISO; nuova: DataISO }): Notifica {
+/** A capoclasse e vice: uno studente ha detto dopo il termine che non ci sarà, o ha saltato. */
+export function assenzaInRitardo(o: Interr & { chi: string; giorno: DataISO; nuova: DataISO; saltato: boolean }): Notifica {
   const g = (d: DataISO) => formattaGiorno(d).toLowerCase()
   return {
-    titolo: `${nomeBreve(o.chi)} non ci sarà: avviso in ritardo`,
+    titolo: o.saltato ? `${nomeBreve(o.chi)} ha saltato l'interrogazione` : `${nomeBreve(o.chi)} non ci sarà: avviso in ritardo`,
     testo: `${o.materia} – ${o.nome}: assente ${g(o.giorno)}, passa a ${g(o.nuova)}.`,
     percorso: o.percorso,
   }

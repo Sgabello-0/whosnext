@@ -159,7 +159,7 @@ export async function gestisciImprevisto(db: Firestore, r: Rif, i: Imprevisto, m
  * "Non ci sarò": lo studente esce dall'ordine e prende una data fissa, `nuova`.
  * Vale per chiunque sia in lista e non ancora interrogato; chi avvisare lo decide il server.
  */
-export async function dichiaraAssenza(db: Firestore, r: Rif, uid: string, data: string, nuova: string): Promise<void> {
+export async function dichiaraAssenza(db: Firestore, r: Rif, uid: string, data: string, nuova: string, ritardo = false): Promise<void> {
   if (!dataValida(data) || !dataValida(nuova)) throw new ErroreApp('dati-non-validi', 'Scegli il giorno.')
   const { lista, stato } = await leggi(db, r)
   const fissi = lista.fissi ?? {}
@@ -171,12 +171,56 @@ export async function dichiaraAssenza(db: Firestore, r: Rif, uid: string, data: 
   batch.update(listaDi(db, r), {
     ordine: lista.ordine.filter((u) => u !== uid),
     fissi: { ...fissi, [uid]: nuova },
+    ...(ritardo ? { ritardi: conUnRitardo(lista, uid) } : {}),
     aggiornato: serverTimestamp(),
     aggiornatoDa: uid,
     ultimaModifica: voce,
   })
   await batch.commit()
   avvisaServer('cambio-lista', r, voce)
+}
+
+const conUnRitardo = (l: DocLista, uid: string) => ({ ...l.ritardi, [uid]: (l.ritardi?.[uid] ?? 0) + 1 })
+
+/**
+ * "Ha saltato" (solo capo e vice): come dire "non ci sarò" dopo il termine.
+ * Restituisce la funzione che annulla, per il pulsante "Annulla".
+ */
+export async function segnaSaltato(db: Firestore, r: Rif, uid: string, data: string, nuova: string, mioUid: string): Promise<() => Promise<void>> {
+  if (!dataValida(data) || !dataValida(nuova)) throw new ErroreApp('dati-non-validi', 'Indica il giorno della lezione.')
+  const { lista } = await leggi(db, r)
+  const fissi = lista.fissi ?? {}
+  if (lista.interrogati[uid] || !(lista.ordine.includes(uid) || uid in fissi)) {
+    throw new ErroreApp('dati-non-validi', 'Questa persona non è più da interrogare.')
+  }
+  const batch = writeBatch(db)
+  const voce = aggiungiVoceStorico(db, batch, r, mioUid, 'saltato', { uid, data, nuova, prima: fotografia(lista) })
+  batch.update(listaDi(db, r), {
+    ordine: lista.ordine.filter((u) => u !== uid),
+    fissi: { ...fissi, [uid]: nuova },
+    ritardi: conUnRitardo(lista, uid),
+    aggiornato: serverTimestamp(),
+    aggiornatoDa: mioUid,
+    ultimaModifica: voce,
+  })
+  await batch.commit()
+  avvisaServer('cambio-lista', r, voce)
+
+  return async () => {
+    const { lista: adesso } = await leggi(db, r)
+    const annullo = writeBatch(db)
+    const v = aggiungiVoceStorico(db, annullo, r, mioUid, 'ripristinato', { uid, prima: fotografia(adesso) })
+    annullo.update(listaDi(db, r), {
+      ordine: lista.ordine,
+      fissi,
+      ritardi: lista.ritardi ?? {},
+      aggiornato: serverTimestamp(),
+      aggiornatoDa: mioUid,
+      ultimaModifica: v,
+    })
+    await annullo.commit()
+    avvisaServer('cambio-lista', r, v)
+  }
 }
 
 /** Lo studente segnala di essere stato interrogato; capo o vice confermeranno. */

@@ -593,6 +593,21 @@ describe('cambi di posto', () => {
     expect(push.map((x) => x.tokens[0])).toEqual(['token-carla'])
   })
 
+  it('"ha saltato": lo studente, chi finisce sopra e gli altri capo e vice', async () => {
+    await classe({ ...TRE, dino: { ruolo: 'vice', nome: 'Dino Gialli' } }, { stato: 'lista' })
+    await db.doc(`${INTERR}/list/current`).set({ ordine: ['anna', 'carla'], fissi: { bruno: '2026-11-17' }, interrogati: {}, generataDa: 'anna' })
+    await db.doc(`${INTERR}/storico/v4`).set({
+      tipo: 'saltato',
+      chi: 'anna',
+      quando: IL('2026-11-09'),
+      dettagli: { uid: 'bruno', data: '2026-11-12', nuova: '2026-11-17', prima: PRIMA },
+    })
+    const { p, push } = postinoFinto()
+    expect(await avvisaCambioLista(db, p, R, 'v4', 'anna', LUNEDI_SERA)).toBe(3)
+    expect(push.map((x) => x.tokens[0]).sort()).toEqual(['token-bruno', 'token-carla', 'token-dino'])
+    expect(push.find((x) => x.tokens[0] === 'token-dino')!.n.titolo).toBe("Bruno ha saltato l'interrogazione")
+  })
+
   it('modifica della lista: avvisa chi cambia posto, non chi l\'ha fatta', async () => {
     await conLista(['anna', 'carla', 'bruno'])
     await db.doc(`${INTERR}/storico/v2`).set({ tipo: 'riordino', chi: 'anna', quando: IL('2026-11-09'), dettagli: { spostati: [], prima: PRIMA } })

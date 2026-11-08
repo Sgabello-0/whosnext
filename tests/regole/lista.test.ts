@@ -15,7 +15,7 @@ import {
   rifSegnalazioni,
   rifStorico,
 } from '../../src/lib/configurazione'
-import { dichiaraAssenza, gestisciImprevisto, riordinaLista, segnaInterrogati, segnalaInterrogato, togliInterrogato, togliSegnalazione } from '../../src/lib/gestioneLista'
+import { dichiaraAssenza, gestisciImprevisto, riordinaLista, segnaSaltato, segnaInterrogati, segnalaInterrogato, togliInterrogato, togliSegnalazione } from '../../src/lib/gestioneLista'
 import { creaSenzaLista, generaEPubblicaLista, salvaPreferenza } from '../../src/lib/preferenze'
 import { avviaAmbiente, dbDi, UTENTI } from './aiuti'
 
@@ -333,6 +333,30 @@ describe('"non ci sarò"', () => {
     const { r, ordine } = await listaPronta()
     await segnaInterrogati(dbDi(env, anna), r, ['carla'], '2026-11-03', 'anna')
     await assertFails(scrivi(r, carla, { ordine: ordine.filter((x) => x !== 'carla'), fissi: { carla: '2026-11-17' } }))
+  })
+  it('dopo il termine il contatore sale di uno, e solo il proprio', async () => {
+    const { r, ordine } = await listaPronta()
+    const senza = ordine.filter((x) => x !== 'carla')
+    await assertFails(scrivi(r, carla, { ordine: senza, fissi: { carla: '2026-11-17' }, ritardi: { carla: 5 } }))
+    await assertFails(scrivi(r, carla, { ordine: senza, fissi: { carla: '2026-11-17' }, ritardi: { carla: 1, bruno: 1 } }))
+    await assertSucceeds(dichiaraAssenza(dbDi(env, carla), r, 'carla', '2026-11-10', '2026-11-17', true))
+    await assertSucceeds(dichiaraAssenza(dbDi(env, carla), r, 'carla', '2026-11-17', '2026-11-24', true))
+    expect((await lista(r)).ritardi).toEqual({ carla: 2 })
+  })
+  it('"ha saltato": solo capo e vice; si può annullare', async () => {
+    const { r } = await listaPronta()
+    await assertFails(segnaSaltato(dbDi(env, carla), r, 'bruno', '2026-11-10', '2026-11-17', 'carla'))
+    await assertFails(segnaSaltato(dbDi(env, bianchi), r, 'bruno', '2026-11-10', '2026-11-17', 'bianchi'))
+    const annulla = await assertSucceeds(segnaSaltato(dbDi(env, bruno), r, 'carla', '2026-11-10', '2026-11-17', 'bruno'))
+    let l = await lista(r)
+    expect(l.ordine).not.toContain('carla')
+    expect(l.fissi).toEqual({ carla: '2026-11-17' })
+    expect(l.ritardi).toEqual({ carla: 1 })
+    await assertSucceeds(annulla())
+    l = await lista(r)
+    expect(l.ordine).toContain('carla')
+    expect(l.fissi).toEqual({})
+    expect(l.ritardi).toEqual({})
   })
   it('senza storico non passa', async () => {
     const { r, ordine } = await listaPronta()

@@ -96,6 +96,8 @@ export type DocLista = {
   fissi?: Record<string, string>
   /** uid → data (AAAA-MM-GG) in cui è stato interrogato */
   interrogati: Record<string, string>
+  /** uid → quante volte ha detto "non ci sarò" dopo il termine o ha saltato l'interrogazione */
+  ritardi?: Record<string, number>
   generata?: Timestamp
   generataDa: string
   /** id dell'ultima voce di storico */
@@ -123,7 +125,7 @@ export type DocSegnalazione = {
 }
 
 export type DocStorico = {
-  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato' | 'scambio' | 'aggiunto' | 'tolto' | 'fissato' | 'liberato' | 'assenza'
+  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato' | 'scambio' | 'aggiunto' | 'tolto' | 'fissato' | 'liberato' | 'assenza' | 'saltato' | 'ripristinato'
   chi: string
   quando?: Timestamp
   dettagli: {

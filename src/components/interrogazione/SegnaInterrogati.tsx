@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { db } from '../../lib/firebase'
-import { oggiISO, type Calendario } from '../../lib/calendar'
+import { formattaGiorno, oggiISO, type Calendario } from '../../lib/calendar'
 import { messaggioErrore } from '../../lib/errori'
-import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
+import { segnaInterrogati, segnaSaltato, togliInterrogato } from '../../lib/gestioneLista'
 import { nonInterrogati, propostaLezione, ultimaLezione } from '../../lib/lista'
+import type { DatiProgramma } from '../../lib/programma'
+import { primaDataLibera } from '../../lib/spostamenti'
 import type { Interrogazione, Membro } from '../../lib/tipi'
 import { Bottone, CLASSE_INPUT, Etichetta, Riquadro, Scheda } from '../ui'
-import { ListChecks } from 'lucide-react'
+import { ListChecks, TriangleAlert } from 'lucide-react'
 import { useAvvisi } from '../Avvisi'
+import { useConferma } from '../Conferma'
 
 type Props = {
   r: { classId: string; subjectId: string; interrogazioneId: string }
@@ -21,6 +24,7 @@ type Props = {
   membri: Map<string, Membro>
   cal: Calendario
   mioUid: string
+  programma: DatiProgramma
 }
 
 /**
@@ -42,6 +46,7 @@ export function SegnaInterrogati(p: Props) {
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const avvisi = useAvvisi()
+  const chiedi = useConferma()
 
   const mancanti = [...nonInterrogati(p.ordine, p.interrogati), ...nonInterrogati(Object.keys(p.fissi), p.interrogati)]
   if (mancanti.length === 0) return null
@@ -77,6 +82,31 @@ export function SegnaInterrogati(p: Props) {
     }
   }
 
+  /** Non si è presentato: come dire "non ci sarò" dopo il termine. */
+  async function saltato(u: string) {
+    if (!db) return
+    const d = db
+    const nuova = primaDataLibera(p.programma, u, data)
+    if (!nuova) {
+      setErrore('Non ci sono altre lezioni disponibili.')
+      return
+    }
+    const giorno = formattaGiorno(nuova).toLowerCase()
+    const ok = await chiedi({
+      titolo: `${nome(u)} ha saltato l'interrogazione?`,
+      testo: `Passa a ${giorno}, con data fissa, e accanto al nome compare il segnale di attenzione finché non viene interrogato.`,
+      pulsante: 'Ha saltato',
+    })
+    if (!ok) return
+    setErrore(null)
+    try {
+      const annulla = await segnaSaltato(d, p.r, u, data, nuova, p.mioUid)
+      avvisi.mostra(`${nome(u)} passa a ${giorno}`, { annulla })
+    } catch (e) {
+      setErrore(messaggioErrore(e))
+    }
+  }
+
   const quanti = elenco.filter((u) => scelti.has(u)).length
 
   return (
@@ -89,12 +119,12 @@ export function SegnaInterrogati(p: Props) {
           <p>
             {p.senzaLista
               ? 'Spunta chi è stato interrogato.'
-              : 'Interrogati previsti: togli la spunta a chi era assente (resterà in testa alla lista).'}
+              : 'Interrogati previsti: togli la spunta a chi era assente (resterà in testa alla lista). Se doveva esserci e non si è presentato, usa "Ha saltato".'}
           </p>
           <ul className="space-y-0.5">
             {elenco.map((u) => (
-              <li key={u}>
-                <label className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60">
+              <li key={u} className="flex flex-wrap items-center gap-1">
+                <label className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60">
                   <input
                     type="checkbox"
                     checked={scelti.has(u)}
@@ -103,6 +133,11 @@ export function SegnaInterrogati(p: Props) {
                   />
                   {nome(u)}
                 </label>
+                {!p.senzaLista && (
+                  <Bottone variante="piccolo" icona={TriangleAlert} aria-label={`Ha saltato ${nome(u)}`} disabled={inCorso || !data} onClick={() => saltato(u)}>
+                    Ha saltato
+                  </Bottone>
+                )}
               </li>
             ))}
           </ul>

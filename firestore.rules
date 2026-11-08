@@ -443,7 +443,7 @@ service cloud.firestore {
           }
 
           // ───── Lista ─────
-          // list/current → { ordine[uid], fissi{uid: data}, interrogati{uid: data}, generata, generataDa } (la vedono tutti)
+          // list/current → { ordine[uid], fissi{uid: data}, interrogati{uid: data}, ritardi{uid: n}, generata, generataDa } (la vedono tutti)
           // fissi: DSA/BES con la data scelta, fuori dall'ordine
           // list/rapporto → rapporto di soddisfazione (solo capo e vice)
 
@@ -489,7 +489,8 @@ service cloud.firestore {
             // Imprevisti (solo capo e vice): aggiungere o togliere persone, fissare o togliere una data.
             // Nessuno compare due volte, nessuno è sia in ordine sia con la data fissa, e resta traccia nello storico.
             allow update: if isCapoOVice(c) && documento == 'current'
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'fissi', 'interrogati', 'aggiornato', 'aggiornatoDa', 'ultimaModifica'])
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'fissi', 'interrogati', 'ritardi', 'aggiornato', 'aggiornatoDa', 'ultimaModifica'])
+              && request.resource.data.get('ritardi', {}) is map && request.resource.data.get('ritardi', {}).size() <= 200
               && request.resource.data.get('ultimaModifica', null) != resource.data.get('ultimaModifica', null)
               && voceStoricoNuova(request.resource.data.get('ultimaModifica', null))
               && request.resource.data.aggiornato == request.time
@@ -507,12 +508,19 @@ service cloud.firestore {
             allow update: if documento == 'current' && isMembro(c) && assenzaDichiarata();
             allow delete: if isCapoOVice(c) && !existsAfter(interrogazionePath(c, s, i));
 
+            // il proprio contatore può solo restare com'è o salire di uno; quelli degli altri non si toccano
+            function ritardoProprio(prima, dopo, io) {
+              return dopo == prima
+                || (dopo.diff(prima).affectedKeys().hasOnly([io]) && dopo[io] == prima.get(io, 0) + 1);
+            }
+
             function assenzaDichiarata() {
               let io = request.auth.uid;
               let prima = resource.data;
               let dopo = request.resource.data;
               let fissiPrima = prima.get('fissi', {});
-              return dopo.diff(prima).affectedKeys().hasOnly(['ordine', 'fissi', 'ultimaModifica', 'aggiornato', 'aggiornatoDa'])
+              return dopo.diff(prima).affectedKeys().hasOnly(['ordine', 'fissi', 'ritardi', 'ultimaModifica', 'aggiornato', 'aggiornatoDa'])
+                && ritardoProprio(prima.get('ritardi', {}), dopo.get('ritardi', {}), io)
                 && dopo.get('ultimaModifica', null) != prima.get('ultimaModifica', null)
                 && voceStoricoNuova(dopo.get('ultimaModifica', null))
                 && dopo.aggiornato == request.time
@@ -578,7 +586,8 @@ service cloud.firestore {
             allow read: if isMembro(c);
             allow create: if puoModificareListe(c)
               && request.resource.data.keys().hasOnly(['tipo', 'chi', 'quando', 'dettagli'])
-              && request.resource.data.tipo in ['generata', 'riordino', 'interrogati', 'annullato', 'aggiunto', 'tolto', 'fissato', 'liberato']
+              && request.resource.data.tipo in ['generata', 'riordino', 'interrogati', 'annullato', 'aggiunto', 'tolto', 'fissato', 'liberato', 'saltato', 'ripristinato']
+              && (!(request.resource.data.tipo in ['saltato', 'ripristinato']) || isCapoOVice(c))
               && request.resource.data.chi == request.auth.uid
               && request.resource.data.quando == request.time
               && request.resource.data.dettagli is map

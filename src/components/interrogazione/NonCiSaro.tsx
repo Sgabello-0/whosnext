@@ -43,7 +43,7 @@ export function NonCiSaro(p: { r: Rif; uid: string; programma: DatiProgramma; gi
     if (!ok) return
     setInCorso(true)
     try {
-      await dichiaraAssenza(d, p.r, p.uid, data, nuova)
+      await dichiaraAssenza(d, p.r, p.uid, data, nuova, ritardo)
       avvisi.mostra(`Spostato a ${minuscolo(nuova)}`)
     } catch (e) {
       avvisi.errore(messaggioErrore(e))

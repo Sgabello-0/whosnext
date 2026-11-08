@@ -309,6 +309,7 @@ const STILI_BADGE = {
   verde: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-100',
   ambra: 'bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-100',
   grigio: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  rosso: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-100',
 }
 
 export function Badge(props: { colore?: keyof typeof STILI_BADGE; children: ReactNode }) {

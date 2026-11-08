@@ -64,6 +64,12 @@ describe('chiSiSposta', () => {
     const dopo = con({ perLezione: 2, ordine: ['b', 'c', 'd'], fissi: { a: '2026-11-12' } })
     expect(chiSiSposta({ tipo: 'assenza', uid: 'a', chi: 'a', prima, dopo })).toEqual(['b', 'c'])
   })
+  it('"ha saltato": come sopra, e lo sa anche lui (se non l\'ha segnato da solo)', () => {
+    const prima = con({ perLezione: 2 })
+    const dopo = con({ perLezione: 2, ordine: ['b', 'c', 'd'], fissi: { a: '2026-11-12' } })
+    expect(chiSiSposta({ tipo: 'saltato', uid: 'a', chi: 'z', prima, dopo })).toEqual(['b', 'c', 'a'])
+    expect(chiSiSposta({ tipo: 'saltato', uid: 'a', chi: 'a', prima, dopo })).toEqual(['b', 'c'])
+  })
   it('modifica della lista: tutti quelli che cambiano posto, tranne chi la fa', () => {
     const prima = con({})
     const dopo = con({ ordine: ['c', 'a', 'b', 'd'] })

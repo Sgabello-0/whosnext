@@ -44,19 +44,20 @@ const posto = (r: RigaProgramma) => `${r.numero}|${r.fissa ?? ''}|${r.stima?.tip
 
 /**
  * Chi avvisare dopo una modifica della lista (mai chi l'ha fatta, mai chi è già stato interrogato).
- * - "Non ci sarò": chi era dopo lo studente e ora è prima di lui.
+ * - "Non ci sarò" e "ha saltato": chi era dopo lo studente e ora è prima di lui (se ha saltato, anche lui).
  * - Ogni altra modifica: chi ha cambiato numero o data, compreso chi è entrato o uscito dalla lista.
  */
 export function chiSiSposta(o: { tipo: string; uid?: string; chi: string; prima: Programma; dopo: Programma }): string[] {
-  if (o.tipo === 'assenza') {
+  if (o.tipo === 'assenza' || o.tipo === 'saltato') {
     const indici = new Map(o.prima.righe.map((r, i) => [r.uid, i]))
     const eraA = indici.get(o.uid ?? '')
     const oraA = o.dopo.righe.findIndex((r) => r.uid === o.uid)
     if (eraA === undefined || oraA < 0) return []
-    return o.dopo.righe
+    const sopra = o.dopo.righe
       .slice(0, oraA)
       .filter((r) => !r.interrogato && r.uid !== o.chi && (indici.get(r.uid) ?? -1) > eraA)
       .map((r) => r.uid)
+    return o.tipo === 'saltato' && o.uid && o.uid !== o.chi ? [...sopra, o.uid] : sopra
   }
   const prima = new Map(o.prima.righe.map((r) => [r.uid, r]))
   const dopo = new Map(o.dopo.righe.map((r) => [r.uid, r]))

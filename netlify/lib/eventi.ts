@@ -214,8 +214,8 @@ type VoceStorico = {
 }
 
 /**
- * Dopo una modifica della lista: a chi ha cambiato posto per mano d'altri e, se uno studente
- * ha detto "non ci sarò" dopo il termine, a capoclasse e vice. Solo se a chiederlo è chi l'ha fatta.
+ * Dopo una modifica della lista: a chi ha cambiato posto per mano d'altri e, se uno studente ha detto
+ * "non ci sarò" dopo il termine o ha saltato, a capoclasse e vice. Solo se a chiederlo è chi l'ha fatta.
  */
 export async function avvisaCambioLista(db: Firestore, postino: Postino, r: Rif, id: string, chiamante: string, adesso: Date) {
   const v = (await db.doc(`${percorsoDi(r)}/storico/${id}`).get()).data() as VoceStorico | undefined
@@ -254,14 +254,15 @@ export async function avvisaCambioLista(db: Firestore, postino: Postino, r: Rif,
     await manda(uid, `posto/${percorsoDi(r)}/${id}/${uid}`, n)
   }
 
-  if (v.tipo === 'assenza' && d.data && d.nuova && v.quando) {
+  if ((v.tipo === 'assenza' || v.tipo === 'saltato') && d.uid && d.data && d.nuova && v.quando) {
+    const saltato = v.tipo === 'saltato'
     const classe = (await db.doc(`classes/${r.classId}`).get()).data()
-    if (inRitardo(dataItalia(v.quando.toDate()), d.data, giorniAssenza(classe?.assenzaGiorni))) {
-      const chi = await nome(db, r.classId, chiamante)
+    if (saltato || inRitardo(dataItalia(v.quando.toDate()), d.data, giorniAssenza(classe?.assenzaGiorni))) {
+      const chi = await nome(db, r.classId, d.uid)
       const staff = await db.collection(`classes/${r.classId}/members`).where('ruolo', 'in', ['capo', 'vice']).get()
       for (const m of staff.docs) {
-        if (m.id === chiamante) continue
-        await manda(m.id, `assenza/${percorsoDi(r)}/${id}/${m.id}`, assenzaInRitardo({ ...interr, chi, giorno: d.data, nuova: d.nuova }))
+        if (m.id === chiamante || m.id === d.uid) continue
+        await manda(m.id, `assenza/${percorsoDi(r)}/${id}/${m.id}`, assenzaInRitardo({ ...interr, chi, giorno: d.data, nuova: d.nuova, saltato }))
       }
     }
   }

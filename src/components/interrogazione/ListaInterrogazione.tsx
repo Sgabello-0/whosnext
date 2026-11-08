@@ -12,7 +12,7 @@ import { segnaInterrogati, togliInterrogato } from '../../lib/gestioneLista'
 import { useDocumento } from '../../lib/hooks'
 import type { DocLista, DocRapporto, Interrogazione, Membro } from '../../lib/tipi'
 import { Avatar, Badge, Bottone, Caricamento, Colonne, Riquadro, Scheda, Soffietto } from '../ui'
-import { ArrowLeftRight, CalendarCheck, ChartPie, Check, Hourglass, ListOrdered, PartyPopper, Pencil, Undo2 } from 'lucide-react'
+import { ArrowLeftRight, CalendarCheck, ChartPie, Check, Hourglass, ListOrdered, PartyPopper, Pencil, TriangleAlert, Undo2 } from 'lucide-react'
 import { useConferma } from '../Conferma'
 import { annullaScambio, chiediScambio, richiestaInAttesa, validita } from '../../lib/scambi'
 import { PannelloScambi, useRifiutoAutomatico, useScambi } from './Scambi'
@@ -81,6 +81,7 @@ export function ListaInterrogazione(p: Props) {
 
   const { ordine, interrogati } = lista.dati
   const fissi = lista.dati.fissi ?? {}
+  const ritardi = lista.dati.ritardi ?? {}
   const perUid = new Map(p.membri.map((m) => [m.uid, m]))
   const datiProgramma: DatiProgramma = {
     ordine,
@@ -260,6 +261,7 @@ export function ListaInterrogazione(p: Props) {
             membri={perUid}
             cal={p.cal}
             mioUid={p.mioUid}
+            programma={datiProgramma}
           />
         </>
       )}
@@ -332,6 +334,7 @@ export function ListaInterrogazione(p: Props) {
                       {io && <Badge>tu</Badge>}
                       {p.dsa.has(uid) && <Badge colore="ambra">DSA/BES</Badge>}
                       {fissa && !quando && <Badge colore="viola">data fissa</Badge>}
+                      {!quando && (ritardi[uid] ?? 0) > 0 && <BadgeRitardo volte={ritardi[uid]!} />}
                       {quando && <Badge colore="verde">interrogato</Badge>}
                     </p>
                     <p className="text-xs text-slate-600 dark:text-slate-400">{quando ? formattaGiorno(quando) : stima(uid)}</p>
@@ -454,6 +457,19 @@ export function ListaInterrogazione(p: Props) {
         </>
       }
     />
+  )
+}
+
+/** Attenzione: ha detto dopo il termine che non ci sarebbe stato, o ha saltato. Dura finché non viene interrogato. */
+function BadgeRitardo({ volte }: { volte: number }) {
+  const testo = `Assente dopo la scadenza${volte > 1 ? `, ${volte} volte` : ''}`
+  return (
+    <span role="img" aria-label={testo} title={testo}>
+      <Badge colore="rosso">
+        <TriangleAlert aria-hidden className="size-3.5" />
+        {volte > 1 && <span className="ml-1 font-bold">{volte}</span>}
+      </Badge>
+    </span>
   )
 }
 

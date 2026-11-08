@@ -358,6 +358,17 @@ test('imprevisti: escludere prima, poi rimettere, fissare una data e togliere (s
   await expect(ordine.getByRole('listitem').filter({ hasText: 'Carla Blu' })).toContainText('data fissa')
   await expect(anna.getByRole('button', { name: 'Rimetti in lista Carla Blu' })).toBeVisible()
 
+  // Anna doveva esserci e non si è presentata: passa avanti, con il segnale di attenzione
+  const segnaleAnna = ordine.getByRole('listitem').filter({ hasText: 'Anna Verdi' }).getByRole('img', { name: /Assente dopo la scadenza/ })
+  await anna.getByRole('button', { name: 'Ha saltato Anna Verdi' }).click()
+  await conferma(anna, 'Ha saltato')
+  await expect(segnaleAnna).toHaveAccessibleName('Assente dopo la scadenza')
+  await anna.getByLabel('Interrogato anche qualcun altro?').selectOption({ label: 'Anna Verdi' })
+  await anna.getByRole('button', { name: 'Ha saltato Anna Verdi' }).click()
+  await conferma(anna, 'Ha saltato')
+  await expect(segnaleAnna).toHaveAccessibleName('Assente dopo la scadenza, 2 volte')
+  await expect(segnaleAnna).toContainText('2')
+
   // Imprevisto 3: Carla si ritira, la si toglie
   await anna.getByRole('button', { name: 'Togli dalla lista Carla Blu' }).click()
   await conferma(anna, 'Togli dalla lista')
@@ -371,6 +382,7 @@ test('imprevisti: escludere prima, poi rimettere, fissare una data e togliere (s
   await expect(storico.getByText(`Anna Verdi ha fissato l'interrogazione di Bruno Neri per ${giorno.toLowerCase()}`)).toBeVisible()
   await expect(storico.getByText('Anna Verdi ha tolto Carla Blu dalla lista')).toBeVisible()
   await expect(storico.getByText(/^Carla Blu ha detto che non ci sarà .*: passa a /)).toBeVisible()
+  await expect(storico.getByText(/^Anna Verdi ha segnato che Anna Verdi ha saltato l'interrogazione: passa a /).first()).toBeVisible()
 
   // Il termine per dirlo si cambia dalla gestione della classe
   await anna.goto(`${classe}/gestione`)
