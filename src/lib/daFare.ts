@@ -36,6 +36,8 @@ export type InterrogazioneOsservata = {
   creata?: DataISO | null
   /** esclusi da capo o vice prima della generazione */
   esclusi?: string[]
+  /** uid → nome dei membri della classe (per il calendario) */
+  nomi?: Record<string, string>
   /** solo con stato "lista": undefined finché non arriva */
   lista?: {
     ordine: string[]

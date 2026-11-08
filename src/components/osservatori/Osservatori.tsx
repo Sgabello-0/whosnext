@@ -29,6 +29,7 @@ type ContestoClasse = {
   puoModificare: boolean
   cal: Calendario
   numeroStudenti?: number
+  nomi: Record<string, string>
   rifiutaScambi: boolean
 }
 
@@ -42,7 +43,7 @@ export function OsservaClasse({ classId, membro }: { classId: string; membro: Me
   const { cal } = useCalendario(classId)
   const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
   // Il numero di studenti serve solo a capo e vice (per "X su N hanno scelto")
-  const membri = useQuery<Membro>(db && staff ? rifMembri(db, classId) : null, staff ? `membri/${classId}` : null)
+  const membri = useQuery<Membro>(db && rifMembri(db, classId), `membri/${classId}`)
 
   if (!classe.dati || !cal || !materie.dati) return null
   const contesto: ContestoClasse = {
@@ -53,7 +54,8 @@ export function OsservaClasse({ classId, membro }: { classId: string; membro: Me
     staff,
     puoModificare: puoModificareListe(membro),
     cal,
-    numeroStudenti: membri.dati?.filter((m) => m.ruolo !== 'docente').length,
+    numeroStudenti: staff ? membri.dati?.filter((m) => m.ruolo !== 'docente').length : undefined,
+    nomi: Object.fromEntries((membri.dati ?? []).map((m) => [m.uid, m.nome])),
     rifiutaScambi: !!membro.rifiutaScambi,
   }
   return (
@@ -137,6 +139,7 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
       mia.dati === undefined ? undefined : mia.dati === null ? null : { scelta: mia.dati.scelta, dataDSA: mia.dati.dataDSA ?? null },
     creata: i.creato ? oggiISO(i.creato.toDate()) : null,
     esclusi: i.esclusi,
+    nomi: c.nomi,
     lista:
       lista.dati === undefined
         ? undefined

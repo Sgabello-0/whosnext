@@ -8,7 +8,6 @@ import {
   Megaphone,
   Shuffle,
   Sparkles,
-  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { Link } from 'react-router'
@@ -208,8 +207,8 @@ function Tessera(p: { icona: LucideIcon; etichetta: string; valore: string; dett
   )
 }
 
-/** Quattro numeri in cima alla home sul computer: prossima interrogazione, scelte da fare, cose da gestire, classi. */
-export function Riepilogo({ classi }: { classi: number }) {
+/** Tre numeri in cima alla home sul computer: prossima interrogazione, scelte da fare, cose da gestire. */
+export function Riepilogo() {
   const adesso = useAdesso()
   const tutte = useInterrogazioniOsservate()
   const mie = tutte.flatMap((d) => {
@@ -222,7 +221,7 @@ export function Riepilogo({ classi }: { classi: number }) {
   const daScegliere = mie.filter(({ v }) => v.tipo === 'da-scegliere')
   const daFare = tutte.reduce((n, d) => n + vociDaFare(d, adesso).length, 0)
   return (
-    <section aria-label="Riepilogo" className="grid grid-cols-4 gap-4">
+    <section aria-label="Riepilogo" className="grid grid-cols-3 gap-4">
       <Tessera
         icona={CalendarCheck}
         etichetta="Prossima interrogazione"
@@ -249,7 +248,6 @@ export function Riepilogo({ classi }: { classi: number }) {
         valore={String(daFare)}
         dettaglio={daFare === 0 ? 'Niente in sospeso' : 'per chi gestisce la classe'}
       />
-      <Tessera icona={Users} etichetta="Classi" valore={String(classi)} dettaglio={classi === 1 ? 'classe' : 'classi'} />
     </section>
   )
 }

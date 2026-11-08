@@ -15,6 +15,7 @@ import { ProviderRaccolta } from '../lib/raccolta'
 import { OsservaClasse } from '../components/osservatori/Osservatori'
 import { InvitoNotifiche } from '../components/InvitoNotifiche'
 import { PannelloDaFare, PannelloMie, Riepilogo } from '../components/osservatori/Pannelli'
+import { CalendarioInterrogazioni } from '../components/osservatori/CalendarioInterrogazioni'
 
 /** classes/{classId}/members/{uid} → classId */
 function classIdDa(percorso: string): string {
@@ -61,7 +62,7 @@ export default function Classi() {
         </p>
       </div>
 
-      {desktop && conClassi && <Riepilogo classi={iscrizioni.dati!.length} />}
+      {desktop && conClassi && <Riepilogo />}
 
       <Colonne
         desktop={desktop}
@@ -83,11 +84,13 @@ export default function Classi() {
           <>
             <PannelloDaFare />
             {conClassi && <PannelloMie caricamento={!iscrizioni.dati} />}
+            {conClassi && <CalendarioInterrogazioni />}
             {conClassi && <InvitoNotifiche />}
             {classi}
           </>
         }
       />
+      {desktop && conClassi && <CalendarioInterrogazioni />}
     </ProviderRaccolta>
   )
 }
