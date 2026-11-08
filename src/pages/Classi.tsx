@@ -63,7 +63,6 @@ export default function Classi() {
       </div>
 
       {desktop && conClassi && <Riepilogo />}
-      {desktop && conClassi && <CalendarioInterrogazioni />}
 
       <Colonne
         desktop={desktop}
@@ -85,12 +84,13 @@ export default function Classi() {
           <>
             <PannelloDaFare />
             {conClassi && <PannelloMie caricamento={!iscrizioni.dati} />}
-            {conClassi && <CalendarioInterrogazioni />}
             {conClassi && <InvitoNotifiche />}
             {classi}
+            {conClassi && <CalendarioInterrogazioni />}
           </>
         }
       />
+      {desktop && conClassi && <CalendarioInterrogazioni />}
     </ProviderRaccolta>
   )
 }

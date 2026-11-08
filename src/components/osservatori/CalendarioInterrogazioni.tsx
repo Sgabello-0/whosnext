@@ -70,7 +70,7 @@ export function CalendarioInterrogazioni() {
         </p>
       )}
       {desktop ? (
-        <div role="group" aria-label={`Calendario di ${titoloMese(mese.anno, mese.mese)}`} className="grid grid-cols-7 gap-1.5">
+        <div role="group" aria-label={`Calendario di ${titoloMese(mese.anno, mese.mese)}`} className="grid grid-cols-7 gap-1">
           {INTESTAZIONI.map((g) => (
             <div key={g} aria-hidden className="pb-1 text-center text-xs font-semibold text-slate-600 dark:text-slate-400">
               {g}
@@ -85,34 +85,35 @@ export function CalendarioInterrogazioni() {
                 key={d}
                 role="group"
                 aria-label={formattaGiorno(d)}
-                className={`min-h-24 min-w-0 rounded-xl border p-1.5 ${
+                className={`min-h-14 min-w-0 rounded-lg border p-1 ${
                   mio
                     ? 'border-accento bg-accento-chiaro ring-1 ring-accento dark:bg-blue-950/70'
                     : 'border-slate-200/80 dark:border-slate-800'
                 }`}
               >
                 <span
-                  className={`mb-1 flex size-6 items-center justify-center rounded-full text-xs font-semibold ${
+                  className={`flex size-5 items-center justify-center rounded-full text-[11px] font-semibold ${
                     d === oggi ? 'bg-accento text-white' : 'text-slate-600 dark:text-slate-300'
                   }`}
                 >
                   {Number(d.slice(8))}
                 </span>
-                <ul className="space-y-1">
-                  {voci.map((v) => (
+                <ul>
+                  {voci.slice(0, 2).map((v) => (
                     <li key={v.chiave}>
                       <Link
                         to={percorso(v)}
                         title={`${v.classe} · ${v.materia} – ${v.interrogazione}: ${v.persone.map((p) => p.nome).join(', ')}`}
-                        className="block rounded-md px-1 py-0.5 text-xs leading-tight hover:bg-slate-100 dark:hover:bg-slate-800"
+                        className="block truncate rounded px-0.5 text-[11px] leading-snug hover:bg-slate-100 dark:hover:bg-slate-800"
                       >
-                        <span className="block truncate font-semibold">{v.materia}</span>
-                        <span className="block text-slate-700 dark:text-slate-300">
+                        <span className="font-semibold">{v.materia}: </span>
+                        <span className="text-slate-700 dark:text-slate-300">
                           <Persone v={v} brevi />
                         </span>
                       </Link>
                     </li>
                   ))}
+                  {voci.length > 2 && <li className="px-0.5 text-[11px] text-slate-600 dark:text-slate-400">+{voci.length - 2} altre</li>}
                 </ul>
               </div>
             )
@@ -121,7 +122,7 @@ export function CalendarioInterrogazioni() {
       ) : delMese.length === 0 ? (
         giorni.size > 0 && <p className="text-sm text-slate-600 dark:text-slate-400">Nessuna interrogazione prevista in questo mese.</p>
       ) : (
-        <ol className="space-y-2" aria-label={`Agenda di ${titoloMese(mese.anno, mese.mese)}`}>
+        <ol className="max-h-72 space-y-2 overflow-y-auto" tabIndex={0} aria-label={`Agenda di ${titoloMese(mese.anno, mese.mese)}`}>
           {delMese.map((d) => {
             const voci = giorni.get(d)!
             const mio = voci.some((v) => v.mia)
