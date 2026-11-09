@@ -253,7 +253,7 @@ test('DSA/BES: si sceglie il giorno, in lista resta fisso; il badge i compagni l
   const ordine = anna.getByRole('list', { name: 'Ordine delle interrogazioni' })
   await expect(ordine.getByRole('listitem')).toHaveCount(3)
   const rigaCarla = ordine.getByRole('listitem').filter({ hasText: 'Carla Blu' })
-  await expect(rigaCarla).toContainText('data fissa')
+  await expect(rigaCarla).toContainText('fissato')
   await expect(rigaCarla).toContainText(`Stimata: ${giorno}`)
   await expect(rigaCarla.getByLabel('data fissa')).toBeVisible() // al posto del numero
 
@@ -269,7 +269,7 @@ test('DSA/BES: si sceglie il giorno, in lista resta fisso; il badge i compagni l
 
   // Carla mostra il badge e poi lo nasconde di nuovo: Bruno lo vede solo nel frattempo (la data fissa resta), Anna sempre
   const rigaPerBruno = bruno.getByRole('list', { name: 'Ordine delle interrogazioni' }).getByRole('listitem').filter({ hasText: 'Carla Blu' })
-  await expect(rigaPerBruno).toContainText('data fissa')
+  await expect(rigaPerBruno).toContainText('fissato')
   await expect(rigaPerBruno.getByText('DSA/BES', { exact: true })).toHaveCount(0)
   await carla.goto('/impostazioni')
   const interruttore = carla.getByRole('switch', { name: /Mostra il badge ai compagni/ })
@@ -280,7 +280,7 @@ test('DSA/BES: si sceglie il giorno, in lista resta fisso; il badge i compagni l
   await interruttore.uncheck()
   await expect(carla.getByText('Il badge DSA/BES ora è nascosto ai compagni')).toBeVisible()
   await expect(rigaPerBruno.getByText('DSA/BES', { exact: true })).toHaveCount(0)
-  await expect(rigaPerBruno).toContainText('data fissa')
+  await expect(rigaPerBruno).toContainText('fissato')
   await expect(rigaCarla.getByText('DSA/BES', { exact: true })).toBeVisible()
   // Bruno non ha la sezione del badge nelle Impostazioni
   await bruno.goto('/impostazioni')
@@ -347,7 +347,7 @@ test('imprevisti: escludere prima, poi rimettere, fissare una data e togliere (s
   const giorno = (await scelta.locator('option').allTextContents())[2]!
   await scelta.selectOption({ label: giorno })
   await anna.getByRole('button', { name: 'Fissa', exact: true }).click()
-  await expect(ordine.getByRole('listitem').filter({ hasText: 'Bruno Neri' })).toContainText('data fissa')
+  await expect(ordine.getByRole('listitem').filter({ hasText: 'Bruno Neri' })).toContainText('fissato')
   await expect(bruno.getByText(`Interrogazione ${giorno.toLowerCase()}`)).toBeVisible()
   await expect(bruno.getByRole('button', { name: /Fissa una data/ })).toHaveCount(0) // gli studenti non hanno gli imprevisti
 
@@ -355,7 +355,7 @@ test('imprevisti: escludere prima, poi rimettere, fissare una data e togliere (s
   await carla.getByRole('button', { name: 'Non ci sarò' }).click()
   await conferma(carla, 'Conferma')
   await expect(carla.getByText('Hai una data fissa: resta questa anche se la lista cambia.')).toBeVisible()
-  await expect(ordine.getByRole('listitem').filter({ hasText: 'Carla Blu' })).toContainText('data fissa')
+  await expect(ordine.getByRole('listitem').filter({ hasText: 'Carla Blu' })).toContainText('fissato')
   await expect(anna.getByRole('button', { name: 'Rimetti in lista Carla Blu' })).toBeVisible()
 
   // Anna doveva esserci e non si è presentata: passa avanti, con il segnale di attenzione

@@ -333,7 +333,7 @@ export function ListaInterrogazione(p: Props) {
                       </span>
                       {io && <Badge>tu</Badge>}
                       {p.dsa.has(uid) && <Badge colore="ambra">DSA/BES</Badge>}
-                      {fissa && !quando && <Badge colore="viola">data fissa</Badge>}
+                      {fissa && !quando && <Badge colore="viola">fissato</Badge>}
                       {!quando && (ritardi[uid] ?? 0) > 0 && <BadgeRitardo volte={ritardi[uid]!} />}
                       {quando && <Badge colore="verde">interrogato</Badge>}
                     </p>
@@ -438,9 +438,9 @@ export function ListaInterrogazione(p: Props) {
       laterale={
         <>
           {pezzoGestione}
-          {pezzoImprevisti}
           {pezzoRapporto}
           {p.laterale}
+          {pezzoImprevisti}
         </>
       }
       telefono={
@@ -451,9 +451,9 @@ export function ListaInterrogazione(p: Props) {
           {pezzoConclusa}
           {pezzoGestione}
           {pezzoLista}
-          {pezzoImprevisti}
           {pezzoRapporto}
           {p.laterale}
+          {pezzoImprevisti}
         </>
       }
     />
