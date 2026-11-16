@@ -1,7 +1,7 @@
 /**
  * Testi delle notifiche (push ed email). Logica pura.
  * Le notifiche: nuova interrogazione, lista generata, richiesta di scambio, domani sei interrogato (o possibile),
- * cambio di posto, e a capoclasse e vice le segnalazioni da controllare.
+ * cambio di posto, e a capoclasse e vice le segnalazioni da controllare e i giorni senza interrogazioni segnati dai docenti.
  */
 import { formattaGiorno, type DataISO } from '../../src/lib/calendar'
 import type { Email } from './email'
@@ -96,6 +96,16 @@ export function confermaInterrogato(o: Interr & { chi: string; giorno: DataISO }
   return {
     titolo: `Da confermare: ${nomeBreve(o.chi)} interrogato`,
     testo: `${o.materia} – ${o.nome}: segnala di essere stato interrogato ${formattaGiorno(o.giorno).toLowerCase()}. Apri per confermare.`,
+    percorso: o.percorso,
+  }
+}
+
+/** Al capoclasse: il docente della materia ha segnato un giorno senza interrogazioni. */
+export function nonInterroga(o: { materia: string; chi: string; giorno: DataISO; motivo: string | null; percorso: string }): Notifica {
+  const giorno = formattaGiorno(o.giorno).toLowerCase()
+  return {
+    titolo: `${o.materia}: niente interrogazioni ${giorno}`,
+    testo: `${o.chi} non interroga ${giorno}${o.motivo ? ` (${o.motivo.toLowerCase()})` : ''}. Le date delle liste passano alla lezione dopo.`,
     percorso: o.percorso,
   }
 }

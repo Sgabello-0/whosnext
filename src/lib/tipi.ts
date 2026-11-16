@@ -36,6 +36,8 @@ export type Membro = {
   entrato?: Timestamp
   /** studenti: rifiuta in automatico le richieste di scambio */
   rifiutaScambi?: boolean
+  /** solo docenti: le materie (id) che il capoclasse gli ha assegnato */
+  materie?: string[]
 }
 
 export type Invito = {
@@ -98,6 +100,8 @@ export type DocLista = {
   interrogati: Record<string, string>
   /** uid → quante volte ha detto "non ci sarò" dopo il termine o ha saltato l'interrogazione */
   ritardi?: Record<string, number>
+  /** lezioni chiuse con "Fine" (AAAA-MM-GG): chi non è stato interrogato passa subito alla lezione dopo */
+  chiusi?: string[]
   generata?: Timestamp
   generataDa: string
   /** id dell'ultima voce di storico */
@@ -125,7 +129,21 @@ export type DocSegnalazione = {
 }
 
 export type DocStorico = {
-  tipo: 'generata' | 'riordino' | 'interrogati' | 'annullato' | 'scambio' | 'aggiunto' | 'tolto' | 'fissato' | 'liberato' | 'assenza' | 'saltato' | 'ripristinato'
+  tipo:
+    | 'generata'
+    | 'riordino'
+    | 'interrogati'
+    | 'annullato'
+    | 'scambio'
+    | 'aggiunto'
+    | 'tolto'
+    | 'fissato'
+    | 'liberato'
+    | 'assenza'
+    | 'saltato'
+    | 'ripristinato'
+    /** interrogati di una lezione modificati, lezione chiusa con "Fine" o riaperta */
+    | 'lezione'
   chi: string
   quando?: Timestamp
   dettagli: {
@@ -138,6 +156,10 @@ export type DocStorico = {
     posizioni?: number[]
     /** "non ci sarò": la data in cui non c'è (data) e quella nuova */
     nuova?: string
+    /** lezione: a chi è stato tolto il segno di interrogato */
+    tolti?: string[]
+    /** lezione: true se è stata chiusa con "Fine", false se è stata riaperta */
+    chiusa?: boolean
     /** com'era la lista prima della modifica: serve al server per sapere chi avvisare */
     prima?: { ordine: string[]; fissi: Record<string, string>; interrogati: Record<string, string> }
   }

@@ -1,13 +1,11 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import { BookOpen, CalendarDays, CalendarOff, CalendarPlus, Grid3x3, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { BookOpen, CalendarDays, CalendarOff, Grid3x3, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { db } from '../lib/firebase'
 import {
   conEccezione,
-  dataValida,
   festeTra,
   formattaData,
-  formattaGiorno,
   NOMI_GIORNI,
   NOMI_GIORNI_BREVI,
   oggiISO,
@@ -116,7 +114,7 @@ export default function Configura() {
           (cal ? <OrarioSettimanale classId={classId} materie={elencoMaterie} cal={cal} /> : <Caricamento />)}
 
         {sezione === 'calendario' &&
-          (cal ? <ConfiguraCalendario classId={classId} cal={cal} materie={elencoMaterie} /> : <Caricamento />)}
+          (cal ? <ConfiguraCalendario classId={classId} cal={cal} /> : <Caricamento />)}
       </div>
     </>
   )
@@ -260,15 +258,7 @@ function RigaMateria({ classId, materia }: { classId: string; materia: ConId<Mat
 
 // ───────────── Calendario ─────────────
 
-function ConfiguraCalendario({
-  classId,
-  cal,
-  materie,
-}: {
-  classId: string
-  cal: Calendario
-  materie: ConId<Materia>[]
-}) {
+function ConfiguraCalendario({ classId, cal }: { classId: string; cal: Calendario }) {
   const [errore, setErrore] = useState<string | null>(null)
   const [salvataggio, setSalvataggio] = useState(false)
   const avvisi = useAvvisi()
@@ -292,9 +282,7 @@ function ConfiguraCalendario({
   }
 
   const giorniAttivi = cal.giorniScolastici.flatMap((on, i) => (on ? [i] : []))
-  const nomeMateria = (id: string) => materie.find((m) => m.id === id)?.nome ?? 'Materia eliminata'
   const vacanze = cal.eccezioni.filter((e) => e.tipo === 'vacanza')
-  const lezioni = cal.eccezioni.filter((e) => e.tipo !== 'vacanza')
   const mancanti = vacanzeRegionaliMancanti(cal)
   const oggi = oggiISO()
   const feste = festeTra(oggi < '2026-09-01' ? '2026-09-01' : oggi, cal.fineAnno)
@@ -365,32 +353,9 @@ function ConfiguraCalendario({
             onTogli={(e) => salva(senzaEccezione(cal, e), 'Vacanza tolta', cal)}
           />
           <NuovaVacanza onAggiungi={(e) => salva(conEccezione(cal, e), 'Vacanza aggiunta', cal)} />
-        </div>
-      </Scheda>
-
-      <Scheda
-        titolo="Lezioni extra o annullate"
-        icona={CalendarPlus}
-        sottotitolo="Una lezione in più o saltata (gita, assemblea, sciopero…)."
-      >
-        <div className="space-y-4">
-          <ElencoEccezioni
-            eccezioni={lezioni}
-            descrivi={(e) =>
-              e.tipo === 'vacanza'
-                ? ''
-                : `${formattaData(e.data)} · ${nomeMateria(e.subjectId)}: ${e.tipo === 'lezione-extra' ? 'lezione extra' : 'lezione annullata'}`
-            }
-            onTogli={(e) => salva(senzaEccezione(cal, e), 'Tolta dal calendario', cal)}
-          />
-          {materie.length === 0 ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400">Aggiungi prima una materia.</p>
-          ) : (
-            <NuovaLezione
-              materie={materie}
-              onAggiungi={(e) => salva(conEccezione(cal, e), 'Aggiunta al calendario', cal)}
-            />
-          )}
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Se in un giorno una materia non interroga (spiegazione, verifica…), segnalo dalla pagina della materia.
+          </p>
         </div>
       </Scheda>
 
@@ -541,59 +506,6 @@ function NuovaVacanza({ onAggiungi }: { onAggiungi: (e: Eccezione) => Promise<bo
           Aggiungi vacanza
         </Bottone>
       </div>
-    </form>
-  )
-}
-
-function NuovaLezione({
-  materie,
-  onAggiungi,
-}: {
-  materie: ConId<Materia>[]
-  onAggiungi: (e: Eccezione) => Promise<boolean>
-}) {
-  const [data, setData] = useState('')
-  const [subjectId, setSubjectId] = useState(materie[0]?.id ?? '')
-  const [tipo, setTipo] = useState<'lezione-extra' | 'lezione-annullata'>('lezione-extra')
-
-  async function invia(ev: FormEvent) {
-    ev.preventDefault()
-    const giorno = data
-    setData('')
-    if (!(await onAggiungi({ tipo, data: giorno, subjectId }))) setData(giorno)
-  }
-
-  return (
-    <form onSubmit={invia} className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-3 sm:p-4 dark:bg-slate-950/50">
-      <p className="font-semibold sm:col-span-3">Aggiungi un cambio</p>
-      <Etichetta testo="Giorno">
-        <input type="date" required value={data} onChange={(e) => setData(e.target.value)} className={CLASSE_INPUT} />
-      </Etichetta>
-      <Etichetta testo="Materia">
-        <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className={CLASSE_INPUT}>
-          {materie.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.nome}
-            </option>
-          ))}
-        </select>
-      </Etichetta>
-      <Etichetta testo="Cosa succede">
-        <select value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)} className={CLASSE_INPUT}>
-          <option value="lezione-extra">Lezione extra</option>
-          <option value="lezione-annullata">Lezione annullata</option>
-        </select>
-      </Etichetta>
-      <div className="sm:col-span-3">
-        <Bottone type="submit" icona={Plus} disabled={!data || !subjectId}>
-          Aggiungi
-        </Bottone>
-      </div>
-      {dataValida(data) && (
-        <p className="text-xs text-slate-600 sm:col-span-3 dark:text-slate-400">
-          {formattaGiorno(data)}/{data.slice(0, 4)}
-        </p>
-      )}
     </form>
   )
 }

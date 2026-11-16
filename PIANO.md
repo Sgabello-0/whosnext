@@ -79,12 +79,13 @@ Le regole di sicurezza permettono letture e scritture solo ai membri della class
 - Entrano con l'account `@ittsrimini.edu.it` e si uniscono a una classe con il codice d'invito, come gli studenti. Non possono creare classi.
 - Di base **vedono soltanto**: lista delle interrogazioni, chi è già stato interrogato, date stimate. Non vedono le preferenze né il badge DSA/BES.
 - **Non fanno parte delle liste**: niente preferenze, niente posizione, niente scambi, e non vengono contati nel numero di studenti (posizioni DSA da 1 a N studenti).
-- Possono **chiedere il permesso di modifica** al capoclasse, che lo accetta o lo rifiuta (notifica nell'inbox). Con il permesso possono fare ciò che fa il vice sulle liste: riordinare e segnare chi è stato interrogato. Il capoclasse può revocarlo in qualsiasi momento.
+- Il capoclasse assegna a ogni docente le sue **materie** (`members.materie`): lì il docente segna chi è stato interrogato, chiude le lezioni con "Fine", conferma le segnalazioni e segna i giorni senza interrogazioni (al capoclasse arriva una notifica). Aggiunto il 16/11/2026.
+- Possono **chiedere il permesso** al capoclasse di riordinare le liste. Il capoclasse può revocarlo in qualsiasi momento.
 - Le regole di Firestore ricontrollano il dominio: un account studente non può mai avere il ruolo docente e viceversa.
 
 ### Configurazione del capoclasse
 
-- **Calendario** completamente personalizzabile: giorni con o senza scuola, materie per giorno, vacanze regionali o d'istituto, lezioni extra o annullate.
+- **Calendario** completamente personalizzabile: giorni con o senza scuola, materie per giorno, vacanze regionali o d'istituto. I giorni in cui una materia non interroga (spiegazione, verifica…) si segnano dalla pagina della materia: nel calendario sono `lezione-annullata` con `motivo` e `chi` (dal 16/11/2026 non si aggiungono più lezioni extra o annullate dalle impostazioni; quelle già salvate valgono ancora).
 - Feste nazionali 2026-27 già inserite: 1/11, 8/12, 25-26/12, 1/1, 6/1, Pasqua 28/3/2027, Pasquetta 29/3, 25/4, 1/5, 2/6. Sono calcolate per ogni anno (Pasqua compresa), con anche il 4 ottobre, festa nazionale dal 2026. Le vacanze dell'Emilia-Romagna 2026-27 sono già inserite nei calendari nuovi ([delibera regionale](https://scuola.regione.emilia-romagna.it/novita/notizie/2026/calendario-scolastico-2026-27)): 2/11/2026 (commemorazione dei defunti), Natale dal 24/12/2026 al 6/1/2027, Pasqua dal 25/3 al 30/3/2027. Per gli anni dopo si calcolano con la stessa regola (Natale 24/12–6/1, Pasqua dal giovedì prima al martedì dopo). Il capoclasse può toglierle e aggiungere quelle d'istituto (ponti, festa del patrono San Gaudenzo il 14/10…). La Regione fissa la fine delle lezioni a sabato 5/6/2027; nel sito resta il 6/6 (domenica), che per le lezioni è lo stesso.
 - Giorni di scuola predefiniti: dal lunedì al venerdì (il sabato si attiva dal calendario).
 - **Materie**: nome e giorni di lezione.
@@ -123,7 +124,7 @@ Dopo la generazione il capo può riordinare la lista trascinando i nomi.
 - Dopo ogni lezione il sito prepara i primi N non ancora interrogati come "probabilmente interrogati". Il capo o il vice conferma con un tocco e corregge chi era assente.
 - Ognuno può segnarsi da solo con "Sono stato interrogato" e il capo approva. Gli assenti tornano in testa ai non interrogati.
 
-Chi segna gli interrogati: capo, vice e docenti con permesso. Se il giorno stesso ne sono già stati segnati alcuni, la stima tiene conto dei posti già occupati in quella lezione. Quando sono stati interrogati tutti l'interrogazione diventa "conclusa" (torna "lista" se se ne toglie uno).
+Chi segna gli interrogati: capo, vice e il docente della materia. "Fine" chiude la lezione (`list.chiusi`), anche senza interrogati: chi non è stato interrogato passa subito alla lezione dopo e il "Da fare" non la propone più. Se il giorno stesso ne sono già stati segnati alcuni, la stima tiene conto dei posti già occupati in quella lezione. Quando sono stati interrogati tutti l'interrogazione diventa "conclusa" (torna "lista" se se ne toglie uno).
 
 ### Stima della data
 

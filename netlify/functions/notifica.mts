@@ -1,17 +1,26 @@
 /**
  * Il sito chiama questo indirizzo subito dopo un'azione che merita un avviso:
  * POST /api/notifica { tipo, classId, subjectId, interrogazioneId, id? } con il token di Firebase.
- * tipo: 'nuova-interrogazione' | 'lista-pronta' | 'segnalazione' | 'scambio-richiesta' (id = richiesta) | 'cambio-lista' (id = voce dello storico).
+ * tipo: 'nuova-interrogazione' | 'lista-pronta' | 'segnalazione' | 'scambio-richiesta' (id = richiesta) | 'cambio-lista' (id = voce dello storico)
+ *   | 'non-interroga' (id = giorno AAAA-MM-GG, senza interrogazioneId: il docente ha segnato un giorno senza interrogazioni).
  * Il server controlla nel database che l'azione sia davvero avvenuta, e da chi, prima di avvisare.
  */
 import type { Config } from '@netlify/functions'
 import { database } from '../lib/admin'
 import { risposta } from '../lib/http'
-import { avvisaCambioLista, avvisaListaPronta, avvisaNuovaInterrogazione, avvisaRichiestaScambio, avvisaSegnalazione } from '../lib/eventi'
+import {
+  avvisaCambioLista,
+  avvisaListaPronta,
+  avvisaNonInterroga,
+  avvisaNuovaInterrogazione,
+  avvisaRichiestaScambio,
+  avvisaSegnalazione,
+} from '../lib/eventi'
 import { postinoVero } from '../lib/postinoVero'
 import { uidDalToken } from '../lib/token'
 
 const ID = /^[A-Za-z0-9_-]{1,128}$/
+const GIORNO = /^\d{4}-\d{2}-\d{2}$/
 
 export default async function notifica(req: Request) {
   const origine = req.headers.get('origin')
@@ -29,17 +38,22 @@ export default async function notifica(req: Request) {
 
   const corpo = (await req.json().catch(() => null)) as Record<string, unknown> | null
   const { tipo, classId, subjectId, interrogazioneId, id } = corpo ?? {}
-  if (![classId, subjectId, interrogazioneId].every((x) => typeof x === 'string' && ID.test(x))) {
+  // "non-interroga" riguarda la materia, non un'interrogazione
+  const senzaInterrogazione = tipo === 'non-interroga'
+  if (![classId, subjectId, ...(senzaInterrogazione ? [] : [interrogazioneId])].every((x) => typeof x === 'string' && ID.test(x))) {
     return risposta(400, { errore: 'dati non validi' }, origine)
   }
-  const r = { classId: classId as string, subjectId: subjectId as string, interrogazioneId: interrogazioneId as string }
+  const r = { classId: classId as string, subjectId: subjectId as string, interrogazioneId: (interrogazioneId as string | undefined) ?? '' }
   const db = database()
   // solo i membri della classe
   if (!(await db.doc(`classes/${r.classId}/members/${uid}`).get()).exists) return risposta(403, { errore: 'non sei della classe' }, origine)
 
   const postino = postinoVero()
   let esito: unknown
-  if (tipo === 'lista-pronta') esito = await avvisaListaPronta(db, postino, r, new Date())
+  if (senzaInterrogazione) {
+    if (typeof id !== 'string' || !GIORNO.test(id)) return risposta(400, { errore: 'giorno non valido' }, origine)
+    esito = await avvisaNonInterroga(db, postino, { classId: r.classId, subjectId: r.subjectId, data: id }, uid)
+  } else if (tipo === 'lista-pronta') esito = await avvisaListaPronta(db, postino, r, new Date())
   else if (tipo === 'nuova-interrogazione') esito = await avvisaNuovaInterrogazione(db, postino, r, uid, new Date())
   else if (tipo === 'segnalazione') esito = await avvisaSegnalazione(db, postino, r, uid)
   else if (tipo === 'scambio-richiesta' && typeof id === 'string' && ID.test(id)) {

@@ -1,6 +1,7 @@
 /**
- * Modifiche alla lista generata: riordino, interrogati, segnalazioni "Sono stato interrogato".
- * Le fanno capo, vice e docenti con permesso (le segnalazioni anche gli studenti).
+ * Modifiche alla lista generata: riordino, interrogati, lezioni chiuse, segnalazioni "Sono stato interrogato".
+ * Riordinano capo, vice e docenti con permesso; gli interrogati li segnano capo, vice e il docente della materia
+ * (le segnalazioni anche gli studenti).
  */
 import {
   deleteField,
@@ -110,6 +111,67 @@ export async function togliInterrogato(db: Firestore, r: Rif, uid: string, mioUi
   )
   if (stato === 'conclusa') batch.update(interrogazioneDi(db, r), { stato: 'lista', aggiornato: serverTimestamp() })
   await batch.commit()
+}
+
+/**
+ * Salva gli interrogati di una lezione: segna i nuovi, toglie il segno a chi è stato deselezionato e,
+ * con `chiudi`, chiude la lezione ("Fine", anche se non è stato interrogato nessuno) o la riapre.
+ * Lo fanno capo, vice e il docente della materia. Restituisce la funzione per tornare indietro.
+ */
+export async function salvaLezione(
+  db: Firestore,
+  r: Rif,
+  o: { data: string; segna: string[]; togli: string[]; chiudi?: boolean },
+  mioUid: string,
+): Promise<() => Promise<void>> {
+  if (!dataValida(o.data)) throw new ErroreApp('dati-non-validi', 'Indica il giorno della lezione.')
+  const { lista, stato } = await leggi(db, r)
+  const interrogati = { ...lista.interrogati }
+  // si segna solo chi non è ancora stato interrogato; si toglie solo chi è segnato proprio quel giorno
+  const segna = [...new Set(o.segna)].filter((u) => !interrogati[u])
+  const togli = [...new Set(o.togli)].filter((u) => interrogati[u] === o.data)
+  for (const u of segna) interrogati[u] = o.data
+  for (const u of togli) delete interrogati[u]
+  const chiusiPrima = lista.chiusi ?? []
+  const eraChiusa = chiusiPrima.includes(o.data)
+  const cambiaChiusura = o.chiudi !== undefined && o.chiudi !== eraChiusa
+  if (segna.length === 0 && togli.length === 0 && !cambiaChiusura) return async () => {}
+
+  const batch = writeBatch(db)
+  const voce =
+    togli.length === 0 && !cambiaChiusura
+      ? aggiungiVoceStorico(db, batch, r, mioUid, 'interrogati', { uids: segna, data: o.data })
+      : aggiungiVoceStorico(db, batch, r, mioUid, 'lezione', {
+          data: o.data,
+          uids: segna,
+          tolti: togli,
+          ...(cambiaChiusura ? { chiusa: !!o.chiudi } : {}),
+        })
+  const campi: unknown[] = []
+  for (const u of segna) campi.push(new FieldPath('interrogati', u), o.data)
+  for (const u of togli) campi.push(new FieldPath('interrogati', u), deleteField())
+  if (cambiaChiusura) {
+    const chiusi = o.chiudi ? [...chiusiPrima, o.data].sort() : chiusiPrima.filter((d) => d !== o.data)
+    campi.push(new FieldPath('chiusi'), chiusi)
+  }
+  batch.update(
+    listaDi(db, r),
+    new FieldPath('aggiornato'),
+    serverTimestamp(),
+    new FieldPath('aggiornatoDa'),
+    mioUid,
+    new FieldPath('ultimaModifica'),
+    voce,
+    ...campi,
+  )
+  for (const u of segna) batch.delete(rifSegnalazione(db, r.classId, r.subjectId, r.interrogazioneId, u))
+  const tutti = tuttiInterrogati(lista.ordine, interrogati, lista.fissi)
+  if (stato === 'lista' && tutti) batch.update(interrogazioneDi(db, r), { stato: 'conclusa', aggiornato: serverTimestamp() })
+  if (stato === 'conclusa' && !tutti) batch.update(interrogazioneDi(db, r), { stato: 'lista', aggiornato: serverTimestamp() })
+  await batch.commit()
+  return async () => {
+    await salvaLezione(db, r, { data: o.data, segna: togli, togli: segna, chiudi: cambiaChiusura ? eraChiusa : undefined }, mioUid)
+  }
 }
 
 export type Imprevisto =

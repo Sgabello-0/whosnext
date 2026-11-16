@@ -4,6 +4,9 @@ import { db } from '../lib/firebase'
 import { richiediPermesso, rimuoviMembro } from '../lib/classi'
 import { messaggioErrore } from '../lib/errori'
 import { dividiMembri, ETICHETTA_RUOLO, puoGestireDSA, puoModificareListe } from '../lib/membri'
+import { rifMaterie } from '../lib/configurazione'
+import { useQuery } from '../lib/hooks'
+import type { Materia } from '../lib/tipi'
 import { ProviderRaccolta } from '../lib/raccolta'
 import { OsservaClasse } from '../components/osservatori/Osservatori'
 import { PannelloDaFare } from '../components/osservatori/Pannelli'
@@ -67,7 +70,7 @@ export default function Classe() {
               </Riquadro>
             )}
 
-            {puoModificareListe(io) && (
+            {(puoModificareListe(io) || (io.ruolo === 'docente' && (io.materie?.length ?? 0) > 0)) && (
               <ProviderRaccolta>
                 <OsservaClasse classId={classId} membro={io} />
                 {io.ruolo === 'capo' && (
@@ -77,7 +80,12 @@ export default function Classe() {
               </ProviderRaccolta>
             )}
 
-            <InterrogazioniClasse classId={classId} staff={staff} mioUid={io.uid} />
+            <InterrogazioniClasse
+              classId={classId}
+              staff={staff}
+              mioUid={io.uid}
+              mieMaterie={io.ruolo === 'docente' ? (io.materie ?? []) : undefined}
+            />
           </>
         }
         laterale={
@@ -118,10 +126,16 @@ function PilaAvatar({ membri }: { membri: Membro[] }) {
   )
 }
 
+/**
+ * Il riquadro del docente: le sue materie (lì segna gli interrogati, chiude le lezioni e i giorni senza interrogazioni)
+ * e il permesso del capoclasse per riordinare le liste.
+ */
 function PermessoDocente({ classId, io }: { classId: string; io: Membro }) {
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const avvisi = useAvvisi()
+  const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
+  const mie = (materie.dati ?? []).filter((m) => io.materie?.includes(m.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
 
   async function imposta(richiesta: boolean) {
     if (!db) return
@@ -137,27 +151,30 @@ function PermessoDocente({ classId, io }: { classId: string; io: Membro }) {
     }
   }
 
-  if (io.permessoModifica) {
-    return (
-      <Riquadro tono="ok" titolo="Puoi modificare le liste" icona={BadgeCheck}>
-        Il capoclasse ti ha dato il permesso: puoi riordinare le liste e segnare chi è stato interrogato.
-      </Riquadro>
-    )
-  }
   return (
-    <Riquadro tono="info" titolo="Accesso in sola lettura" icona={Eye}>
-      <p>Come docente vedi le liste ma non puoi modificarle. Puoi chiedere il permesso al capoclasse.</p>
+    <Riquadro
+      tono={mie.length > 0 ? 'ok' : 'info'}
+      titolo={mie.length > 0 ? `Le tue materie: ${mie.map((m) => m.nome).join(', ')}` : 'Nessuna materia assegnata'}
+      icona={mie.length > 0 ? BadgeCheck : Eye}
+    >
+      <p>
+        {mie.length > 0
+          ? 'Vedi tutte le liste; nelle tue materie, evidenziate qui sotto, segni chi è stato interrogato, chiudi le lezioni con "Fine" e indichi i giorni in cui non interroghi.'
+          : 'Vedi tutte le liste. Il capoclasse ti assegnerà le tue materie: lì potrai segnare chi è stato interrogato e i giorni in cui non interroghi.'}
+      </p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        {io.richiestaPermesso ? (
+        {io.permessoModifica ? (
+          <span className="font-medium">Il capoclasse ti ha dato anche il permesso di riordinare le liste.</span>
+        ) : io.richiestaPermesso ? (
           <>
-            <span className="font-medium">Richiesta inviata, in attesa del capoclasse.</span>
+            <span className="font-medium">Permesso di riordinare le liste chiesto, in attesa del capoclasse.</span>
             <Bottone variante="piccolo" onClick={() => imposta(false)} disabled={inCorso}>
               Annulla richiesta
             </Bottone>
           </>
         ) : (
           <Bottone variante="piccolo" onClick={() => imposta(true)} disabled={inCorso}>
-            Chiedi il permesso di modifica
+            Chiedi il permesso di riordinare le liste
           </Bottone>
         )}
       </div>

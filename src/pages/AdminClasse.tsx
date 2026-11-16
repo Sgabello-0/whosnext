@@ -1,8 +1,19 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { CalendarX, Crown, GraduationCap, KeyRound, Pencil, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react'
+import { BookOpen, CalendarX, Crown, GraduationCap, KeyRound, Pencil, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react'
 import { db } from '../lib/firebase'
-import { cambiaCodiceInvito, impostaDSA, impostaGiorniAssenza, impostaPermessoDocente, impostaVice, rimuoviMembro, rinominaClasse } from '../lib/classi'
+import {
+  cambiaCodiceInvito,
+  impostaDSA,
+  impostaGiorniAssenza,
+  impostaMaterieDocente,
+  impostaPermessoDocente,
+  impostaVice,
+  rimuoviMembro,
+  rinominaClasse,
+} from '../lib/classi'
+import { rifMaterie } from '../lib/configurazione'
+import { useQuery, type ConId } from '../lib/hooks'
 import { formattaCodice } from '../lib/codici'
 import { eliminaClasse } from '../lib/eliminaClasse'
 import { messaggioErrore } from '../lib/errori'
@@ -12,7 +23,7 @@ import { useClasse } from '../lib/useClasse'
 import { useAvvisi } from '../components/Avvisi'
 import { useConferma } from '../components/Conferma'
 import { CediRuolo } from '../components/CediRuolo'
-import type { Membro } from '../lib/tipi'
+import type { Materia, Membro } from '../lib/tipi'
 import { ListaMembri } from '../components/ListaMembri'
 import { StatoClasse } from '../components/StatoClasse'
 import { Avatar, Bottone, Campo, CLASSE_INPUT, IntestazionePagina, LinkBottone, Riquadro, Scheda, GrigliaSchede } from '../components/ui'
@@ -21,6 +32,7 @@ import { Avatar, Bottone, Campo, CLASSE_INPUT, IntestazionePagina, LinkBottone, 
 export default function AdminClasse() {
   const { classId = '' } = useParams()
   const dati = useClasse(classId)
+  const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
   const [errore, setErrore] = useState<string | null>(null)
   const [occupato, setOccupato] = useState<string | null>(null)
   const avvisi = useAvvisi()
@@ -200,10 +212,18 @@ export default function AdminClasse() {
         <Scheda
           titolo={`Docenti (${docenti.length})`}
           icona={GraduationCap}
-          sottotitolo="I docenti vedono le liste. Con il permesso possono anche riordinarle e segnare chi è stato interrogato."
+          sottotitolo="I docenti vedono tutte le liste. Con il permesso possono anche riordinarle."
         >
           <ListaMembri membri={docenti} mioUid={io.uid} dsa={new Set()} mostraEmail azioni={azioniDocente} />
         </Scheda>
+
+        {capo && docenti.length > 0 && (
+          <MaterieDocenti
+            classId={classId}
+            docenti={docenti}
+            materie={[...(materie.dati ?? [])].sort((a, b) => a.nome.localeCompare(b.nome, 'it'))}
+          />
+        )}
 
         {capo && (
           <ImpostazioniClasse
@@ -216,6 +236,78 @@ export default function AdminClasse() {
         )}
       </GrigliaSchede>
     </>
+  )
+}
+
+/**
+ * Il capoclasse assegna a ogni docente le sue materie: lì il docente segna chi è stato interrogato,
+ * chiude le lezioni con "Fine" e segna i giorni senza interrogazioni. Ogni tocco si salva subito.
+ */
+function MaterieDocenti({ classId, docenti, materie }: { classId: string; docenti: Membro[]; materie: ConId<Materia>[] }) {
+  const avvisi = useAvvisi()
+  const [occupato, setOccupato] = useState<string | null>(null)
+
+  async function cambia(d: Membro, m: ConId<Materia>) {
+    if (!db) return
+    const fdb = db
+    const prima = d.materie ?? []
+    const togli = prima.includes(m.id)
+    const dopo = togli ? prima.filter((x) => x !== m.id) : [...prima, m.id]
+    setOccupato(d.uid)
+    try {
+      await impostaMaterieDocente(fdb, classId, d.uid, dopo)
+      avvisi.mostra(togli ? `${m.nome} tolta a ${d.nome}` : `${m.nome} assegnata a ${d.nome}`, {
+        annulla: () => impostaMaterieDocente(fdb, classId, d.uid, prima),
+      })
+    } catch (e) {
+      avvisi.errore(messaggioErrore(e))
+    } finally {
+      setOccupato(null)
+    }
+  }
+
+  return (
+    <Scheda
+      titolo="Materie dei docenti"
+      icona={BookOpen}
+      sottotitolo='Nelle sue materie il docente segna chi è stato interrogato, chiude le lezioni con "Fine" e segna i giorni senza interrogazioni.'
+    >
+      {materie.length === 0 ? (
+        <p className="text-sm text-slate-600 dark:text-slate-400">Aggiungi prima le materie della classe.</p>
+      ) : (
+        <ul className="space-y-4">
+          {docenti.map((d) => (
+            <li key={d.uid} className="space-y-2">
+              <span className="flex items-center gap-2 font-medium">
+                <Avatar nome={d.nome} foto={d.foto} piccolo />
+                {d.nome}
+              </span>
+              <div role="group" aria-label={`Materie di ${d.nome}`} className="flex flex-wrap gap-1.5">
+                {materie.map((m) => {
+                  const sua = !!d.materie?.includes(m.id)
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      aria-pressed={sua}
+                      disabled={occupato === d.uid}
+                      onClick={() => cambia(d, m)}
+                      className={`rounded-full border px-3 py-1 text-sm font-medium transition disabled:opacity-60 ${
+                        sua
+                          ? 'border-accento bg-accento text-white'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      {m.nome}
+                    </button>
+                  )
+                })}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Scheda>
   )
 }
 

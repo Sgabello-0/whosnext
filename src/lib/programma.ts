@@ -5,7 +5,8 @@
  * - Chi è in `ordine` riempie i posti delle lezioni, in ordine, `perLezione` per volta.
  * - Chi ha una data fissa (DSA/BES) occupa un posto proprio quel giorno. Se quel giorno non viene
  *   interrogato, dall'ora di uscita passa alla lezione dopo (e così via), e gli altri si adattano.
- * - Il giorno in cui è stata creata l'interrogazione non conta; quello di oggi conta fino all'ora di uscita.
+ * - Il giorno in cui è stata creata l'interrogazione non conta; quello di oggi conta fino all'ora di uscita,
+ *   o finché la lezione non viene chiusa con "Fine".
  */
 import { aggiungiGiorni, haLezione, prossimeLezioni, primoGiornoUtile, type Calendario, type DataISO, type Momento } from './calendar'
 import { stimaInterrogazione, type Stima } from './estimate'
@@ -22,6 +23,8 @@ export type DatiProgramma = {
   adesso: Momento
   /** giorno di creazione dell'interrogazione (non conta) */
   creata?: DataISO | null
+  /** lezioni chiuse con "Fine": chi non è stato interrogato passa subito alla lezione dopo */
+  chiusi?: readonly DataISO[]
 }
 
 export type RigaProgramma = {
@@ -53,7 +56,9 @@ function* lezioniDa(o: DatiProgramma, da: DataISO): Generator<DataISO> {
 
 export function programmaLista(o: DatiProgramma): Programma {
   const fissi = o.fissi ?? {}
-  const da = primoGiornoUtile(o.adesso, o.cal, o.creata)
+  let da = primoGiornoUtile(o.adesso, o.cal, o.creata)
+  // lezione di oggi chiusa con "Fine": si riparte dalla lezione dopo
+  while (o.chiusi?.includes(da)) da = aggiungiGiorni(da, 1)
   const stime = new Map<string, Stima>()
   const conGiorni = o.giorni.length > 0
   const perLezione = o.perLezione && o.perLezione >= 1 ? Math.floor(o.perLezione) : null
@@ -116,7 +121,11 @@ export function programmaLista(o: DatiProgramma): Programma {
   return { righe, stime, da }
 }
 
-/** Le date tra cui uno studente DSA/BES può scegliere: le lezioni in cui si interroga, dal primo giorno utile. */
+/**
+ * Le date tra cui uno studente DSA/BES può scegliere (e che il capoclasse propone per fissare una data):
+ * dal primo giorno utile, le lezioni stimate per interrogare tutti più una.
+ * Senza numero per lezione non si può stimare: si propongono le prossime 20.
+ */
 export function dateDisponibili(o: {
   giorni: readonly number[]
   subjectId: string
@@ -127,13 +136,13 @@ export function dateDisponibili(o: {
   scadenza?: Momento | null
   perLezione: number | null
   numeroStudenti: number
-  /** quante date proporre al massimo (di default quelle che servono per interrogare tutti) */
+  /** quante date proporre (di default le lezioni stimate più una) */
   quante?: number
 }): DataISO[] {
   let da = primoGiornoUtile(o.adesso, o.cal, o.creata)
   const dopoScadenza = o.scadenza ? primoGiornoUtile(o.scadenza, o.cal) : null
   if (dopoScadenza && dopoScadenza > da) da = dopoScadenza
-  // le lezioni che servono per interrogare tutti (almeno 5, al massimo 60)
-  const servono = o.quante ?? (o.perLezione && o.perLezione >= 1 ? Math.ceil(o.numeroStudenti / o.perLezione) : 20)
-  return prossimeLezioni({ giorni: o.giorni, subjectId: o.subjectId, cal: o.cal, da, quante: Math.min(60, Math.max(5, servono)) })
+  // le lezioni stimate per interrogare tutti, più una (al massimo 60)
+  const servono = o.quante ?? (o.perLezione && o.perLezione >= 1 ? Math.ceil(o.numeroStudenti / o.perLezione) + 1 : 20)
+  return prossimeLezioni({ giorni: o.giorni, subjectId: o.subjectId, cal: o.cal, da, quante: Math.min(60, Math.max(1, servono)) })
 }

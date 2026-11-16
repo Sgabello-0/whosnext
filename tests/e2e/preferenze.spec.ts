@@ -162,8 +162,11 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await expect(ordine.getByRole('listitem').nth(1)).toContainText('interrogato')
   await expect(bruno.getByText(/Sei stato interrogato/)).toBeVisible()
   await expect(storico.getByText(/Anna Verdi ha segnato Bruno Neri come interrogati/)).toBeVisible()
-  // Anna (assente) resta la prima da interrogare: è di nuovo proposta
-  await expect(segna.getByRole('checkbox', { name: 'Anna Verdi' })).toBeChecked()
+  // Anna (assente) resta la prima da interrogare: è di nuovo proposta, ma non spuntata
+  // (quel giorno è già stato segnato qualcuno); Bruno compare spuntato, per poterlo togliere
+  await expect(segna.getByRole('checkbox', { name: 'Anna Verdi' })).not.toBeChecked()
+  await expect(segna.getByRole('checkbox', { name: 'Bruno Neri' })).toBeChecked()
+  await expect(segna.getByRole('button', { name: 'Fine' })).toBeVisible()
   // capo e vice non hanno "Sono stato interrogato" (si segnano da soli)
   await expect(anna.getByRole('button', { name: 'Sono stato interrogato' })).toHaveCount(0)
 
@@ -177,6 +180,7 @@ test('preferenze, generazione e lista', async ({ browser }, info) => {
   await expect(carla.getByText(/Sei stato interrogato/)).toBeVisible()
 
   // ── Anna segna sé stessa: interrogazione conclusa ──
+  await segna.getByRole('checkbox', { name: 'Anna Verdi' }).check()
   await segna.getByRole('button', { name: 'Conferma 1 interrogato' }).click()
   await expect(anna.getByText('Interrogazione conclusa')).toBeVisible()
   await expect(rossi.getByText('Interrogazione conclusa')).toBeVisible()
@@ -229,7 +233,8 @@ test('DSA/BES: si sceglie il giorno, in lista resta fisso; il badge i compagni l
   // Carla sceglie il secondo giorno proposto (mai quello di oggi, in cui è stata creata)
   await carla.goto(interrogazione)
   const scelta = carla.getByLabel("Giorno dell'interrogazione")
-  await expect.poll(() => scelta.locator('option').count()).toBeGreaterThanOrEqual(5)
+  // le date stimate per interrogare tutti (3 studenti, 1 per lezione) più una
+  await expect.poll(() => scelta.locator('option').count()).toBe(4)
   const opzioni = await scelta.locator('option').allTextContents()
   const oggi = new Date()
   const oggiTesto = `${String(oggi.getDate()).padStart(2, '0')}/${String(oggi.getMonth() + 1).padStart(2, '0')}`

@@ -10,16 +10,30 @@ import { messaggioErrore } from '../lib/errori'
 import { formattaScadenza } from '../lib/formatoDate'
 import { useQuery, type ConId } from '../lib/hooks'
 import type { Interrogazione, Materia } from '../lib/tipi'
-import { Bottone, Caricamento, CLASSE_INPUT, Etichetta, LinkBottone, Modulo, Pallino, Riquadro, RigaLink, Scheda, Vuoto } from './ui'
+import { Badge, Bottone, Caricamento, CLASSE_INPUT, Etichetta, LinkBottone, Modulo, Pallino, Riquadro, RigaLink, Scheda, Vuoto } from './ui'
 import { BookOpen, CalendarCog, ClipboardList, Hourglass, ListOrdered, Plus } from 'lucide-react'
 import { NOMI_GIORNI_BREVI } from '../lib/calendar'
 import { FormInterrogazione } from './FormInterrogazione'
 import { useAvvisi } from './Avvisi'
 
-/** Le interrogazioni della classe, per materia: compaiono solo le materie che ne hanno almeno una. */
-export function InterrogazioniClasse({ classId, staff, mioUid }: { classId: string; staff: boolean; mioUid: string }) {
+/**
+ * Le interrogazioni della classe, per materia: compaiono solo le materie che ne hanno almeno una.
+ * Per il docente le sue materie (`mieMaterie`) vengono prima, evidenziate, e compaiono sempre.
+ */
+export function InterrogazioniClasse({
+  classId,
+  staff,
+  mioUid,
+  mieMaterie,
+}: {
+  classId: string
+  staff: boolean
+  mioUid: string
+  mieMaterie?: string[]
+}) {
   const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
-  const elenco = [...(materie.dati ?? [])].sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+  const mia = (id: string) => !!mieMaterie?.includes(id)
+  const elenco = [...(materie.dati ?? [])].sort((a, b) => Number(mia(b.id)) - Number(mia(a.id)) || a.nome.localeCompare(b.nome, 'it'))
   const [nuova, setNuova] = useState(false)
   // quante interrogazioni ha ogni materia (undefined finché non si sa)
   const [conteggi, setConteggi] = useState<Record<string, number>>({})
@@ -27,7 +41,7 @@ export function InterrogazioniClasse({ classId, staff, mioUid }: { classId: stri
     (id: string, n: number) => setConteggi((c) => (c[id] === n ? c : { ...c, [id]: n })),
     [],
   )
-  const nessuna = elenco.length > 0 && elenco.every((m) => conteggi[m.id] === 0)
+  const nessuna = elenco.length > 0 && elenco.every((m) => conteggi[m.id] === 0 && !mia(m.id))
   const inCaricamento = elenco.some((m) => conteggi[m.id] === undefined)
 
   return (
@@ -67,7 +81,7 @@ export function InterrogazioniClasse({ classId, staff, mioUid }: { classId: stri
           {nessuna && <Vuoto icona={ClipboardList} titolo="Nessuna interrogazione" />}
           <ul className="space-y-5">
             {elenco.map((m) => (
-              <MateriaConInterrogazioni key={m.id} classId={classId} materia={m} onConteggio={segnaConteggio} />
+              <MateriaConInterrogazioni key={m.id} classId={classId} materia={m} mia={mia(m.id)} onConteggio={segnaConteggio} />
             ))}
           </ul>
         </>
@@ -79,10 +93,13 @@ export function InterrogazioniClasse({ classId, staff, mioUid }: { classId: stri
 function MateriaConInterrogazioni({
   classId,
   materia,
+  mia,
   onConteggio,
 }: {
   classId: string
   materia: ConId<Materia>
+  /** materia del docente che guarda: sempre visibile, in evidenza */
+  mia: boolean
   onConteggio: (id: string, n: number) => void
 }) {
   const interrogazioni = useQuery<Interrogazione>(
@@ -95,16 +112,20 @@ function MateriaConInterrogazioni({
     if (totale !== undefined) onConteggio(materia.id, totale)
   }, [totale, materia.id, onConteggio])
 
-  // una materia senza interrogazioni non compare (quelle solo concluse sì: da lì si riaprono le liste vecchie)
-  if (!totale) return null
+  // una materia senza interrogazioni non compare (quelle solo concluse sì: da lì si riaprono le liste vecchie),
+  // tranne quelle del docente
+  if (!totale && !(mia && totale === 0)) return null
 
   return (
-    <li>
+    <li className={mia ? '-mx-2 rounded-xl bg-accento-chiaro/70 px-2 py-1 ring-1 ring-blue-200 dark:bg-blue-950/50 dark:ring-blue-900' : undefined}>
       <Link
         to={`/classe/${classId}/materia/${materia.id}`}
         className="group flex items-baseline justify-between gap-2 rounded-lg py-1"
       >
-        <span className="font-bold group-hover:underline">{materia.nome}</span>
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-bold group-hover:underline">{materia.nome}</span>
+          {mia && <Badge colore="blu">La tua materia</Badge>}
+        </span>
         <span className="text-xs text-slate-600 dark:text-slate-400">
           {materia.orario.length ? materia.orario.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ') : 'nessun giorno fisso'}
         </span>

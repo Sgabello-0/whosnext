@@ -30,6 +30,8 @@ export type InterrogazioneOsservata = {
   staff: boolean
   /** capo, vice o docente con permesso */
   puoModificare: boolean
+  /** docente a cui il capoclasse ha assegnato questa materia */
+  docenteMateria?: boolean
   /** undefined = non ancora letta (o non serve); null = nessuna preferenza */
   miaScelta?: { scelta: Scelta; dataDSA: string | null } | null
   /** giorno di creazione (non conta per le date) */
@@ -46,11 +48,13 @@ export type InterrogazioneOsservata = {
     fissi?: Record<string, string>
     interrogati: Record<string, string>
     generata: DataISO | null
+    /** lezioni chiuse con "Fine" */
+    chiusi?: string[]
   } | null
   /** solo per capo e vice con stato "raccolta" */
   risposte?: number
   numeroStudenti?: number
-  /** solo per chi può modificare, con stato "lista" */
+  /** solo per capo, vice e il docente della materia, con stato "lista" */
   segnalazioni?: number
   /** richieste di scambio in arrivo ancora valide (studenti in lista) */
   scambiInArrivo?: number
@@ -62,7 +66,8 @@ export type VoceMia =
   | { tipo: 'attesa-lista' }
   /** posizione null = data fissa (DSA/BES) */
   | { tipo: 'in-lista'; posizione: number | null; totale: number; stima: Stima; testo: string; senzaLista?: boolean }
-  | { tipo: 'docente-lista'; interrogati: number; totale: number }
+  /** miaMateria: il capoclasse gli ha assegnato la materia (va in evidenza) */
+  | { tipo: 'docente-lista'; interrogati: number; totale: number; miaMateria: boolean }
 
 export type VoceDaFare =
   | { tipo: 'scambio'; quante: number }
@@ -84,7 +89,12 @@ export function voceMia(d: InterrogazioneOsservata, adesso: Date): VoceMia | nul
   const fissi = d.lista.fissi ?? {}
   const tutti = [...ordine, ...Object.keys(fissi)]
   if (d.ruolo === 'docente') {
-    return { tipo: 'docente-lista', interrogati: tutti.filter((u) => interrogati[u]).length, totale: tutti.length }
+    return {
+      tipo: 'docente-lista',
+      interrogati: tutti.filter((u) => interrogati[u]).length,
+      totale: tutti.length,
+      miaMateria: !!d.docenteMateria,
+    }
   }
   const posizione = ordine.indexOf(d.mioUid)
   if ((posizione < 0 && !(d.mioUid in fissi)) || interrogati[d.mioUid]) return null
@@ -98,6 +108,7 @@ export function voceMia(d: InterrogazioneOsservata, adesso: Date): VoceMia | nul
     cal: d.cal,
     adesso: momentoLocale(adesso),
     creata: d.creata,
+    chiusi: d.lista.chiusi,
   })
   const stima = stime.get(d.mioUid) ?? { tipo: 'non-disponibile', prossimaLezione: null }
   return {
@@ -115,7 +126,11 @@ export function voceMia(d: InterrogazioneOsservata, adesso: Date): VoceMia | nul
   }
 }
 
-/** Cosa c'è da fare per chi gestisce la classe, in ordine di urgenza. */
+/**
+ * Cosa c'è da fare per chi gestisce la classe (e per il docente, nelle sue materie), in ordine di urgenza.
+ * "Segna chi è stato interrogato" non compare se quel giorno qualcuno è già stato segnato,
+ * se la lezione è stata chiusa con "Fine" o se è un giorno senza interrogazioni (non è una lezione).
+ */
 export function vociDaFare(d: InterrogazioneOsservata, adesso: Date): VoceDaFare[] {
   const voci: VoceDaFare[] = []
   if (d.stato === 'lista' && d.scambiInArrivo) voci.push({ tipo: 'scambio', quante: d.scambiInArrivo })
@@ -125,15 +140,17 @@ export function vociDaFare(d: InterrogazioneOsservata, adesso: Date): VoceDaFare
       voci.push({ tipo: 'risposte', risposte: d.risposte, totale: d.numeroStudenti, scadenza: d.scadenza })
     }
   }
-  if (d.stato === 'lista' && d.staff && d.lista) {
+  if (d.stato === 'lista' && (d.staff || d.docenteMateria) && d.lista) {
     if (d.segnalazioni) voci.push({ tipo: 'segnalazioni', quante: d.segnalazioni })
     const { ordine, interrogati, generata } = d.lista
     const lezione = ultimaLezione(d.giorni, d.subjectId, d.cal, oggiISO(adesso))
     const qualcunoQuelGiorno = lezione !== null && Object.values(interrogati).includes(lezione)
+    const chiusa = lezione !== null && !!d.lista.chiusi?.includes(lezione)
     if (
       lezione &&
       (!generata || lezione >= generata) &&
       !qualcunoQuelGiorno &&
+      !chiusa &&
       [...ordine, ...Object.keys(d.lista.fissi ?? {})].some((u) => !interrogati[u])
     ) {
       voci.push({ tipo: 'segna', data: lezione })
@@ -166,7 +183,8 @@ export function pesoMia(v: VoceMia, d: InterrogazioneOsservata): [number, number
     case 'attesa-lista':
       return [5, d.scadenza]
     case 'docente-lista':
-      return [6, d.nomeMateria]
+      // prima le materie del docente
+      return [v.miaMateria ? 6 : 7, d.nomeMateria]
   }
 }
 

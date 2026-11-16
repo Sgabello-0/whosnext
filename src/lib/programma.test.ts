@@ -116,9 +116,9 @@ describe('date fisse (DSA/BES)', () => {
 
 describe('date tra cui scegliere (DSA/BES)', () => {
   const base = { giorni: MAR_GIO, subjectId: 's', cal, adesso: MATTINA, perLezione: 2, numeroStudenti: 12 }
-  it('le lezioni che servono per interrogare tutti, dal primo giorno utile', () => {
+  it('le lezioni stimate per interrogare tutti più una, dal primo giorno utile', () => {
     const d = dateDisponibili(base)
-    expect(d).toHaveLength(6) // 12 studenti, 2 per lezione
+    expect(d).toHaveLength(7) // 12 studenti, 2 per lezione: 6 lezioni stimate + 1
     expect(d[0]).toBe('2026-11-03')
     for (const x of d) expect(haLezione(x, MAR_GIO, 's', cal)).toBe(true)
   })
@@ -127,10 +127,39 @@ describe('date tra cui scegliere (DSA/BES)', () => {
     expect(dateDisponibili({ ...base, scadenza: { oggi: '2026-11-05', ora: '20:00' } })[0]).toBe('2026-11-10')
     expect(dateDisponibili({ ...base, scadenza: { oggi: '2026-11-05', ora: '08:00' } })[0]).toBe('2026-11-05')
   })
-  it('almeno 5 date, al massimo 60; senza giorni nessuna', () => {
-    expect(dateDisponibili({ ...base, numeroStudenti: 1 })).toHaveLength(5)
+  it('solo le stimate più una (al massimo 60); senza numero per lezione 20; senza giorni nessuna', () => {
+    expect(dateDisponibili({ ...base, numeroStudenti: 1 })).toEqual(['2026-11-03', '2026-11-05'])
+    expect(dateDisponibili({ ...base, perLezione: 3, numeroStudenti: 7 })).toHaveLength(4) // 3 lezioni + 1
     expect(dateDisponibili({ ...base, perLezione: 1, numeroStudenti: 200 })).toHaveLength(60)
+    expect(dateDisponibili({ ...base, perLezione: null })).toHaveLength(20)
     expect(dateDisponibili({ ...base, giorni: [] })).toEqual([])
+  })
+})
+
+describe('lezione chiusa con "Fine"', () => {
+  it('prima dell\'uscita chi non è stato interrogato passa subito alla lezione dopo', () => {
+    const aperta = prog({ ordine: ['a', 'b'] })
+    expect(data(aperta, 'a')).toBe('2026-11-03')
+    const chiusa = prog({ ordine: ['a', 'b'], chiusi: ['2026-11-03'] })
+    expect(data(chiusa, 'a')).toBe('2026-11-05')
+    expect(data(chiusa, 'b')).toBe('2026-11-10')
+  })
+  it('anche chi ha la data fissa quel giorno', () => {
+    expect(data(prog({ ordine: ['a'], fissi: { dario: '2026-11-03' }, chiusi: ['2026-11-03'] }), 'dario')).toBe('2026-11-05')
+  })
+  it('una lezione passata chiusa non cambia niente', () => {
+    expect(data(prog({ ordine: ['a'], chiusi: ['2026-10-29'] }), 'a')).toBe('2026-11-03')
+  })
+})
+
+describe('giorno senza interrogazioni (lezione annullata)', () => {
+  it('non conta: le date passano alla lezione dopo', () => {
+    const conVerifica = { ...cal, eccezioni: [{ tipo: 'lezione-annullata' as const, data: '2026-11-05', subjectId: 's', motivo: 'verifica' as const, chi: 'prof' }] }
+    const p = prog({ ordine: ['a', 'b'], cal: conVerifica })
+    expect(data(p, 'a')).toBe('2026-11-03')
+    expect(data(p, 'b')).toBe('2026-11-10')
+    const dsa = { giorni: MAR_GIO, subjectId: 's', cal: conVerifica, adesso: MATTINA, perLezione: 2, numeroStudenti: 2 }
+    expect(dateDisponibili(dsa)).toEqual(['2026-11-03', '2026-11-10'])
   })
 })
 

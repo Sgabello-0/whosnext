@@ -230,6 +230,11 @@ export async function mostraMioDSA(db: Firestore, classi: string[], uid: string,
   await batch.commit()
 }
 
+/** Il capoclasse assegna le materie a un docente: in quelle segna gli interrogati e i giorni senza interrogazioni. */
+export async function impostaMaterieDocente(db: Firestore, classId: string, uid: string, materie: string[]): Promise<void> {
+  await updateDoc(rifMembro(db, classId, uid), { materie: [...new Set(materie)].slice(0, 30) })
+}
+
 /** Un docente chiede (o ritira la richiesta di) permesso di modifica. */
 export async function richiediPermesso(db: Firestore, classId: string, uid: string, richiesta: boolean): Promise<void> {
   await updateDoc(rifMembro(db, classId, uid), { richiestaPermesso: richiesta })

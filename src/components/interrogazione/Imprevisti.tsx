@@ -13,6 +13,9 @@ import { Avatar, Badge, Bottone, CLASSE_INPUT, Soffietto } from '../ui'
 
 type Rif = { classId: string; subjectId: string; interrogazioneId: string }
 
+/** Valore della scelta "Altra data…" nel menu delle date. */
+const ALTRA = 'altra'
+
 /**
  * Imprevisti (solo capo e vice): chi è fuori dalla lista si rimette in fondo, a chiunque si può fissare
  * una data (o toglierla), e chi non deve più esserci si toglie. Ogni modifica finisce nello storico.
@@ -23,15 +26,20 @@ export function Imprevisti(p: {
   /** tutti i membri della classe (servono i nomi) */
   membri: Map<string, Membro>
   mioUid: string
-  /** le date tra cui scegliere per fissare un'interrogazione */
+  /** le date proposte per fissare un'interrogazione (le stimate più una) */
   date: string[]
+  /** con "Altra data…": dal primo giorno utile, solo nei giorni con lezione della materia */
+  dataMinima: string
+  lezione: (data: string) => boolean
   /** senza lista: niente numeri */
   senzaLista?: boolean
 }) {
   const avvisi = useAvvisi()
   const conferma = useConferma()
   const [inData, setInData] = useState<string | null>(null)
+  // una delle date proposte, oppure ALTRA (e allora vale `altra`)
   const [giorno, setGiorno] = useState('')
+  const [altra, setAltra] = useState('')
   const [inCorso, setInCorso] = useState(false)
   const c = p.composizione
   const nome = (uid: string) => p.membri.get(uid)?.nome ?? 'Ex membro'
@@ -70,9 +78,25 @@ export function Imprevisti(p: {
   }
 
   function apriData(uid: string) {
+    const attuale = c.fissi[uid]
     setInData(uid)
-    setGiorno(c.fissi[uid] && p.date.includes(c.fissi[uid]!) ? c.fissi[uid]! : (p.date[0] ?? ''))
+    if (attuale && !p.date.includes(attuale)) {
+      setGiorno(ALTRA)
+      setAltra(attuale)
+    } else {
+      setGiorno(attuale ?? p.date[0] ?? ALTRA)
+      setAltra('')
+    }
   }
+  const scelto = giorno === ALTRA ? altra : giorno
+  const erroreAltra =
+    giorno === ALTRA && altra
+      ? altra < p.dataMinima
+        ? 'Scegli un giorno da oggi in poi.'
+        : !p.lezione(altra)
+          ? 'Quel giorno non c\'è lezione di questa materia.'
+          : null
+      : null
 
   return (
     <Soffietto
@@ -134,7 +158,7 @@ export function Imprevisti(p: {
                       Rimetti in lista
                     </Bottone>
                   )}
-                  {m && !fatto && p.date.length > 0 && (
+                  {m && !fatto && (
                     <Bottone
                       variante="piccolo"
                       icona={CalendarCheck}
@@ -165,10 +189,21 @@ export function Imprevisti(p: {
                         {formattaGiorno(d)}
                       </option>
                     ))}
+                    <option value={ALTRA}>Altra data…</option>
                   </select>
+                  {giorno === ALTRA && (
+                    <input
+                      type="date"
+                      aria-label={`Altra data per ${n}`}
+                      value={altra}
+                      min={p.dataMinima}
+                      onChange={(e) => setAltra(e.target.value)}
+                      className={`${CLASSE_INPUT} max-w-48 py-1.5`}
+                    />
+                  )}
                   <Bottone
                     variante="piccolo"
-                    disabled={inCorso || !giorno}
+                    disabled={inCorso || !scelto || !!erroreAltra}
                     onClick={() => {
                       const prima = c.fissi[uid]
                       const annulla: Imprevisto =
@@ -177,7 +212,7 @@ export function Imprevisti(p: {
                           : dove === 'ordine'
                             ? { tipo: 'aggiungi', uid } // torna in lista (in fondo)
                             : { tipo: 'togli', uid }
-                      void esegui({ tipo: 'fissa', uid, data: giorno }, `${n}: interrogazione fissata per ${formattaGiorno(giorno).toLowerCase()}`, annulla)
+                      void esegui({ tipo: 'fissa', uid, data: scelto }, `${n}: interrogazione fissata per ${formattaGiorno(scelto).toLowerCase()}`, annulla)
                     }}
                   >
                     Fissa
@@ -185,6 +220,7 @@ export function Imprevisti(p: {
                   <Bottone variante="piccolo" onClick={() => setInData(null)}>
                     Annulla
                   </Bottone>
+                  {erroreAltra && <p className="w-full text-sm text-rose-700 dark:text-rose-300">{erroreAltra}</p>}
                 </div>
               )}
             </li>

@@ -9,9 +9,14 @@ const URL_NOTIFICHE = import.meta.env.VITE_URL_NOTIFICHE as string | undefined
 
 export const serverAttivo = !!URL_NOTIFICHE
 
-type Rif = { classId: string; subjectId: string; interrogazioneId: string }
+type Rif = { classId: string; subjectId: string; interrogazioneId?: string }
 
-export function avvisaServer(tipo: 'nuova-interrogazione' | 'lista-pronta' | 'segnalazione' | 'scambio-richiesta' | 'cambio-lista', r: Rif, id?: string): void {
+/** 'non-interroga': il docente ha segnato un giorno senza interrogazioni (id = il giorno, senza interrogazione). */
+export function avvisaServer(
+  tipo: 'nuova-interrogazione' | 'lista-pronta' | 'segnalazione' | 'scambio-richiesta' | 'cambio-lista' | 'non-interroga',
+  r: Rif,
+  id?: string,
+): void {
   const utente = auth?.currentUser
   if (!URL_NOTIFICHE || !utente) return
   void (async () => {

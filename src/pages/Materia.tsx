@@ -9,16 +9,17 @@ import { creaDaModulo } from '../lib/preferenze'
 import { messaggioErrore } from '../lib/errori'
 import { formattaScadenza } from '../lib/formatoDate'
 import { useDocumento, useQuery } from '../lib/hooks'
-import { puoGestireDSA } from '../lib/membri'
+import { docenteDellaMateria, puoGestireDSA } from '../lib/membri'
 import { useCalendario } from '../lib/useCalendario'
 import { useClasse } from '../lib/useClasse'
 import type { Interrogazione, Materia as TipoMateria } from '../lib/tipi'
 import { FormInterrogazione } from '../components/FormInterrogazione'
 import { NOMI_GIORNI_BREVI } from '../lib/calendar'
 import { ProssimeLezioni } from '../components/ProssimeLezioni'
+import { GiorniSenzaInterrogazioni } from '../components/GiorniSenzaInterrogazioni'
 import { StatoClasse } from '../components/StatoClasse'
 import { useAvvisi } from '../components/Avvisi'
-import { Bottone, Caricamento, IntestazionePagina, LinkBottone, Modulo, Pallino, Riquadro, RigaLink, Scheda, Vuoto } from '../components/ui'
+import { Badge, Bottone, Caricamento, IntestazionePagina, LinkBottone, Modulo, Pallino, Riquadro, RigaLink, Scheda, Vuoto } from '../components/ui'
 
 export default function Materia() {
   const { classId = '', subjectId = '' } = useParams()
@@ -53,6 +54,7 @@ export default function Materia() {
       <IntestazionePagina
         indietro={{ to: `/classe/${classId}`, testo: dati.classe.nome }}
         titolo={m.nome}
+        badge={docenteDellaMateria(dati.io, subjectId) ? <Badge colore="blu">La tua materia</Badge> : undefined}
         sottotitolo={m.orario.length ? `Lezioni: ${m.orario.map((g) => NOMI_GIORNI_BREVI[g]).join(' · ')}` : 'Nessun giorno di lezione fisso'}
       />
 
@@ -116,6 +118,8 @@ export default function Materia() {
           )}
         </div>
       </Scheda>
+
+      {cal && <GiorniSenzaInterrogazioni classId={classId} subjectId={subjectId} giorni={m.orario} cal={cal} io={dati.io} membri={dati.membri} />}
 
       <Scheda titolo="Prossime lezioni" icona={CalendarDays}>
         {cal ? <ProssimeLezioni giorni={m.orario} subjectId={subjectId} cal={cal} /> : <Caricamento />}

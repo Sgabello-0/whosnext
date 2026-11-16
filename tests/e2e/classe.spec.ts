@@ -55,17 +55,17 @@ test('percorso completo: classe, inviti, docente, vice, DSA, uscita', async ({ b
   const rossi = await accedi(browser, 'mario.rossi@ittsrimini.edu.it', 'Prof Rossi', `/unisciti/${codice}`)
   await expect(rossi.getByText('Stai per entrare in 4ªB Informatica come docente')).toBeVisible()
   await rossi.getByRole('button', { name: 'Entra', exact: true }).click()
-  await expect(rossi.getByText('Accesso in sola lettura')).toBeVisible()
+  await expect(rossi.getByText('Nessuna materia assegnata')).toBeVisible()
   await expect(rossi.getByRole('link', { name: 'Gestisci classe' })).toHaveCount(0)
-  await rossi.getByRole('button', { name: 'Chiedi il permesso di modifica' }).click()
-  await expect(rossi.getByText('Richiesta inviata, in attesa del capoclasse.')).toBeVisible()
+  await rossi.getByRole('button', { name: 'Chiedi il permesso di riordinare le liste' }).click()
+  await expect(rossi.getByText('Permesso di riordinare le liste chiesto, in attesa del capoclasse.')).toBeVisible()
 
   // 5. Anna (in tempo reale) vede il docente, accetta la richiesta, nomina Bruno vice e dà il DSA a Carla
   await expect(anna.getByRole('heading', { name: 'Docenti (1)' })).toBeVisible()
   await anna.getByRole('link', { name: 'Gestisci classe' }).click()
   await expect(anna.getByText('Prof Rossi chiede di poter modificare le liste')).toBeVisible()
   await anna.getByRole('button', { name: 'Accetta' }).click()
-  await expect(rossi.getByText('Puoi modificare le liste')).toBeVisible()
+  await expect(rossi.getByText('Il capoclasse ti ha dato anche il permesso di riordinare le liste.')).toBeVisible()
 
   const rigaBruno = anna.getByRole('listitem').filter({ hasText: 'Bruno Neri' })
   await rigaBruno.getByRole('button', { name: 'Nomina vice' }).click()

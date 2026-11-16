@@ -40,21 +40,20 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   expect(lezioni).toHaveLength(5)
   for (const l of lezioni) expect(l).toMatch(/^(Martedì|Giovedì) \d{2}\/\d{2}$/)
 
-  // Anna annulla la prima lezione: sparisce dall'elenco
+  // Anna segna che alla prima lezione non si interroga (verifica): sparisce dall'elenco
   const prima = lezioni[0]!
-  const [gg, mm] = prima.split(' ')[1]!.split('/')
-  const oggi = new Date()
-  let anno = oggi.getFullYear()
-  if (Number(mm) < oggi.getMonth() + 1) anno++ // es. oggi dicembre, lezione a gennaio
+  const senza = anna.locator('section', { hasText: 'Giorni senza interrogazioni' })
+  await expect(senza.getByLabel('Lezione')).toHaveValue(/\d{4}-\d{2}-\d{2}/)
+  await senza.getByLabel('Motivo').selectOption('verifica')
+  await senza.getByRole('button', { name: 'Niente interrogazioni quel giorno' }).click()
+  await expect(senza.getByRole('list', { name: 'Giorni senza interrogazioni' })).toContainText(`${prima} · Verifica`)
+  await expect.poll(() => prossimeLezioni(anna)).not.toContain(prima)
+  // nelle impostazioni del calendario non ci sono più le lezioni extra o annullate
   await anna.goBack()
   await anna.getByRole('tab', { name: 'Calendario' }).click()
-  await anna.getByLabel('Giorno', { exact: true }).fill(`${anno}-${mm}-${gg}`)
-  await anna.getByLabel('Cosa succede').selectOption('lezione-annullata')
-  await anna.getByRole('button', { name: 'Aggiungi', exact: true }).click()
-  await expect(anna.getByText(`${gg}/${mm}/${anno} · Matematica: lezione annullata`)).toBeVisible()
+  await expect(anna.getByText('Lezioni extra o annullate')).toHaveCount(0)
   await anna.getByRole('tab', { name: 'Materie' }).click()
   await anna.getByRole('link', { name: 'Matematica' }).click()
-  await expect.poll(() => prossimeLezioni(anna)).not.toContain(prima)
 
   // Anna crea un'interrogazione con 2 studenti per lezione
   await anna.getByRole('button', { name: 'Nuova interrogazione' }).click()
@@ -82,6 +81,7 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   await expect(carla.getByText('non indicato')).toBeVisible()
 
   // Anna aggiunge una vacanza
+  const anno = new Date().getFullYear()
   await anna.goto(anna.url().split('/materia/')[0] + '/configura?sezione=calendario')
   await anna.getByLabel('Dal', { exact: true }).fill(`${anno + 1}-01-02`)
   await anna.getByLabel('Al (incluso)').fill(`${anno + 1}-01-06`)

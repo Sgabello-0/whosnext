@@ -27,6 +27,8 @@ type ContestoClasse = {
   ruolo: Ruolo
   staff: boolean
   puoModificare: boolean
+  /** docente: le materie che il capoclasse gli ha assegnato */
+  materieDocente: string[]
   cal: Calendario
   numeroStudenti?: number
   nomi: Record<string, string>
@@ -53,6 +55,7 @@ export function OsservaClasse({ classId, membro }: { classId: string; membro: Me
     ruolo: membro.ruolo,
     staff,
     puoModificare: puoModificareListe(membro),
+    materieDocente: membro.ruolo === 'docente' ? (membro.materie ?? []) : [],
     cal,
     numeroStudenti: staff ? membri.dati?.filter((m) => m.ruolo !== 'docente').length : undefined,
     nomi: Object.fromEntries((membri.dati ?? []).map((m) => [m.uid, m.nome])),
@@ -86,6 +89,9 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
   const chiave = `${c.classId}/${materia.id}/${i.id}`
   const raccolta = i.stato === 'raccolta'
   const inLista = i.stato === 'lista'
+  const docenteMateria = c.materieDocente.includes(materia.id)
+  // le segnalazioni le confermano capo, vice e il docente della materia
+  const gestisce = c.staff || docenteMateria
 
   const mia = useDocumento<DocPreferenza>(
     db && raccolta && c.ruolo !== 'docente' ? rifPreferenza(db, c.classId, materia.id, i.id, c.mioUid) : null,
@@ -96,8 +102,8 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
     raccolta && c.staff ? `preferenze/${chiave}` : null,
   )
   const segnalazioni = useQuery<object>(
-    db && inLista && c.staff ? rifSegnalazioni(db, c.classId, materia.id, i.id) : null,
-    inLista && c.staff ? `segnalazioni/${chiave}` : null,
+    db && inLista && gestisce ? rifSegnalazioni(db, c.classId, materia.id, i.id) : null,
+    inLista && gestisce ? `segnalazioni/${chiave}` : null,
   )
 
   // Richieste di scambio per la mia posizione (studenti in lista, non ancora interrogati)
@@ -135,6 +141,7 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
     ruolo: c.ruolo,
     staff: c.staff,
     puoModificare: c.puoModificare,
+    docenteMateria,
     miaScelta:
       mia.dati === undefined ? undefined : mia.dati === null ? null : { scelta: mia.dati.scelta, dataDSA: mia.dati.dataDSA ?? null },
     creata: i.creato ? oggiISO(i.creato.toDate()) : null,
@@ -151,6 +158,7 @@ function OsservaInterrogazione(p: { contesto: ContestoClasse; materia: ConId<Mat
               fissi: lista.dati.fissi,
               interrogati: lista.dati.interrogati,
               generata: lista.dati.generata ? oggiISO(lista.dati.generata.toDate()) : null,
+              chiusi: lista.dati.chiusi,
             },
     // gli esclusi non contano né tra le risposte né tra gli studenti
     risposte: preferenze.dati?.filter((d) => !i.esclusi?.includes(d.id)).length,

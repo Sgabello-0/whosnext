@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { db } from '../../lib/firebase'
-import { formattaGiorno, momentoLocale, oggiISO, type Calendario } from '../../lib/calendar'
+import { formattaGiorno, haLezione, momentoLocale, oggiISO, primoGiornoUtile, type Calendario } from '../../lib/calendar'
 import { rifLista, rifRapporto } from '../../lib/configurazione'
 import { messaggioErrore } from '../../lib/errori'
 import { testoStima } from '../../lib/estimate'
@@ -35,8 +35,10 @@ type Props = {
   cal: Calendario
   /** capo e vice: vedono il rapporto */
   staff: boolean
-  /** capo, vice e docenti con permesso: riordinano la lista (gli interrogati li segnano solo capo e vice) */
+  /** capo, vice e docenti con permesso: riordinano la lista */
   puoModificare: boolean
+  /** capo, vice e il docente della materia: segnano gli interrogati e chiudono le lezioni */
+  gestisce: boolean
   /** uid con il badge DSA/BES visibile a chi guarda */
   dsa: Set<string>
   /** entro quanti giorni prima si può dire "non ci sarò" */
@@ -93,6 +95,7 @@ export function ListaInterrogazione(p: Props) {
     cal: p.cal,
     adesso: momentoLocale(adesso),
     creata: p.interrogazione.creato ? oggiISO(p.interrogazione.creato.toDate()) : null,
+    chiusi: lista.dati.chiusi ?? [],
   }
   const programma = programmaLista(datiProgramma)
   const stimaDi = (uid: string) => programma.stime.get(uid) ?? null
@@ -242,7 +245,7 @@ export function ListaInterrogazione(p: Props) {
   )
   const pezzoGestione = (
     <>
-      {p.staff && !riordino && (
+      {p.gestisce && !riordino && (
         <>
           <Segnalazioni r={r} membri={perUid} mioUid={p.mioUid} />
           <SegnaInterrogati
@@ -258,10 +261,12 @@ export function ListaInterrogazione(p: Props) {
             fissi={fissi}
             senzaLista={senzaLista}
             interrogati={interrogati}
+            chiusi={lista.dati.chiusi ?? []}
             membri={perUid}
             cal={p.cal}
             mioUid={p.mioUid}
             programma={datiProgramma}
+            staff={p.staff}
           />
         </>
       )}
@@ -356,7 +361,7 @@ export function ListaInterrogazione(p: Props) {
                         Scambia
                       </Bottone>
                     ) : null)}
-                  {quando && p.staff && (
+                  {quando && p.gestisce && (
                     <Bottone
                       variante="piccolo"
                       icona={Undo2}
@@ -401,6 +406,7 @@ export function ListaInterrogazione(p: Props) {
           senzaLista={senzaLista}
           membri={perUid}
           mioUid={p.mioUid}
+          // le date stimate per chi manca, più una; con "Altra data…" qualsiasi lezione della materia
           date={dateDisponibili({
             giorni: p.interrogazione.giorni,
             subjectId: p.subjectId,
@@ -408,10 +414,10 @@ export function ListaInterrogazione(p: Props) {
             adesso: momentoLocale(adesso),
             creata: p.interrogazione.creato ? oggiISO(p.interrogazione.creato.toDate()) : null,
             perLezione: p.interrogazione.perLezione,
-            numeroStudenti: Math.max(totale, 1),
-            // per un imprevisto si può fissare anche più avanti
-            quante: 40,
+            numeroStudenti: Math.max(totale - fatti, 1),
           })}
+          dataMinima={primoGiornoUtile(momentoLocale(adesso), p.cal)}
+          lezione={(d) => haLezione(d, p.interrogazione.giorni, p.subjectId, p.cal)}
         />
       )}
     </>

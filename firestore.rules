@@ -69,6 +69,16 @@ service cloud.firestore {
         || (mioRuolo(c) == 'docente' && get(membroPath(c, request.auth.uid)).data.permessoModifica == true)
       );
     }
+    // Il docente a cui il capoclasse ha assegnato la materia s.
+    function docenteDellaMateria(c, s) {
+      return isMembro(c) && mioRuolo(c) == 'docente'
+        && s in get(membroPath(c, request.auth.uid)).data.get('materie', []);
+    }
+    // Nella materia s segnano gli interrogati, chiudono le lezioni e confermano le segnalazioni:
+    // capo, vice e il docente della materia.
+    function gestisceMateria(c, s) {
+      return isCapoOVice(c) || docenteDellaMateria(c, s);
+    }
     // Il capoclasse sta eliminando la classe: nello stesso batch il documento della classe sparisce.
     function eliminazioneClasse(c) {
       return isCapo(c) && !existsAfter(classePath(c));
@@ -195,7 +205,7 @@ service cloud.firestore {
         && !existsAfter(membroPath(c, request.auth.uid));
 
       // ───── Membri ─────
-      // members/{uid} → { uid, nome, email, foto, ruolo, permessoModifica, richiestaPermesso, codiceUsato, entrato }
+      // members/{uid} → { uid, nome, email, foto, ruolo, permessoModifica, richiestaPermesso, codiceUsato, entrato, materie (docenti) }
       // ruolo: capo | vice | studente | docente
 
       match /members/{u} {
@@ -285,6 +295,13 @@ service cloud.firestore {
           )
         );
 
+        // Il capoclasse assegna le materie a un docente
+        allow update: if isCapo(c) && u != request.auth.uid
+          && resource.data.ruolo == 'docente'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['materie'])
+          && request.resource.data.materie is list
+          && request.resource.data.materie.size() <= 30;
+
         // Si esce da soli, oppure il capoclasse rimuove. Il capoclasse non può uscire,
         // ma i documenti di tutti (il suo compreso) spariscono quando elimina la classe.
         allow delete: if (isMembro(c) && resource.data.ruolo != 'capo' && (u == request.auth.uid || isCapo(c)))
@@ -332,7 +349,39 @@ service cloud.firestore {
           && request.resource.data.eccezioni is list && request.resource.data.eccezioni.size() <= 300
           && dataISO(request.resource.data.fineAnno)
           && request.resource.data.aggiornato == request.time;
+        // Il docente aggiunge o toglie un giorno senza interrogazioni, solo nelle sue materie (e nient'altro)
+        allow update: if documento == 'settings' && isMembro(c) && mioRuolo(c) == 'docente'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['eccezioni', 'aggiornato'])
+          && request.resource.data.aggiornato == request.time
+          && request.resource.data.eccezioni is list
+          && request.resource.data.eccezioni.size() <= 300
+          && giornoSenzaInterrogazioni(
+            resource.data.eccezioni,
+            request.resource.data.eccezioni,
+            get(membroPath(c, request.auth.uid)).data.get('materie', [])
+          );
         allow delete: if eliminazioneClasse(c);
+
+        // Una sola eccezione in più (una lezione annullata di una sua materia, segnata da lui) o una in meno
+        function giornoSenzaInterrogazioni(prima, dopo, materie) {
+          let aggiunte = dopo.removeAll(prima);
+          let tolte = prima.removeAll(dopo);
+          return (
+            aggiunte.size() == 1 && tolte.size() == 0
+            && aggiunte[0] is map
+            && aggiunte[0].keys().hasOnly(['tipo', 'data', 'subjectId', 'motivo', 'chi'])
+            && aggiunte[0].tipo == 'lezione-annullata'
+            && aggiunte[0].subjectId in materie
+            && dataISO(aggiunte[0].data)
+            && aggiunte[0].get('chi', '') == request.auth.uid
+            && aggiunte[0].get('motivo', 'altro') in ['spiegazione', 'verifica', 'altro']
+          ) || (
+            aggiunte.size() == 0 && tolte.size() == 1
+            && tolte[0] is map
+            && tolte[0].get('tipo', '') == 'lezione-annullata'
+            && tolte[0].get('subjectId', '') in materie
+          );
+        }
       }
 
       // ───── Materie e interrogazioni ─────
@@ -378,7 +427,7 @@ service cloud.firestore {
             && request.resource.data.creatoDa == request.auth.uid;
           allow update: if (
               // Tutti interrogati (o non più): lista ↔ conclusa
-              isCapoOVice(c)
+              gestisceMateria(c, s)
               && interrogazioneValida(request.resource.data)
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'aggiornato'])
               && resource.data.stato in ['lista', 'conclusa']
@@ -443,7 +492,8 @@ service cloud.firestore {
           }
 
           // ───── Lista ─────
-          // list/current → { ordine[uid], fissi{uid: data}, interrogati{uid: data}, ritardi{uid: n}, generata, generataDa } (la vedono tutti)
+          // list/current → { ordine[uid], fissi{uid: data}, interrogati{uid: data}, ritardi{uid: n}, chiusi[data], generata, generataDa } (la vedono tutti)
+          // chiusi: lezioni chiuse con "Fine"
           // fissi: DSA/BES con la data scelta, fuori dall'ordine
           // list/rapporto → rapporto di soddisfazione (solo capo e vice)
 
@@ -470,11 +520,14 @@ service cloud.firestore {
                 )
                 || (documento == 'rapporto' && request.resource.data.generata == request.time)
               );
-            // Riordino e interrogati: stesse persone, interrogati solo tra chi è in lista
-            allow update: if puoModificareListe(c) && documento == 'current'
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'interrogati', 'aggiornato', 'aggiornatoDa', 'ultimaModifica'])
-              // chi è stato interrogato lo segnano solo capo e vice (i docenti con permesso riordinano soltanto)
-              && (isCapoOVice(c) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['interrogati']))
+            // Riordino, interrogati e lezioni chiuse con "Fine": stesse persone, interrogati solo tra chi è in lista
+            allow update: if (puoModificareListe(c) || docenteDellaMateria(c, s)) && documento == 'current'
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ordine', 'interrogati', 'chiusi', 'aggiornato', 'aggiornatoDa', 'ultimaModifica'])
+              // riordinano capo, vice e docenti con il permesso del capoclasse
+              && (puoModificareListe(c) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ordine']))
+              // interrogati e lezioni chiuse: capo, vice e il docente della materia
+              && (gestisceMateria(c, s) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['interrogati', 'chiusi']))
+              && (!('chiusi' in request.resource.data) || (request.resource.data.chiusi is list && request.resource.data.chiusi.size() <= 400))
               // ogni modifica lascia una voce nuova nello storico, scritta nello stesso batch
               && request.resource.data.get('ultimaModifica', null) != resource.data.get('ultimaModifica', null)
               && voceStoricoNuova(request.resource.data.get('ultimaModifica', null))
@@ -584,10 +637,12 @@ service cloud.firestore {
 
           match /storico/{voce} {
             allow read: if isMembro(c);
-            allow create: if puoModificareListe(c)
+            allow create: if (puoModificareListe(c) || docenteDellaMateria(c, s))
               && request.resource.data.keys().hasOnly(['tipo', 'chi', 'quando', 'dettagli'])
-              && request.resource.data.tipo in ['generata', 'riordino', 'interrogati', 'annullato', 'aggiunto', 'tolto', 'fissato', 'liberato', 'saltato', 'ripristinato']
+              && request.resource.data.tipo in ['generata', 'riordino', 'interrogati', 'annullato', 'lezione', 'aggiunto', 'tolto', 'fissato', 'liberato', 'saltato', 'ripristinato']
               && (!(request.resource.data.tipo in ['saltato', 'ripristinato']) || isCapoOVice(c))
+              // il docente della materia (senza permesso) solo per gli interrogati
+              && (puoModificareListe(c) || request.resource.data.tipo in ['interrogati', 'annullato', 'lezione'])
               && request.resource.data.chi == request.auth.uid
               && request.resource.data.quando == request.time
               && request.resource.data.dettagli is map
@@ -689,8 +744,8 @@ service cloud.firestore {
             function lista() {
               return get(/databases/$(database)/documents/classes/$(c)/subjects/$(s)/interrogations/$(i)/list/current).data;
             }
-            allow get: if isMembro(c) && (u == request.auth.uid || isCapoOVice(c));
-            allow list: if isCapoOVice(c);
+            allow get: if isMembro(c) && (u == request.auth.uid || gestisceMateria(c, s));
+            allow list: if gestisceMateria(c, s);
             allow create: if isMembro(c) && u == request.auth.uid
               && (u in lista().ordine || u in lista().get('fissi', {}))
               && !(u in lista().interrogati)
@@ -698,7 +753,7 @@ service cloud.firestore {
               && dataISO(request.resource.data.data)
               && request.resource.data.quando == request.time;
             allow update: if false;
-            allow delete: if (isMembro(c) && u == request.auth.uid) || isCapoOVice(c);
+            allow delete: if (isMembro(c) && u == request.auth.uid) || gestisceMateria(c, s);
           }
         }
       }

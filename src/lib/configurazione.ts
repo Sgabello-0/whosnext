@@ -7,6 +7,7 @@ import {
   collection,
   doc,
   getDocs,
+  runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -15,7 +16,19 @@ import {
   type DocumentReference,
   type Firestore,
 } from 'firebase/firestore'
-import { erroreCalendario, GIORNI_LEZIONE, usciteDefault, type Calendario } from './calendar'
+import {
+  calendarioDa,
+  conEccezione,
+  dataValida,
+  erroreCalendario,
+  GIORNI_LEZIONE,
+  MOTIVI_NON_INTERROGA,
+  senzaEccezione,
+  usciteDefault,
+  type Calendario,
+  type EccezioneLezione,
+  type MotivoNonInterroga,
+} from './calendar'
 import { ErroreApp } from './classi'
 
 export const rifCalendario = (db: Firestore, classId: string) => doc(db, 'classes', classId, 'calendar', 'settings')
@@ -109,6 +122,59 @@ export async function salvaCalendario(db: Firestore, classId: string, cal: Calen
     fineAnno: cal.fineAnno,
     uscite: cal.uscite ?? usciteDefault(),
     aggiornato: serverTimestamp(),
+  })
+}
+
+/**
+ * Giorno senza interrogazioni per una materia (spiegazione, verifica…): nel calendario è una lezione annullata,
+ * quindi non conta per le date delle liste. Lo segnano capo, vice o il docente della materia (`staff` = capo o vice).
+ * Si legge e si scrive in una transazione, per non perdere le modifiche fatte nel frattempo da altri.
+ */
+export async function segnaGiornoSenzaInterrogazioni(
+  db: Firestore,
+  classId: string,
+  g: { data: string; subjectId: string; motivo: MotivoNonInterroga; chi: string },
+  staff: boolean,
+): Promise<EccezioneLezione> {
+  if (!dataValida(g.data)) datiNonValidi('Scegli il giorno.')
+  if (!MOTIVI_NON_INTERROGA.includes(g.motivo)) datiNonValidi('Scegli il motivo.')
+  const nuova: EccezioneLezione = { tipo: 'lezione-annullata', data: g.data, subjectId: g.subjectId, motivo: g.motivo, chi: g.chi }
+  await runTransaction(db, async (tx) => {
+    const rif = rifCalendario(db, classId)
+    const snap = await tx.get(rif)
+    // il docente può solo aggiungere un giorno a un calendario che c'è già
+    if (!snap.exists() && !staff) datiNonValidi('Il capoclasse deve prima salvare il calendario della classe.')
+    const cal = calendarioDa(snap.exists() ? (snap.data() as Partial<Calendario>) : null)
+    if (cal.eccezioni.some((e) => e.tipo !== 'vacanza' && e.data === g.data && e.subjectId === g.subjectId)) {
+      datiNonValidi('Quel giorno è già segnato per questa materia.')
+    }
+    const nuovo = conEccezione(cal, nuova)
+    const errore = erroreCalendario(nuovo)
+    if (errore) datiNonValidi(errore)
+    if (snap.exists()) tx.update(rif, { eccezioni: nuovo.eccezioni, aggiornato: serverTimestamp() })
+    else {
+      tx.set(rif, {
+        giorniScolastici: nuovo.giorniScolastici,
+        eccezioni: nuovo.eccezioni,
+        fineAnno: nuovo.fineAnno,
+        uscite: nuovo.uscite ?? usciteDefault(),
+        aggiornato: serverTimestamp(),
+      })
+    }
+  })
+  return nuova
+}
+
+/** Toglie un giorno senza interrogazioni (o una lezione extra di prima: solo capo e vice). */
+export async function togliGiornoSenzaInterrogazioni(db: Firestore, classId: string, e: EccezioneLezione): Promise<void> {
+  await runTransaction(db, async (tx) => {
+    const rif = rifCalendario(db, classId)
+    const snap = await tx.get(rif)
+    if (!snap.exists()) return
+    const cal = calendarioDa(snap.data() as Partial<Calendario>)
+    const nuovo = senzaEccezione(cal, e)
+    if (nuovo.eccezioni.length === cal.eccezioni.length) return
+    tx.update(rif, { eccezioni: nuovo.eccezioni, aggiornato: serverTimestamp() })
   })
 }
 

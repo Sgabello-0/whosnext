@@ -65,9 +65,19 @@ describe('voceMia', () => {
     expect(voceMia(interr({ stato: 'lista', lista: lista(['a']) }), ADESSO)).toBeNull()
   })
 
-  it('i docenti vedono quanti sono stati interrogati', () => {
+  it('i docenti vedono quanti sono stati interrogati; le loro materie vanno prima', () => {
     const v = voceMia(interr({ ruolo: 'docente', stato: 'lista', lista: lista(['a', 'b', 'c'], { a: 'x' }) }), ADESSO)
-    expect(v).toEqual({ tipo: 'docente-lista', interrogati: 1, totale: 3 })
+    expect(v).toEqual({ tipo: 'docente-lista', interrogati: 1, totale: 3, miaMateria: false })
+    const mia = interr({ chiave: 'c/z/i', nomeMateria: 'Zoologia', ruolo: 'docente', docenteMateria: true, stato: 'lista', lista: lista(['a']) })
+    const altra = interr({ ruolo: 'docente', stato: 'lista', lista: lista(['a']) })
+    const voci = [altra, mia].map((d) => ({ voce: voceMia(d, ADESSO)!, d })).sort(confrontaMie)
+    expect(voci.map((x) => x.d.nomeMateria)).toEqual(['Zoologia', 'Storia'])
+    expect(voci[0]!.voce).toMatchObject({ miaMateria: true })
+  })
+
+  it('con la lezione di oggi chiusa la stima passa alla lezione dopo', () => {
+    const l = { ...lista(['io', 'b']), chiusi: ['2026-11-03'] }
+    expect(voceMia(interr({ stato: 'lista', lista: l }), ADESSO)).toMatchObject({ testo: 'Stimata: Giovedì 05/11' })
   })
 })
 
@@ -93,6 +103,25 @@ describe('vociDaFare', () => {
     // già segnato qualcuno quel giorno: niente
     const fatto = interr({ ...capo, stato: 'lista', lista: lista(['a', 'b'], { a: '2026-11-03' }, '2026-11-01') })
     expect(vociDaFare(fatto, ADESSO)).toEqual([])
+  })
+
+  it('niente da segnare se la lezione è stata chiusa con "Fine" o se quel giorno non si interroga', () => {
+    const chiusa = interr({ ...capo, stato: 'lista', lista: { ...lista(['a', 'b'], {}, '2026-11-01'), chiusi: ['2026-11-03'] } })
+    expect(vociDaFare(chiusa, ADESSO)).toEqual([])
+    // martedì 03/11 senza interrogazioni: si guarda la lezione prima (giovedì 29/10), precedente alla lista
+    const cal = { ...CALENDARIO_DEFAULT, eccezioni: [{ tipo: 'lezione-annullata' as const, data: '2026-11-03', subjectId: 's' }] }
+    const senza = interr({ ...capo, cal, stato: 'lista', lista: lista(['a', 'b'], {}, '2026-11-01') })
+    expect(vociDaFare(senza, ADESSO)).toEqual([])
+  })
+
+  it('il docente della materia segna gli interrogati e conferma le segnalazioni; gli altri docenti no', () => {
+    const base = { stato: 'lista' as const, segnalazioni: 1, lista: lista(['a', 'b'], {}, '2026-11-01') }
+    const docente = { ruolo: 'docente' as const, staff: false, puoModificare: false }
+    expect(vociDaFare(interr({ ...docente, docenteMateria: true, ...base }), ADESSO)).toEqual([
+      { tipo: 'segnalazioni', quante: 1 },
+      { tipo: 'segna', data: '2026-11-03' },
+    ])
+    expect(vociDaFare(interr({ ...docente, ...base }), ADESSO)).toEqual([])
   })
 
   it('non propone lezioni precedenti alla generazione della lista', () => {

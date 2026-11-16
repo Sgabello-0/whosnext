@@ -39,6 +39,19 @@ export function puoGestireDSA(m: Pick<Membro, 'ruolo'> | null | undefined): bool
   return m?.ruolo === 'capo' || m?.ruolo === 'vice'
 }
 
+/** Il docente a cui il capoclasse ha assegnato la materia. */
+export function docenteDellaMateria(m: Pick<Membro, 'ruolo' | 'materie'> | null | undefined, subjectId: string): boolean {
+  return m?.ruolo === 'docente' && !!m.materie?.includes(subjectId)
+}
+
+/**
+ * Chi, in una materia, segna gli interrogati, chiude le lezioni con "Fine" e segna i giorni senza interrogazioni:
+ * capo, vice e il docente della materia.
+ */
+export function gestisceMateria(m: Pick<Membro, 'ruolo' | 'materie'> | null | undefined, subjectId: string): boolean {
+  return puoGestireDSA(m) || docenteDellaMateria(m, subjectId)
+}
+
 export const ETICHETTA_RUOLO: Record<Ruolo, string> = {
   capo: 'Capoclasse',
   vice: 'Vice',

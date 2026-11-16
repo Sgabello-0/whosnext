@@ -4,7 +4,7 @@
  * (o due esecuzioni insieme) non lo manda due volte.
  */
 import type { Firestore, QueryDocumentSnapshot, Timestamp } from 'firebase-admin/firestore'
-import { calendarioDa, type Calendario } from '../../src/lib/calendar'
+import { calendarioDa, ETICHETTA_MOTIVO, type Calendario } from '../../src/lib/calendar'
 import { testoStima, type Stima } from '../../src/lib/estimate'
 import { percorsoInterrogazione } from '../../src/lib/messaggi'
 import { programmaLista } from '../../src/lib/programma'
@@ -12,11 +12,21 @@ import { assenzaInRitardo as inRitardo, chiSiSposta, giorniAssenza } from '../..
 import { percorsoDi, rifDa, type Rif } from './generazione'
 import { dataItalia, domaniItalia, momentoItalia, oraItalia, scadenzaItalia } from './ora'
 import { avvisa, type Postino } from './postino'
-import { assenzaInRitardo, cambioPosto, confermaInterrogato, domaniPossibile, listaPronta, nuovaInterrogazione, richiestaScambio, toccaDomani } from './testi'
+import {
+  assenzaInRitardo,
+  cambioPosto,
+  confermaInterrogato,
+  domaniPossibile,
+  listaPronta,
+  nonInterroga,
+  nuovaInterrogazione,
+  richiestaScambio,
+  toccaDomani,
+} from './testi'
 import { SITO } from './http'
 
 
-type Lista = { ordine: string[]; fissi?: Record<string, string>; interrogati: Record<string, string> }
+type Lista = { ordine: string[]; fissi?: Record<string, string>; interrogati: Record<string, string>; chiusi?: string[] }
 type DatiInterrogazione = {
   nome: string
   stato: string
@@ -58,6 +68,7 @@ function programma(c: Awaited<ReturnType<typeof contesto>>, r: Rif, lista: Lista
     cal: c.cal,
     adesso: momentoItalia(adesso),
     creata: c.dati?.creato ? dataItalia(c.dati.creato.toDate()) : null,
+    chiusi: lista.chiusi,
   })
 }
 
@@ -267,4 +278,36 @@ export async function avvisaCambioLista(db: Firestore, postino: Postino, r: Rif,
     }
   }
   return mandate
+}
+
+/**
+ * Al capoclasse: il docente della materia ha segnato un giorno senza interrogazioni.
+ * Solo se nel calendario c'è davvero, segnato proprio da chi chiama, e se chi chiama è un docente.
+ */
+export async function avvisaNonInterroga(
+  db: Firestore,
+  postino: Postino,
+  o: { classId: string; subjectId: string; data: string },
+  chiamante: string,
+) {
+  const [membro, classe, materia, cal] = await Promise.all([
+    db.doc(`classes/${o.classId}/members/${chiamante}`).get(),
+    db.doc(`classes/${o.classId}`).get(),
+    db.doc(`classes/${o.classId}/subjects/${o.subjectId}`).get(),
+    db.doc(`classes/${o.classId}/calendar/settings`).get(),
+  ])
+  const capo = classe.data()?.capoclasseUid as string | undefined
+  if (membro.data()?.ruolo !== 'docente' || !capo || !materia.exists) return 'non-valido'
+  const e = calendarioDa(cal.data() as Partial<Calendario> | undefined).eccezioni.find(
+    (x) => x.tipo === 'lezione-annullata' && x.data === o.data && x.subjectId === o.subjectId && x.chi === chiamante,
+  )
+  if (!e || e.tipo !== 'lezione-annullata') return 'non-valido'
+  const n = nonInterroga({
+    materia: (materia.data()?.nome as string | undefined) ?? 'Materia',
+    chi: (membro.data()?.nome as string | undefined) ?? 'Il docente',
+    giorno: o.data,
+    motivo: e.motivo && ETICHETTA_MOTIVO[e.motivo] ? ETICHETTA_MOTIVO[e.motivo] : null,
+    percorso: `/classe/${o.classId}/materia/${o.subjectId}`,
+  })
+  return avvisa(db, postino, capo, `non-interroga/${o.classId}/${o.subjectId}/${o.data}`, n)
 }

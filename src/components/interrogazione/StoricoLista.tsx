@@ -50,6 +50,18 @@ export function StoricoLista(p: { classId: string; subjectId: string; interrogaz
         return `${chi} ha segnato che ${nome(d.uid)} ha saltato l'interrogazione${d.nuova ? `: passa a ${formattaGiorno(d.nuova).toLowerCase()}` : ''}`
       case 'ripristinato':
         return `${chi} ha annullato il "saltato" di ${nome(d.uid)}`
+      case 'lezione': {
+        const giorno = d.data ? ` di ${formattaGiorno(d.data).toLowerCase()}` : ''
+        const segnati = (d.uids ?? []).map((u) => nome(u))
+        const tolti = (d.tolti ?? []).map((u) => nome(u))
+        const parti = [
+          ...(segnati.length ? [`interrogati: ${segnati.join(', ')}`] : []),
+          ...(tolti.length ? [`tolto il segno a ${tolti.join(', ')}`] : []),
+        ]
+        if (d.chiusa === false) return `${chi} ha riaperto la lezione${giorno}${parti.length ? ` (${parti.join('; ')})` : ''}`
+        if (d.chiusa === true) return `${chi} ha chiuso la lezione${giorno} (${parti.length ? parti.join('; ') : 'nessun interrogato'})`
+        return `${chi} ha modificato gli interrogati${giorno}${parti.length ? ` (${parti.join('; ')})` : ''}`
+      }
       case 'assenza':
         return `${chi} ha detto che non ci sarà${d.data ? ` ${formattaGiorno(d.data).toLowerCase()}` : ''}${d.nuova ? `: passa a ${formattaGiorno(d.nuova).toLowerCase()}` : ''}`
     }

@@ -13,7 +13,23 @@ export const NOMI_GIORNI_BREVI = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom
 export const GIORNI_LEZIONE = [0, 1, 2, 3, 4, 5] as const
 
 export type Vacanza = { tipo: 'vacanza'; da: DataISO; a: DataISO; descrizione: string }
-export type EccezioneLezione = { tipo: 'lezione-extra' | 'lezione-annullata'; data: DataISO; subjectId: string }
+/** Perché un giorno una materia non interroga (lo segnano capoclasse, vice o il docente della materia). */
+export type MotivoNonInterroga = 'spiegazione' | 'verifica' | 'altro'
+export const MOTIVI_NON_INTERROGA: readonly MotivoNonInterroga[] = ['spiegazione', 'verifica', 'altro']
+export const ETICHETTA_MOTIVO: Record<MotivoNonInterroga, string> = { spiegazione: 'Spiegazione', verifica: 'Verifica', altro: 'Altro' }
+
+/**
+ * Lezione in più o annullata per una materia. "lezione-annullata" è anche il giorno senza interrogazioni
+ * segnato dalla pagina della materia (con il motivo e chi l'ha segnato): quel giorno non conta per le liste.
+ */
+export type EccezioneLezione = {
+  tipo: 'lezione-extra' | 'lezione-annullata'
+  data: DataISO
+  subjectId: string
+  motivo?: MotivoNonInterroga
+  /** uid di chi l'ha segnata */
+  chi?: string
+}
 export type Eccezione = Vacanza | EccezioneLezione
 
 export type Calendario = {

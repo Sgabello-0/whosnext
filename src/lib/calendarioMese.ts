@@ -61,7 +61,13 @@ export function vociPerGiorno(osservate: readonly InterrogazioneOsservata[], ade
         perData.set(d.miaScelta.dataDSA, [{ uid: d.mioUid, nome: d.nomi?.[d.mioUid] ?? 'Tu', io: true, fatto: false }])
       }
     } else if (d.stato === 'lista' && d.lista) {
-      const { righe } = programmaLista({ ...base, ordine: d.lista.ordine, fissi: d.lista.fissi, interrogati: d.lista.interrogati })
+      const { righe } = programmaLista({
+        ...base,
+        ordine: d.lista.ordine,
+        fissi: d.lista.fissi,
+        interrogati: d.lista.interrogati,
+        chiusi: d.lista.chiusi,
+      })
       for (const r of righe) {
         const data = r.interrogato ?? (r.stima?.tipo === 'data' ? r.stima.data : null)
         if (!data) continue

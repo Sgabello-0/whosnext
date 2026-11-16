@@ -6,7 +6,14 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { Timestamp } from 'firebase-admin/firestore'
 import { database } from '../../netlify/lib/admin'
-import { avvisaCambioLista, avvisaListaPronta, avvisaNuovaInterrogazione, avvisaSegnalazione, ricordaDomani } from '../../netlify/lib/eventi'
+import {
+  avvisaCambioLista,
+  avvisaListaPronta,
+  avvisaNonInterroga,
+  avvisaNuovaInterrogazione,
+  avvisaSegnalazione,
+  ricordaDomani,
+} from '../../netlify/lib/eventi'
 import { riceviFeedback, type MessaggioFeedback } from '../../netlify/lib/feedback'
 import { generaScadute } from '../../netlify/lib/generazione'
 import { avvisa, type Postino } from '../../netlify/lib/postino'
@@ -399,6 +406,21 @@ describe('/api/notifica', () => {
     expect((await notifica(richiesta({ token: t, corpo: { ...CORPO, tipo: 'scambio-esito', id: 'carla_0' } }))).status).toBe(400)
   })
 
+  it('giorno senza interrogazioni: serve il giorno, non l\'interrogazione', async () => {
+    await classe({ ...TRE, rossi: { ruolo: 'docente', nome: 'Prof Rossi' } }, {}, { token: false })
+    await db.doc(`${CLASSE}/calendar/settings`).set({
+      eccezioni: [{ tipo: 'lezione-annullata', data: '2026-11-19', subjectId: 's1', motivo: 'verifica', chi: 'rossi' }],
+    })
+    const t = tokenFinto('rossi')
+    const corpo = { tipo: 'non-interroga', classId: 'c1', subjectId: 's1', id: '2026-11-19' }
+    expect((await notifica(richiesta({ token: t, corpo: { ...corpo, id: 'domani' } }))).status).toBe(400)
+    expect((await notifica(richiesta({ token: t, corpo: { ...corpo, subjectId: '../x' } }))).status).toBe(400)
+    expect((await notifica(richiesta({ token: tokenFinto('estraneo'), corpo }))).status).toBe(403)
+    const ok = await notifica(richiesta({ token: t, corpo }))
+    expect(ok.status).toBe(200)
+    expect(await ok.json()).toEqual({ esito: 'mandata' })
+  })
+
   it('solo i membri della classe', async () => {
     await conLista(['anna', 'bruno', 'carla'])
     expect((await notifica(richiesta({ token: tokenFinto('estraneo'), corpo: CORPO }))).status).toBe(403)
@@ -632,5 +654,39 @@ describe('cambi di posto', () => {
     await db.doc(INTERR).set({ senzaLista: true }, { merge: true })
     expect(await avvisaCambioLista(db, p, R, 'v1', 'bruno', LUNEDI_SERA)).toBe(1) // solo l'avviso del ritardo
     expect(push.map((x) => x.tokens[0])).toEqual(['token-anna'])
+  })
+})
+
+describe('giorni senza interrogazioni', () => {
+  const CAL = `${CLASSE}/calendar/settings`
+  const VERIFICA = { tipo: 'lezione-annullata', data: '2026-11-19', subjectId: 's1', motivo: 'verifica', chi: 'rossi' }
+
+  it('segnato dal docente della materia: al capoclasse, una volta sola', async () => {
+    await classe({ ...TRE, rossi: { ruolo: 'docente', nome: 'Prof Rossi' } })
+    await db.doc(CAL).set({ eccezioni: [VERIFICA] })
+    const { p, push } = postinoFinto()
+    const o = { classId: 'c1', subjectId: 's1', data: '2026-11-19' }
+    expect(await avvisaNonInterroga(db, p, o, 'rossi')).toBe('mandata')
+    expect(await avvisaNonInterroga(db, p, o, 'rossi')).toBe('gia-mandata')
+    expect(push).toHaveLength(1)
+    expect(push[0]).toMatchObject({
+      tokens: ['token-anna'],
+      n: { titolo: 'Storia: niente interrogazioni giovedì 19/11', percorso: '/classe/c1/materia/s1' },
+    })
+    expect(push[0]!.n.testo).toContain('Prof Rossi non interroga giovedì 19/11 (verifica)')
+    // anche nella Notification Box del capoclasse
+    expect((await db.collection('users/anna/notifiche').get()).size).toBe(1)
+  })
+
+  it('non vale se non è nel calendario, se l\'ha segnato un altro o se chi chiama non è un docente', async () => {
+    await classe({ ...TRE, rossi: { ruolo: 'docente', nome: 'Prof Rossi' }, bianchi: { ruolo: 'docente', nome: 'Prof Bianchi' } })
+    const { p, push } = postinoFinto()
+    const o = { classId: 'c1', subjectId: 's1', data: '2026-11-19' }
+    expect(await avvisaNonInterroga(db, p, o, 'rossi')).toBe('non-valido') // calendario vuoto
+    await db.doc(CAL).set({ eccezioni: [VERIFICA, { ...VERIFICA, data: '2026-11-24', chi: 'bruno' }] })
+    expect(await avvisaNonInterroga(db, p, o, 'bianchi')).toBe('non-valido') // segnato da Rossi
+    expect(await avvisaNonInterroga(db, p, { ...o, data: '2026-11-24' }, 'bruno')).toBe('non-valido') // non è un docente
+    expect(await avvisaNonInterroga(db, p, { ...o, subjectId: 's2' }, 'rossi')).toBe('non-valido') // altra materia
+    expect(push).toHaveLength(0)
   })
 })

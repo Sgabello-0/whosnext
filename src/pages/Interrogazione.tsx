@@ -8,7 +8,7 @@ import { aggiornaInterrogazione, eliminaInterrogazione, rifInterrogazione, rifMa
 import { messaggioErrore } from '../lib/errori'
 import { formattaScadenza, tempoMancante } from '../lib/formatoDate'
 import { useDocumento } from '../lib/hooks'
-import { puoGestireDSA, puoModificareListe } from '../lib/membri'
+import { gestisceMateria, puoGestireDSA, puoModificareListe } from '../lib/membri'
 import { useCalendario } from '../lib/useCalendario'
 import { giorniAssenza } from '../lib/spostamenti'
 import { useClasse } from '../lib/useClasse'
@@ -153,7 +153,8 @@ export default function Interrogazione() {
                   creata: i.creato ? oggiISO(i.creato.toDate()) : null,
                   scadenza: momentoLocale(scadenza),
                   perLezione: i.perLezione,
-                  numeroStudenti: studenti.length,
+                  // gli esclusi non entrano in lista
+                  numeroStudenti: studenti.filter((m) => !(i.esclusi ?? []).includes(m.uid)).length,
                 })
               : []
           }
@@ -224,6 +225,7 @@ export default function Interrogazione() {
           cal={cal!}
           staff={staff}
           puoModificare={puoModificareListe(io)}
+          gestisce={gestisceMateria(io, subjectId)}
           dsa={dati.dsa}
           giorniAnticipo={giorniAssenza(dati.classe.assenzaGiorni)}
           nomeMateria={materia.dati.nome}

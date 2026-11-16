@@ -68,7 +68,7 @@ const ICONA_DA_FARE: Record<VoceDaFare['tipo'], { icona: LucideIcon; colore: 'am
   risposte: { icona: Megaphone, colore: 'blu' },
 }
 
-/** Le cose da fare per chi gestisce la classe (capo, vice, docenti con permesso). */
+/** Le cose da fare per chi gestisce la classe (capo, vice, docenti con permesso, il docente nelle sue materie). */
 export function PannelloDaFare({ classId }: { classId?: string }) {
   const adesso = useAdesso()
   const tutte = useInterrogazioniOsservate().filter((d) => !classId || d.classId === classId)
@@ -123,6 +123,7 @@ function DescrizioneMia({ v, adesso }: { v: VoceMia; adesso: Date }) {
     case 'docente-lista':
       return (
         <>
+          {v.miaMateria && <strong>La tua materia · </strong>}
           {v.interrogati} su {v.totale} interrogati
         </>
       )
@@ -145,7 +146,7 @@ function SimboloMia({ v }: { v: VoceMia }) {
     case 'attesa-lista':
       return <Pallino icona={Shuffle} colore="grigio" />
     case 'docente-lista':
-      return <Pallino icona={ListChecks} colore="viola" />
+      return <Pallino icona={ListChecks} colore={v.miaMateria ? 'pieno' : 'grigio'} />
   }
 }
 
