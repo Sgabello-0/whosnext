@@ -49,12 +49,15 @@ export type ImpostazioniUtente = {
   autoRifiutaScambi: boolean
   notificheEmail: boolean
   notifichePush: boolean
+  /** promemoria "sei interrogato": quanti giorni prima (1, 2, 3; vedi promemoria.ts) */
+  avvisoGiorni: number[]
 }
 
 export const IMPOSTAZIONI_DEFAULT: ImpostazioniUtente = {
   autoRifiutaScambi: false,
   notificheEmail: true,
   notifichePush: true,
+  avvisoGiorni: [1],
 }
 
 export type Materia = {

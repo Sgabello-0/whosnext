@@ -130,15 +130,16 @@ export function assenzaInRitardo(o: Interr & { chi: string; giorno: DataISO; nuo
   }
 }
 
-/** posizione null = data scelta (DSA/BES) */
-export function toccaDomani(o: Interr & { giorno: DataISO; posizione: number | null }): Notifica {
+/** posizione null = data fissa; tra = quanti giorni mancano (di base 1: la sera prima) */
+export function toccaDomani(o: Interr & { giorno: DataISO; posizione: number | null; tra?: number }): Notifica {
   const giorno = formattaGiorno(o.giorno).toLowerCase()
+  const tra = o.tra ?? 1
   return {
-    titolo: 'Domani sei interrogato',
+    titolo: tra === 1 ? 'Domani sei interrogato' : `Tra ${tra} giorni sei interrogato`,
     testo:
       o.posizione === null
         ? `${o.materia} – ${o.nome} (${giorno}): è la tua data fissa.`
-        : `${o.materia} – ${o.nome} (${giorno}): sei il n° ${o.posizione}.`,
+        : `${o.materia} – ${o.nome} (${giorno}): sei il n° ${o.posizione}.${tra > 1 ? ' La data è stimata: può ancora cambiare.' : ''}`,
     percorso: o.percorso,
   }
 }

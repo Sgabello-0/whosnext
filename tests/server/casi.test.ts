@@ -690,3 +690,37 @@ describe('giorni senza interrogazioni', () => {
     expect(push).toHaveLength(0)
   })
 })
+
+describe('promemoria 1, 2 o 3 giorni prima', () => {
+  it('ognuno riceve "sei interrogato" quando l\'ha scelto (di base la sera prima)', async () => {
+    // martedì e giovedì, 1 per lezione: Anna martedì 10/11, Bruno giovedì 12/11, Carla martedì 17/11
+    await conLista(['anna', 'bruno', 'carla'])
+    await db.doc('users/anna').update({ 'impostazioni.avvisoGiorni': [2] })
+    await db.doc('users/bruno').update({ 'impostazioni.avvisoGiorni': [1, 3] })
+    const { p, push } = postinoFinto()
+    // lunedì sera: Anna (domani) vuole l'avviso 2 giorni prima, Bruno (tra 3 giorni) sì
+    expect(await ricordaDomani(db, p, LUNEDI_SERA)).toBe(1)
+    expect(push[0]).toMatchObject({
+      tokens: ['token-bruno'],
+      n: {
+        titolo: 'Tra 3 giorni sei interrogato',
+        testo: 'Storia – Orale (giovedì 12/11): sei il n° 2. La data è stimata: può ancora cambiare.',
+      },
+    })
+    expect(await ricordaDomani(db, p, new Date('2026-11-09T19:30:00Z'))).toBe(0) // già avvisato
+    // mercoledì sera (Anna interrogata martedì): per Bruno arriva anche quello della sera prima
+    await db.doc(`${INTERR}/list/current`).update({ 'interrogati.anna': '2026-11-10' })
+    expect(await ricordaDomani(db, p, new Date('2026-11-11T18:00:00Z'))).toBe(1)
+    expect(push[1]).toMatchObject({ tokens: ['token-bruno'], n: { titolo: 'Domani sei interrogato' } })
+  })
+
+  it('nessun promemoria se non ne sceglie; "domani è possibile" solo con la sera prima', async () => {
+    // senza numero per lezione non si sa chi tocca: per tutti "possibile" martedì 10/11
+    await conLista(['anna', 'bruno', 'carla'], { perLezione: null })
+    await db.doc('users/bruno').update({ 'impostazioni.avvisoGiorni': [3] })
+    await db.doc('users/carla').update({ 'impostazioni.avvisoGiorni': [] })
+    const { p, push } = postinoFinto()
+    expect(await ricordaDomani(db, p, LUNEDI_SERA)).toBe(1)
+    expect(push[0]).toMatchObject({ tokens: ['token-anna'], n: { titolo: 'Domani possibile interrogazione' } })
+  })
+})

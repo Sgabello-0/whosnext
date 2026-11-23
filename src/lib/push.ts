@@ -5,6 +5,7 @@
 import { arrayRemove, arrayUnion, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { rifUtente } from './classi'
 import { app, db } from './firebase'
+import { giorniPromemoria } from './promemoria'
 
 const VAPID = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined
 const CHIAVE = 'push-token'
@@ -51,6 +52,12 @@ export async function attivaPush(uid: string): Promise<StatoPush> {
     /* il token resta comunque nel profilo */
   }
   return 'attive'
+}
+
+/** Promemoria "sei interrogato": quanti giorni prima (vale per tutte le interrogazioni, anche nella Notification Box). */
+export async function impostaPromemoria(uid: string, giorni: number[]): Promise<void> {
+  if (!db) return
+  await updateDoc(rifUtente(db, uid), { 'impostazioni.avvisoGiorni': giorniPromemoria(giorni), aggiornato: serverTimestamp() })
 }
 
 export async function disattivaPush(uid: string): Promise<void> {

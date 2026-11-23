@@ -3,6 +3,7 @@ import { getDoc } from 'firebase/firestore'
 import {
   ArrowLeftRight,
   Bell,
+  Check,
   CircleCheck,
   ExternalLink,
   LogOut,
@@ -26,7 +27,8 @@ import { useDocumento, useQuery } from '../lib/hooks'
 import { tipoTelefono, useInstallazione } from '../lib/installazione'
 import { impostaRifiutaScambi } from '../lib/scambi'
 import { serverAttivo } from '../lib/avvisaServer'
-import { attivaPush, disattivaPush, statoPush, type StatoPush } from '../lib/push'
+import { attivaPush, disattivaPush, impostaPromemoria, statoPush, type StatoPush } from '../lib/push'
+import { GIORNI_PROMEMORIA, giorniPromemoria, testoPromemoria } from '../lib/promemoria'
 import { impostaTema, useTema, type Tema } from '../lib/tema'
 import type { ImpostazioniUtente, Membro } from '../lib/tipi'
 import { useAvvisi } from '../components/Avvisi'
@@ -182,18 +184,83 @@ function ImpostazioniNotifiche() {
             onCambia={cambiaPush}
           />
         )}
+        <ScegliPromemoria />
         <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-950/50 dark:text-slate-400">
           <p className="mb-1.5 font-medium text-slate-700 dark:text-slate-300">Ricevi una notifica solo quando:</p>
           <ul className="list-disc space-y-0.5 pl-5">
             <li>c'è una nuova interrogazione: scegli il posto</li>
             <li>la lista è generata, con la tua posizione</li>
-            <li>domani sei interrogato (la sera prima), o domani è possibile se non si sa chi tocca</li>
+            <li>stai per essere interrogato, quando scegli qui sopra (o la sera prima "domani è possibile", se non si sa chi tocca)</li>
             <li>un compagno ti richiede uno scambio</li>
             <li>capoclasse: qualcuno si è segnato come interrogato e va confermato</li>
           </ul>
         </div>
       </div>
     </Scheda>
+  )
+}
+
+/** Quanti giorni prima arriva "sei interrogato": uno o più, per tutte le interrogazioni. Ogni tocco si salva subito. */
+function ScegliPromemoria() {
+  const profilo = useProfilo()
+  const avvisi = useAvvisi()
+  const utente = useDocumento<{ impostazioni?: Partial<ImpostazioniUtente> }>(db && rifUtente(db, profilo.uid))
+  const salvati = utente.dati === undefined ? null : giorniPromemoria(utente.dati?.impostazioni?.avvisoGiorni)
+  // la scelta si vede subito; poi vale quella salvata
+  const [inAttesa, setInAttesa] = useState<number[] | null>(null)
+  const scelti = inAttesa ?? salvati ?? []
+
+  async function cambia(n: number) {
+    const prima = scelti
+    const dopo = giorniPromemoria(prima.includes(n) ? prima.filter((x) => x !== n) : [...prima, n])
+    setInAttesa(dopo)
+    try {
+      await impostaPromemoria(profilo.uid, dopo)
+      avvisi.mostra(
+        dopo.length === 0 ? 'Nessun promemoria prima delle interrogazioni' : `Promemoria: ${dopo.map(testoPromemoria).join(', ')}`,
+        { annulla: () => impostaPromemoria(profilo.uid, prima) },
+      )
+    } catch (e) {
+      avvisi.errore(messaggioErrore(e))
+    } finally {
+      setInAttesa(null)
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <p id="titolo-promemoria" className="font-medium">
+        Avvisami prima di essere interrogato
+      </p>
+      <p className="text-sm text-slate-600 dark:text-slate-400">
+        Vale per tutte le interrogazioni: l'avviso arriva la sera, dalle 18. Puoi sceglierne più di uno.
+      </p>
+      <div role="group" aria-labelledby="titolo-promemoria" className="flex flex-wrap gap-1.5">
+        {GIORNI_PROMEMORIA.map((n) => {
+          const si = scelti.includes(n)
+          return (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={si}
+              disabled={salvati === null || inAttesa !== null}
+              onClick={() => cambia(n)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:opacity-60 ${
+                si
+                  ? 'border-accento bg-accento text-white'
+                  : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
+              }`}
+            >
+              {si && <Check aria-hidden className="size-3.5" />}
+              {testoPromemoria(n)}
+            </button>
+          )
+        })}
+      </div>
+      {salvati !== null && scelti.length === 0 && (
+        <p className="text-sm text-slate-600 dark:text-slate-400">Nessun promemoria: non ti avviseremo prima delle interrogazioni.</p>
+      )}
+    </div>
   )
 }
 

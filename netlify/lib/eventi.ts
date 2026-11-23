@@ -4,13 +4,14 @@
  * (o due esecuzioni insieme) non lo manda due volte.
  */
 import type { Firestore, QueryDocumentSnapshot, Timestamp } from 'firebase-admin/firestore'
-import { calendarioDa, ETICHETTA_MOTIVO, type Calendario } from '../../src/lib/calendar'
+import { aggiungiGiorni, calendarioDa, ETICHETTA_MOTIVO, type Calendario } from '../../src/lib/calendar'
+import { giorniPromemoria } from '../../src/lib/promemoria'
 import { testoStima, type Stima } from '../../src/lib/estimate'
 import { percorsoInterrogazione } from '../../src/lib/messaggi'
 import { programmaLista } from '../../src/lib/programma'
 import { assenzaInRitardo as inRitardo, chiSiSposta, giorniAssenza } from '../../src/lib/spostamenti'
 import { percorsoDi, rifDa, type Rif } from './generazione'
-import { dataItalia, domaniItalia, momentoItalia, oraItalia, scadenzaItalia } from './ora'
+import { dataItalia, momentoItalia, oraItalia, scadenzaItalia } from './ora'
 import { avvisa, type Postino } from './postino'
 import {
   assenzaInRitardo,
@@ -137,31 +138,58 @@ async function ognuna(percorso: string, fai: () => Promise<number>): Promise<num
   }
 }
 
-/** La sera (dalle 18 alle 22, ora italiana): "Domani sei interrogato" a chi ha la data stimata domani. */
+/** Per ogni studente, quanti giorni prima vuole il promemoria (letto una volta sola per esecuzione). */
+type GiorniDi = (uid: string) => Promise<number[]>
+
+/**
+ * La sera (dalle 18 alle 22, ora italiana): "sei interrogato" a chi ha la data stimata tra 1, 2 o 3 giorni,
+ * secondo la scelta di ognuno nelle Impostazioni (di base solo la sera prima).
+ */
 export async function ricordaDomani(db: Firestore, postino: Postino, adesso: Date): Promise<number> {
   const ora = oraItalia(adesso)
   if (ora < 18 || ora >= 22) return 0
-  const domani = domaniItalia(adesso)
+  const oggi = dataItalia(adesso)
+  const scelte = new Map<string, Promise<number[]>>()
+  const giorniDi: GiorniDi = (uid) => {
+    if (!scelte.has(uid)) {
+      scelte.set(
+        uid,
+        db
+          .doc(`users/${uid}`)
+          .get()
+          .then((u) => giorniPromemoria(u.data()?.impostazioni?.avvisoGiorni)),
+      )
+    }
+    return scelte.get(uid)!
+  }
   const inCorso = await db.collectionGroup('interrogations').where('stato', '==', 'lista').get()
   let mandate = 0
-  for (const d of inCorso.docs) mandate += await ognuna(d.ref.path, () => avvisoDomani(db, postino, d, adesso, domani))
+  for (const d of inCorso.docs) mandate += await ognuna(d.ref.path, () => avvisoDomani(db, postino, d, adesso, oggi, giorniDi))
   return mandate
 }
 
-async function avvisoDomani(db: Firestore, postino: Postino, d: QueryDocumentSnapshot, adesso: Date, domani: string) {
+async function avvisoDomani(db: Firestore, postino: Postino, d: QueryDocumentSnapshot, adesso: Date, oggi: string, giorniDi: GiorniDi) {
   let mandate = 0
   const r = rifDa(d.ref.path)
   const c = await contesto(db, r)
   const lista = (await c.rifLista.get()).data() as Lista | undefined
   if (!c.dati || !lista) return 0
-  const dati = { materia: c.materia, nome: c.dati.nome, percorso: c.percorso, giorno: domani }
+  const domani = aggiungiGiorni(oggi, 1)
+  const interr = { materia: c.materia, nome: c.dati.nome, percorso: c.percorso }
   for (const { uid, numero, stima } of programma(c, r, lista, adesso).righe) {
-    // data certa: "domani sei interrogato"; non si sa chi tocca ma c'è lezione: "possibile"
-    const sicuro = stima?.tipo === 'data' && stima.data === domani
-    const possibile = stima?.tipo === 'non-disponibile' && stima.prossimaLezione === domani
-    if (!sicuro && !possibile) continue
-    const n = sicuro ? toccaDomani({ ...dati, posizione: numero }) : domaniPossibile(dati)
-    if ((await avvisa(db, postino, uid, `domani/${d.ref.path}/${uid}/${domani}`, n)) === 'mandata') mandate++
+    // data certa: "sei interrogato" 1, 2 o 3 giorni prima; non si sa chi tocca ma c'è lezione: "possibile", solo la sera prima
+    if (stima?.tipo === 'data') {
+      const tra = [1, 2, 3].find((n) => aggiungiGiorni(oggi, n) === stima.data)
+      if (!tra || !(await giorniDi(uid)).includes(tra)) continue
+      const n = toccaDomani({ ...interr, giorno: stima.data, posizione: numero, tra })
+      // la sera prima la chiave resta quella di sempre
+      const chiave = tra === 1 ? `domani/${d.ref.path}/${uid}/${stima.data}` : `prima${tra}/${d.ref.path}/${uid}/${stima.data}`
+      if ((await avvisa(db, postino, uid, chiave, n)) === 'mandata') mandate++
+    } else if (stima?.tipo === 'non-disponibile' && stima.prossimaLezione === domani) {
+      if (!(await giorniDi(uid)).includes(1)) continue
+      const n = domaniPossibile({ ...interr, giorno: domani })
+      if ((await avvisa(db, postino, uid, `domani/${d.ref.path}/${uid}/${domani}`, n)) === 'mandata') mandate++
+    }
   }
   return mandate
 }
