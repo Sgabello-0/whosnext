@@ -114,12 +114,14 @@ export function Imprevisti(p: {
           const m = p.membri.get(uid)
           const fatto = !!c.interrogati[uid]
           const n = nome(uid)
+          const azioni = (dove === 'fuori' && !!m) || (dove === 'fissa' && !fatto) || (!!m && !fatto) || dove !== 'fuori'
           return (
             <li key={uid} className="space-y-2 py-2.5">
-              <div className="flex flex-wrap items-center gap-2">
+              {/* sopra il nome completo, sotto i pulsanti (allineati al nome) */}
+              <div className="flex items-center gap-2">
                 <Avatar nome={n} foto={m?.foto ?? null} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{n}</span>
+                  <span className="block font-medium break-words">{n}</span>
                   <span className="block text-xs text-slate-600 dark:text-slate-400">
                     {fatto
                       ? 'già interrogato'
@@ -133,7 +135,9 @@ export function Imprevisti(p: {
                   </span>
                 </span>
                 {!m && <Badge colore="grigio">non più in classe</Badge>}
-                <span className="flex flex-wrap gap-1.5">
+              </div>
+              {azioni && (
+                <div className="flex flex-wrap gap-1.5 pl-10">
                   {dove === 'fuori' && m && (
                     <Bottone
                       variante="piccolo"
@@ -174,10 +178,10 @@ export function Imprevisti(p: {
                       Togli
                     </Bottone>
                   )}
-                </span>
-              </div>
+                </div>
+              )}
               {inData === uid && (
-                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-2 dark:bg-slate-800/60">
+                <div className="ml-10 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-2 dark:bg-slate-800/60">
                   <select
                     aria-label={`Giorno dell'interrogazione di ${n}`}
                     value={giorno}
