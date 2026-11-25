@@ -125,4 +125,10 @@ test('docente: materie assegnate, "Fine" della lezione e giorni senza interrogaz
   await expect(rossi.getByRole('main').getByRole('link', { name: 'Storia' })).toBeVisible()
   await expect(rossi.getByRole('main').getByRole('link', { name: 'Matematica' })).toHaveCount(0)
   await rossi.screenshot({ path: info.outputPath('classe-docente.png'), fullPage: true })
+
+  // sul computer, nella barra laterale prima le materie con interrogazioni in corso (con il simbolo della lista pronta)
+  if (info.project.name === 'desktop') {
+    const barra = rossi.getByRole('navigation', { name: 'Menu principale' }).getByRole('group', { name: '4ªB' })
+    await expect(barra.getByRole('link')).toHaveText([/^Storia, lista pronta$/, /^Matematica$/])
+  }
 })
