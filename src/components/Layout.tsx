@@ -80,7 +80,7 @@ function BarraLaterale() {
           Home
         </NavLink>
         {iscrizioni.dati?.map((m) => (
-          <SezioneClasse key={m.percorso} classId={m.percorso.split('/')[1]!} classe={voce} />
+          <SezioneClasse key={m.percorso} classId={m.percorso.split('/')[1]!} />
         ))}
         <div className="mt-auto pt-4">
           <NavLink to="/impostazioni" className={voce}>
@@ -109,28 +109,34 @@ function BarraLaterale() {
   )
 }
 
-/** Una classe nella barra: il nome come titolo (solo testo) e sotto le sue materie. */
-function SezioneClasse({ classId, classe }: { classId: string; classe: (s: { isActive: boolean }) => string }) {
+/** Una materia nella barra: è lei il pulsante; quella aperta (anche dentro una sua interrogazione) è evidenziata. */
+const pulsanteMateria = ({ isActive }: { isActive: boolean }) =>
+  `block truncate rounded-xl px-3 py-2 text-sm font-medium ring-1 transition ${
+    isActive
+      ? 'bg-accento-chiaro text-accento ring-accento/30 dark:bg-blue-950 dark:text-blue-200 dark:ring-blue-800'
+      : 'bg-white text-slate-700 ring-slate-200 hover:bg-slate-100 dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800 dark:hover:bg-slate-800'
+  }`
+
+/** Una classe nella barra: un riquadro con il nome come titolo (solo testo) e sotto le sue materie. */
+function SezioneClasse({ classId }: { classId: string }) {
   const dati = useDocumento<Classe>(db && rifClasse(db, classId))
   const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
   const nome = dati.dati?.nome ?? '…'
   const elenco = [...(materie.dati ?? [])].sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
   const id = `barra-classe-${classId}`
   return (
-    <div role="group" aria-labelledby={id} className="mt-4 flex flex-col gap-1">
-      <p id={id} className="mb-1 truncate px-3 text-xs font-semibold tracking-wide text-slate-600 uppercase dark:text-slate-400">
+    <div
+      role="group"
+      aria-labelledby={id}
+      className="mt-3 flex flex-col gap-1.5 rounded-2xl bg-slate-100/80 p-2 ring-1 ring-slate-200/70 dark:bg-slate-900 dark:ring-slate-800"
+    >
+      <p id={id} className="truncate px-1.5 pt-0.5 text-xs font-semibold tracking-wide text-slate-600 uppercase dark:text-slate-400">
         {nome}
       </p>
-      {materie.dati && elenco.length === 0 && <p className="px-3 text-sm text-slate-600 dark:text-slate-400">Nessuna materia</p>}
+      {materie.dati && elenco.length === 0 && <p className="px-1.5 pb-0.5 text-sm text-slate-600 dark:text-slate-400">Nessuna materia</p>}
       {elenco.map((s) => (
-        <NavLink key={s.id} to={`/classe/${classId}/materia/${s.id}`} className={classe}>
-          <span
-            aria-hidden
-            className="flex size-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-          >
-            {s.nome.slice(0, 2)}
-          </span>
-          <span className="truncate">{s.nome}</span>
+        <NavLink key={s.id} to={`/classe/${classId}/materia/${s.id}`} className={pulsanteMateria}>
+          {s.nome}
         </NavLink>
       ))}
     </div>
