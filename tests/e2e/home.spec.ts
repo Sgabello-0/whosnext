@@ -23,7 +23,7 @@ test('"Le mie interrogazioni" e "Da fare" nella pagina iniziale', async ({ brows
   await anna.getByLabel('Nome', { exact: true }).fill('Storia')
   await anna.getByRole('group', { name: 'Giorni di lezione' }).getByRole('button', { name: 'martedì' }).click()
   await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
-  await expect(anna.getByRole('link', { name: 'Storia' })).toBeVisible()
+  await expect(anna.getByRole('main').getByRole('link', { name: 'Storia' })).toBeVisible()
   await anna.getByRole('main').getByRole('link', { name: /4ªB/ }).click()
   await anna.getByRole('button', { name: 'Nuova interrogazione' }).click()
   await anna.getByLabel('Nome', { exact: true }).fill('Orale')

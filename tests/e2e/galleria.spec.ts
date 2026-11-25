@@ -48,7 +48,7 @@ test('galleria', async ({ browser }, info) => {
     const g = anna.getByRole('group', { name: 'Giorni di lezione' })
     for (const d of giorni) await g.getByRole('button', { name: d }).click()
     await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
-    await expect(anna.getByRole('link', { name: nome })).toBeVisible()
+    await expect(anna.getByRole('main').getByRole('link', { name: nome })).toBeVisible()
   }
   await foto(anna, '05-configura')
   await anna.getByRole('tab', { name: 'Orario' }).click()
@@ -102,6 +102,6 @@ test('galleria', async ({ browser }, info) => {
   await anna.getByRole('link', { name: 'Gestisci classe' }).click()
   await foto(anna, '14-gestione')
   await anna.goto(classe)
-  await anna.getByRole('link', { name: 'Storia' }).first().click()
+  await anna.getByRole('main').getByRole('link', { name: 'Storia' }).first().click()
   await foto(anna, '15-materia')
 })

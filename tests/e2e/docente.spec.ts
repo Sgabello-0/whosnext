@@ -35,7 +35,7 @@ test('docente: materie assegnate, "Fine" della lezione e giorni senza interrogaz
     const giorni = anna.getByRole('group', { name: 'Giorni di lezione' })
     for (const g of ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì']) await giorni.getByRole('button', { name: g }).click()
     await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
-    await expect(anna.getByRole('link', { name: nome })).toBeVisible()
+    await expect(anna.getByRole('main').getByRole('link', { name: nome })).toBeVisible()
   }
 
   // Anna assegna Storia al prof. Rossi
@@ -97,7 +97,7 @@ test('docente: materie assegnate, "Fine" della lezione e giorni senza interrogaz
   await expect(anna.getByText(/Segna chi è stato interrogato/)).toHaveCount(0)
 
   // Anna segna in Storia un giorno di spiegazione (il primo segnato crea anche il calendario della classe)
-  await anna.getByRole('link', { name: 'Storia' }).click()
+  await anna.getByRole('main').getByRole('link', { name: 'Storia' }).click()
   const senzaAnna = anna.locator('section', { hasText: 'Giorni senza interrogazioni' })
   const spiegazione = (await senzaAnna.getByLabel('Lezione').locator('option').first().textContent())!.trim()
   await senzaAnna.getByRole('button', { name: 'Niente interrogazioni quel giorno' }).click()
@@ -105,7 +105,7 @@ test('docente: materie assegnate, "Fine" della lezione e giorni senza interrogaz
 
   // Rossi segna un giorno senza interrogazioni nella sua materia; Anna lo vede
   await rossi.goto(classe)
-  await rossi.getByRole('link', { name: 'Storia' }).click()
+  await rossi.getByRole('main').getByRole('link', { name: 'Storia' }).click()
   await expect(rossi.getByText('La tua materia')).toBeVisible()
   const senza = rossi.locator('section', { hasText: 'Giorni senza interrogazioni' })
   await expect(senza.getByRole('list', { name: 'Giorni senza interrogazioni' })).toContainText(spiegazione)
@@ -122,7 +122,7 @@ test('docente: materie assegnate, "Fine" della lezione e giorni senza interrogaz
   // nella classe Storia è in evidenza; Matematica (non sua, senza interrogazioni) non compare
   await rossi.goto(classe)
   await expect(rossi.getByText('Le tue materie: Storia')).toBeVisible()
-  await expect(rossi.getByRole('link', { name: 'Storia' })).toBeVisible()
-  await expect(rossi.getByRole('link', { name: 'Matematica' })).toHaveCount(0)
+  await expect(rossi.getByRole('main').getByRole('link', { name: 'Storia' })).toBeVisible()
+  await expect(rossi.getByRole('main').getByRole('link', { name: 'Matematica' })).toHaveCount(0)
   await rossi.screenshot({ path: info.outputPath('classe-docente.png'), fullPage: true })
 })

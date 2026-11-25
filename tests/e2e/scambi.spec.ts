@@ -34,7 +34,7 @@ test('scambio di posto tra due compagni', async ({ browser }, info) => {
   await anna.getByLabel('Nome', { exact: true }).fill('Storia')
   await anna.getByRole('group', { name: 'Giorni di lezione' }).getByRole('button', { name: 'martedì' }).click()
   await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
-  await expect(anna.getByRole('link', { name: 'Storia' })).toBeVisible()
+  await expect(anna.getByRole('main').getByRole('link', { name: 'Storia' })).toBeVisible()
   await anna.goto(classe)
   await anna.getByRole('button', { name: 'Nuova interrogazione' }).click()
   await anna.getByLabel('Nome', { exact: true }).fill('Orale')

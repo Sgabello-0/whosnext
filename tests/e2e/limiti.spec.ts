@@ -70,7 +70,7 @@ test('nomi lunghissimi e con codice dentro: mostrati come testo, senza rompere l
   await anna.getByLabel('Nome', { exact: true }).fill(MATERIA)
   await anna.getByRole('group', { name: 'Giorni di lezione' }).getByRole('button', { name: 'lunedì' }).click()
   await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
-  await expect(anna.getByRole('link', { name: MATERIA })).toBeVisible()
+  await expect(anna.getByRole('main').getByRole('link', { name: MATERIA })).toBeVisible()
   await controllaPagina(anna, 'configura')
   for (const scheda of ['Orario', 'Calendario']) {
     await anna.getByRole('tab', { name: scheda }).click()

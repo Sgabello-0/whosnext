@@ -50,7 +50,7 @@ test('pagine principali accessibili, tema chiaro e scuro', async ({ browser }) =
   await anna.getByLabel('Nome', { exact: true }).fill('Storia')
   await anna.getByRole('group', { name: 'Giorni di lezione' }).getByRole('button', { name: 'martedì' }).click()
   await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
-  await expect(anna.getByRole('link', { name: 'Storia' })).toBeVisible()
+  await expect(anna.getByRole('main').getByRole('link', { name: 'Storia' })).toBeVisible()
   await controlla(anna, 'configura: materie')
   await anna.getByRole('tab', { name: 'Orario' }).click()
   await controlla(anna, 'configura: orario')

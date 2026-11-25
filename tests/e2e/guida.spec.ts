@@ -19,7 +19,7 @@ test('guida della classe nuova e orario a griglia', async ({ browser }, info) =>
   for (const nome of ['Storia', 'Matematica']) {
     await anna.getByLabel('Nome', { exact: true }).fill(nome)
     await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
-    await expect(anna.getByRole('link', { name: nome })).toBeVisible()
+    await expect(anna.getByRole('main').getByRole('link', { name: nome })).toBeVisible()
   }
   await anna.getByRole('tab', { name: 'Orario' }).click()
   await anna.getByRole('checkbox', { name: 'Storia martedì' }).check()
@@ -57,7 +57,7 @@ test('guida della classe nuova e orario a griglia', async ({ browser }, info) =>
   await anna.getByLabel('Nome', { exact: true }).fill('Orale')
   await anna.getByRole('button', { name: 'Crea interrogazione' }).click()
   await expect(anna.getByRole('heading', { name: 'Orale' })).toBeVisible()
-  await anna.getByRole('link', { name: 'Matematica', exact: true }).click() // torna alla materia
+  await anna.getByRole('main').getByRole('link', { name: 'Matematica', exact: true }).click() // torna alla materia
   await anna.getByRole('main').getByRole('link', { name: /3ªA/ }).click()
   await expect(anna.getByRole('heading', { name: 'Interrogazioni' })).toBeVisible()
   await expect(anna.getByRole('heading', { name: /Prepara la classe/ })).toHaveCount(0)

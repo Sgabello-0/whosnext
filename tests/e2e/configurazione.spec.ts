@@ -31,11 +31,11 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   await giorniNuova.getByRole('button', { name: 'martedì' }).click()
   await giorniNuova.getByRole('button', { name: 'giovedì' }).click()
   await anna.getByRole('button', { name: 'Aggiungi materia' }).click()
-  await expect(anna.getByRole('link', { name: 'Matematica' })).toBeVisible()
+  await expect(anna.getByRole('main').getByRole('link', { name: 'Matematica' })).toBeVisible()
   await expect(anna.getByText('mar · gio')).toBeVisible()
 
   // Le prossime lezioni sono solo di martedì e giovedì
-  await anna.getByRole('link', { name: 'Matematica' }).click()
+  await anna.getByRole('main').getByRole('link', { name: 'Matematica' }).click()
   const lezioni = await prossimeLezioni(anna)
   expect(lezioni).toHaveLength(5)
   for (const l of lezioni) expect(l).toMatch(/^(Martedì|Giovedì) \d{2}\/\d{2}$/)
@@ -53,7 +53,7 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
   await anna.getByRole('tab', { name: 'Calendario' }).click()
   await expect(anna.getByText('Lezioni extra o annullate')).toHaveCount(0)
   await anna.getByRole('tab', { name: 'Materie' }).click()
-  await anna.getByRole('link', { name: 'Matematica' }).click()
+  await anna.getByRole('main').getByRole('link', { name: 'Matematica' }).click()
 
   // Anna crea un'interrogazione con 2 studenti per lezione
   await anna.getByRole('button', { name: 'Nuova interrogazione' }).click()
@@ -103,7 +103,7 @@ test('materie, calendario e interrogazioni', async ({ browser }, info) => {
 
   // Anna elimina l'interrogazione
   await anna.getByRole('tab', { name: 'Materie' }).click()
-  await anna.getByRole('link', { name: 'Matematica' }).click()
+  await anna.getByRole('main').getByRole('link', { name: 'Matematica' }).click()
   await anna.getByRole('link', { name: /Orale capitolo 3/ }).click()
   await anna.getByRole('button', { name: 'Elimina', exact: true }).click()
   await conferma(anna, 'Elimina')

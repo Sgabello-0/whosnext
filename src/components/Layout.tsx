@@ -5,8 +5,9 @@ import { House, LogOut, Settings } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { db, USA_EMULATORI } from '../lib/firebase'
 import { queryMieIscrizioni, rifClasse } from '../lib/classi'
+import { rifMaterie } from '../lib/configurazione'
 import { useDocumento, useQuery } from '../lib/hooks'
-import type { Classe, Membro } from '../lib/tipi'
+import type { Classe, Materia, Membro } from '../lib/tipi'
 import { useDesktop } from '../lib/useDesktop'
 import { Avatar } from './ui'
 import { Logo } from './Logo'
@@ -48,7 +49,7 @@ function larghezza(percorso: string): string {
   return ''
 }
 
-/** Sul computer: la barra a sinistra con la home, le proprie classi e le impostazioni. */
+/** Sul computer: la barra a sinistra con la home, una sezione per classe con le sue materie e le impostazioni. */
 function BarraLaterale() {
   const { profilo, esci } = useAuth()
   const iscrizioni = useQuery<Membro>(
@@ -78,16 +79,9 @@ function BarraLaterale() {
           <House aria-hidden className="size-4.5 shrink-0" />
           Home
         </NavLink>
-        {iscrizioni.dati && iscrizioni.dati.length > 0 && (
-          <>
-            <p className="mt-4 mb-1 px-3 text-xs font-semibold tracking-wide text-slate-600 uppercase dark:text-slate-400">
-              Le tue classi
-            </p>
-            {iscrizioni.dati.map((m) => (
-              <VoceClasse key={m.percorso} classId={m.percorso.split('/')[1]!} classe={voce} />
-            ))}
-          </>
-        )}
+        {iscrizioni.dati?.map((m) => (
+          <SezioneClasse key={m.percorso} classId={m.percorso.split('/')[1]!} classe={voce} />
+        ))}
         <div className="mt-auto pt-4">
           <NavLink to="/impostazioni" className={voce}>
             <Settings aria-hidden className="size-4.5 shrink-0" />
@@ -115,19 +109,31 @@ function BarraLaterale() {
   )
 }
 
-function VoceClasse({ classId, classe }: { classId: string; classe: (s: { isActive: boolean }) => string }) {
+/** Una classe nella barra: il nome come titolo (solo testo) e sotto le sue materie. */
+function SezioneClasse({ classId, classe }: { classId: string; classe: (s: { isActive: boolean }) => string }) {
   const dati = useDocumento<Classe>(db && rifClasse(db, classId))
+  const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
   const nome = dati.dati?.nome ?? '…'
+  const elenco = [...(materie.dati ?? [])].sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+  const id = `barra-classe-${classId}`
   return (
-    <NavLink to={`/classe/${classId}`} className={classe}>
-      <span
-        aria-hidden
-        className="flex size-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-      >
-        {nome.slice(0, 2)}
-      </span>
-      <span className="truncate">{nome}</span>
-    </NavLink>
+    <div role="group" aria-labelledby={id} className="mt-4 flex flex-col gap-1">
+      <p id={id} className="mb-1 truncate px-3 text-xs font-semibold tracking-wide text-slate-600 uppercase dark:text-slate-400">
+        {nome}
+      </p>
+      {materie.dati && elenco.length === 0 && <p className="px-3 text-sm text-slate-600 dark:text-slate-400">Nessuna materia</p>}
+      {elenco.map((s) => (
+        <NavLink key={s.id} to={`/classe/${classId}/materia/${s.id}`} className={classe}>
+          <span
+            aria-hidden
+            className="flex size-6 shrink-0 items-center justify-center rounded-md bg-slate-100 text-[10px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+          >
+            {s.nome.slice(0, 2)}
+          </span>
+          <span className="truncate">{s.nome}</span>
+        </NavLink>
+      ))}
+    </div>
   )
 }
 
