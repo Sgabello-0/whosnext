@@ -89,7 +89,7 @@ describe('profilo utente', () => {
     await assertSucceeds(salvaProfiloUtente(dbDi(env, anna), { ...anna, nome: 'Anna V.' }))
     const snap = await getDoc(rifUtente(dbDi(env, anna), 'anna'))
     expect(snap.data()?.nome).toBe('Anna V.')
-    expect(snap.data()?.impostazioni).toEqual({ autoRifiutaScambi: false, notificheEmail: true, notifichePush: true })
+    expect(snap.data()?.impostazioni).toEqual({ autoRifiutaScambi: false, notificheEmail: true, notifichePush: true, avvisoGiorni: [1] })
   })
 
   it('uno studente non può dichiararsi docente e viceversa', async () => {

@@ -13,7 +13,7 @@ import {
 } from '../../lib/configurazione'
 import { oggiISO } from '../../lib/calendar'
 import { useDocumento, useQuery, type ConId } from '../../lib/hooks'
-import { puoGestireDSA, puoModificareListe } from '../../lib/membri'
+import { materieDelDocente, puoGestireDSA, puoModificareListe } from '../../lib/membri'
 import { useRegistra } from '../../lib/raccolta'
 import { useCalendario } from '../../lib/useCalendario'
 import type { Classe, DocLista, DocPreferenza, DocScambio, Interrogazione, Materia, Membro, Ruolo } from '../../lib/tipi'
@@ -55,7 +55,7 @@ export function OsservaClasse({ classId, membro }: { classId: string; membro: Me
     ruolo: membro.ruolo,
     staff,
     puoModificare: puoModificareListe(membro),
-    materieDocente: membro.ruolo === 'docente' ? (membro.materie ?? []) : [],
+    materieDocente: materieDelDocente(membro),
     cal,
     numeroStudenti: staff ? membri.dati?.filter((m) => m.ruolo !== 'docente').length : undefined,
     nomi: Object.fromEntries((membri.dati ?? []).map((m) => [m.uid, m.nome])),

@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { BookOpen, CalendarX, Crown, GraduationCap, KeyRound, Pencil, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react'
+import { BookOpen, CalendarX, Crown, GraduationCap, HeartHandshake, KeyRound, Pencil, RefreshCw, Trash2, UserCheck, Users } from 'lucide-react'
 import { db } from '../lib/firebase'
 import {
   cambiaCodiceInvito,
@@ -8,6 +8,7 @@ import {
   impostaGiorniAssenza,
   impostaMaterieDocente,
   impostaPermessoDocente,
+  impostaSostegno,
   impostaVice,
   rimuoviMembro,
   rinominaClasse,
@@ -122,20 +123,23 @@ export default function AdminClasse() {
     const occ = occupato === m.uid
     return (
       <>
-        <Bottone
-          variante="piccolo"
-          disabled={occ}
-          onClick={() =>
-            esegui(
-              m.uid,
-              () => impostaPermessoDocente(d, classId, m.uid, !m.permessoModifica),
-              m.permessoModifica ? `Permesso tolto a ${m.nome}` : `Permesso dato a ${m.nome}`,
-              () => impostaPermessoDocente(d, classId, m.uid, m.permessoModifica),
-            )
-          }
-        >
-          {m.permessoModifica ? 'Togli permesso' : 'Dai permesso'}
-        </Bottone>
+        {/* il docente di sostegno non riordina le liste */}
+        {!m.sostegno && (
+          <Bottone
+            variante="piccolo"
+            disabled={occ}
+            onClick={() =>
+              esegui(
+                m.uid,
+                () => impostaPermessoDocente(d, classId, m.uid, !m.permessoModifica),
+                m.permessoModifica ? `Permesso tolto a ${m.nome}` : `Permesso dato a ${m.nome}`,
+                () => impostaPermessoDocente(d, classId, m.uid, m.permessoModifica),
+              )
+            }
+          >
+            {m.permessoModifica ? 'Togli permesso' : 'Dai permesso'}
+          </Bottone>
+        )}
         <Bottone variante="piccolo" disabled={occ} onClick={() => rimuovi(m)}>
           Rimuovi
         </Bottone>
@@ -241,24 +245,18 @@ export default function AdminClasse() {
 
 /**
  * Il capoclasse assegna a ogni docente le sue materie: lì il docente segna chi è stato interrogato,
- * chiude le lezioni con "Fine" e segna i giorni senza interrogazioni. Ogni tocco si salva subito.
+ * chiude le lezioni con "Fine" e segna i giorni senza interrogazioni. Oppure lo segna come docente di sostegno:
+ * vede tutte le liste di ogni materia ma non agisce come docente di una materia. Ogni tocco si salva subito.
  */
 function MaterieDocenti({ classId, docenti, materie }: { classId: string; docenti: Membro[]; materie: ConId<Materia>[] }) {
   const avvisi = useAvvisi()
   const [occupato, setOccupato] = useState<string | null>(null)
 
-  async function cambia(d: Membro, m: ConId<Materia>) {
-    if (!db) return
-    const fdb = db
-    const prima = d.materie ?? []
-    const togli = prima.includes(m.id)
-    const dopo = togli ? prima.filter((x) => x !== m.id) : [...prima, m.id]
+  async function salva(d: Membro, azione: () => Promise<void>, testo: string, annulla: () => Promise<void>) {
     setOccupato(d.uid)
     try {
-      await impostaMaterieDocente(fdb, classId, d.uid, dopo)
-      avvisi.mostra(togli ? `${m.nome} tolta a ${d.nome}` : `${m.nome} assegnata a ${d.nome}`, {
-        annulla: () => impostaMaterieDocente(fdb, classId, d.uid, prima),
-      })
+      await azione()
+      avvisi.mostra(testo, { annulla })
     } catch (e) {
       avvisi.errore(messaggioErrore(e))
     } finally {
@@ -266,47 +264,90 @@ function MaterieDocenti({ classId, docenti, materie }: { classId: string; docent
     }
   }
 
+  function cambia(d: Membro, m: ConId<Materia>) {
+    if (!db) return
+    const fdb = db
+    const prima = d.sostegno ? [] : (d.materie ?? [])
+    const togli = prima.includes(m.id)
+    const dopo = togli ? prima.filter((x) => x !== m.id) : [...prima, m.id]
+    // assegnare una materia a un docente di sostegno lo fa tornare docente "normale"
+    void salva(
+      d,
+      () => impostaMaterieDocente(fdb, classId, d.uid, dopo),
+      togli ? `${m.nome} tolta a ${d.nome}` : `${m.nome} assegnata a ${d.nome}`,
+      () => (d.sostegno ? impostaSostegno(fdb, classId, d.uid, true) : impostaMaterieDocente(fdb, classId, d.uid, prima)),
+    )
+  }
+
+  function cambiaSostegno(d: Membro) {
+    if (!db) return
+    const fdb = db
+    const prima = d.materie ?? []
+    const permesso = d.permessoModifica
+    void salva(
+      d,
+      () => impostaSostegno(fdb, classId, d.uid, !d.sostegno),
+      d.sostegno ? `${d.nome} non è più docente di sostegno` : `${d.nome} è docente di sostegno`,
+      async () => {
+        if (d.sostegno) return impostaSostegno(fdb, classId, d.uid, true)
+        // tornano le materie e il permesso di riordinare che aveva prima
+        await impostaMaterieDocente(fdb, classId, d.uid, prima)
+        if (permesso) await impostaPermessoDocente(fdb, classId, d.uid, true)
+      },
+    )
+  }
+
+  const chip = (attivo: boolean) =>
+    `rounded-full border px-3 py-1 text-sm font-medium transition disabled:opacity-60 ${
+      attivo
+        ? 'border-accento bg-accento text-white'
+        : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
+    }`
+
   return (
     <Scheda
       titolo="Materie dei docenti"
       icona={BookOpen}
-      sottotitolo='Nelle sue materie il docente segna chi è stato interrogato, chiude le lezioni con "Fine" e segna i giorni senza interrogazioni.'
+      sottotitolo='Nelle sue materie il docente segna chi è stato interrogato, chiude le lezioni con "Fine" e segna i giorni senza interrogazioni. Il docente di sostegno vede tutte le liste di ogni materia, senza modificarle.'
     >
-      {materie.length === 0 ? (
-        <p className="text-sm text-slate-600 dark:text-slate-400">Aggiungi prima le materie della classe.</p>
-      ) : (
-        <ul className="space-y-4">
-          {docenti.map((d) => (
-            <li key={d.uid} className="space-y-2">
-              <span className="flex items-center gap-2 font-medium">
-                <Avatar nome={d.nome} foto={d.foto} piccolo />
-                {d.nome}
-              </span>
-              <div role="group" aria-label={`Materie di ${d.nome}`} className="flex flex-wrap gap-1.5">
-                {materie.map((m) => {
-                  const sua = !!d.materie?.includes(m.id)
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      aria-pressed={sua}
-                      disabled={occupato === d.uid}
-                      onClick={() => cambia(d, m)}
-                      className={`rounded-full border px-3 py-1 text-sm font-medium transition disabled:opacity-60 ${
-                        sua
-                          ? 'border-accento bg-accento text-white'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      {m.nome}
-                    </button>
-                  )
-                })}
-              </div>
-            </li>
-          ))}
-        </ul>
+      {materie.length === 0 && (
+        <p className="mb-3 text-sm text-slate-600 dark:text-slate-400">Le materie della classe non ci sono ancora: aggiungile da "Materie e calendario".</p>
       )}
+      <ul className="space-y-4">
+        {docenti.map((d) => (
+          <li key={d.uid} className="space-y-2">
+            <span className="flex items-center gap-2 font-medium">
+              <Avatar nome={d.nome} foto={d.foto} piccolo />
+              {d.nome}
+            </span>
+            <div role="group" aria-label={`Materie di ${d.nome}`} className="flex flex-wrap items-center gap-1.5">
+              {materie.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  aria-pressed={!d.sostegno && !!d.materie?.includes(m.id)}
+                  disabled={occupato === d.uid}
+                  onClick={() => cambia(d, m)}
+                  className={chip(!d.sostegno && !!d.materie?.includes(m.id))}
+                >
+                  {m.nome}
+                </button>
+              ))}
+              {materie.length > 0 && <span aria-hidden className="mx-1 h-5 w-px bg-slate-200 dark:bg-slate-700" />}
+              <button
+                type="button"
+                aria-pressed={!!d.sostegno}
+                disabled={occupato === d.uid}
+                onClick={() => cambiaSostegno(d)}
+                className={`inline-flex items-center gap-1.5 ${chip(!!d.sostegno)}`}
+              >
+                <HeartHandshake aria-hidden className="size-4" />
+                Sostegno
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </Scheda>
   )
 }

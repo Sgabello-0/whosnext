@@ -131,4 +131,27 @@ test('docente: materie assegnate, "Fine" della lezione e giorni senza interrogaz
     const barra = rossi.getByRole('navigation', { name: 'Menu principale' }).getByRole('group', { name: '4ªB' })
     await expect(barra.getByRole('link')).toHaveText([/^Storia, lista pronta$/, /^Matematica$/])
   }
+
+  // Anna fa del prof. Rossi il docente di sostegno: niente materie e niente permesso di riordinare
+  await anna.goto(`${classe}/gestione`)
+  await expect(anna.getByRole('button', { name: 'Dai permesso' })).toBeVisible()
+  await materieRossi.getByRole('button', { name: 'Sostegno' }).click()
+  await expect(anna.getByText('Prof Rossi è docente di sostegno')).toBeVisible()
+  await expect(materieRossi.getByRole('button', { name: 'Sostegno' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(materieRossi.getByRole('button', { name: 'Storia' })).toHaveAttribute('aria-pressed', 'false')
+  await expect(anna.getByRole('button', { name: 'Dai permesso' })).toHaveCount(0)
+  await anna.screenshot({ path: info.outputPath('gestione-sostegno.png'), fullPage: true })
+
+  // Rossi (in tempo reale) vede le liste ma non segna più gli interrogati né i giorni senza interrogazioni
+  await expect(rossi.getByText('Docente di sostegno', { exact: true })).toBeVisible()
+  await expect(rossi.getByText('Le tue materie: Storia')).toHaveCount(0)
+  await rossi.goto(interrogazione)
+  await expect(rossi.getByRole('list', { name: 'Ordine delle interrogazioni' }).getByRole('listitem')).toHaveCount(3)
+  await expect(rossi.locator('section', { hasText: 'Segna chi è stato interrogato' })).toHaveCount(0)
+  await rossi.screenshot({ path: info.outputPath('interrogazione-sostegno.png'), fullPage: true })
+  await rossi.goto(classe)
+  await rossi.getByRole('main').getByRole('link', { name: 'Storia' }).click()
+  await expect(rossi.getByText('La tua materia')).toHaveCount(0)
+  await expect(rossi.getByRole('button', { name: 'Niente interrogazioni quel giorno' })).toHaveCount(0)
+  await expect(rossi.getByRole('list', { name: 'Giorni senza interrogazioni' })).toContainText('Verifica')
 })

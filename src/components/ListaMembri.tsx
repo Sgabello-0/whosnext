@@ -24,6 +24,7 @@ export function ListaMembri(props: {
               {m.ruolo === 'capo' && <Badge colore="blu">Capoclasse</Badge>}
               {m.ruolo === 'vice' && <Badge colore="blu">Vice</Badge>}
               {props.dsa.has(m.uid) && <Badge colore="ambra">DSA/BES</Badge>}
+              {m.ruolo === 'docente' && m.sostegno && <Badge colore="grigio">Sostegno</Badge>}
               {m.ruolo === 'docente' && m.permessoModifica && <Badge colore="verde">Può modificare</Badge>}
               {m.ruolo === 'docente' && m.richiestaPermesso && <Badge colore="viola">Chiede il permesso</Badge>}
             </p>

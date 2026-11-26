@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { db } from '../lib/firebase'
 import { richiediPermesso, rimuoviMembro } from '../lib/classi'
 import { messaggioErrore } from '../lib/errori'
-import { dividiMembri, ETICHETTA_RUOLO, puoGestireDSA, puoModificareListe } from '../lib/membri'
+import { dividiMembri, ETICHETTA_RUOLO, materieDelDocente, puoGestireDSA, puoModificareListe } from '../lib/membri'
 import { rifMaterie } from '../lib/configurazione'
 import { useQuery } from '../lib/hooks'
 import type { Materia } from '../lib/tipi'
@@ -70,7 +70,7 @@ export default function Classe() {
               </Riquadro>
             )}
 
-            {(puoModificareListe(io) || (io.ruolo === 'docente' && (io.materie?.length ?? 0) > 0)) && (
+            {(puoModificareListe(io) || materieDelDocente(io).length > 0) && (
               <ProviderRaccolta>
                 <OsservaClasse classId={classId} membro={io} />
                 {io.ruolo === 'capo' && (
@@ -84,7 +84,7 @@ export default function Classe() {
               classId={classId}
               staff={staff}
               mioUid={io.uid}
-              mieMaterie={io.ruolo === 'docente' ? (io.materie ?? []) : undefined}
+              mieMaterie={io.ruolo === 'docente' ? materieDelDocente(io) : undefined}
             />
           </>
         }
@@ -128,14 +128,14 @@ function PilaAvatar({ membri }: { membri: Membro[] }) {
 
 /**
  * Il riquadro del docente: le sue materie (lì segna gli interrogati, chiude le lezioni e i giorni senza interrogazioni)
- * e il permesso del capoclasse per riordinare le liste.
+ * e il permesso del capoclasse per riordinare le liste. Il docente di sostegno vede tutte le liste, senza modificarle.
  */
 function PermessoDocente({ classId, io }: { classId: string; io: Membro }) {
   const [inCorso, setInCorso] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const avvisi = useAvvisi()
   const materie = useQuery<Materia>(db && rifMaterie(db, classId), `materie/${classId}`)
-  const mie = (materie.dati ?? []).filter((m) => io.materie?.includes(m.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+  const mie = (materie.dati ?? []).filter((m) => materieDelDocente(io).includes(m.id)).sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
 
   async function imposta(richiesta: boolean) {
     if (!db) return
@@ -149,6 +149,17 @@ function PermessoDocente({ classId, io }: { classId: string; io: Membro }) {
     } finally {
       setInCorso(false)
     }
+  }
+
+  if (io.sostegno) {
+    return (
+      <Riquadro tono="info" titolo="Docente di sostegno" icona={Eye}>
+        <p>
+          Vedi tutte le liste di ogni materia, senza modificarle: chi è stato interrogato, le lezioni chiuse e i giorni senza
+          interrogazioni li segnano i docenti delle materie, il capoclasse e il vice.
+        </p>
+      </Riquadro>
+    )
   }
 
   return (

@@ -62,16 +62,21 @@ service cloud.firestore {
     function isCapoOVice(c) {
       return isMembro(c) && mioRuolo(c) in ['capo', 'vice'];
     }
-    // Capo, vice e docenti con il permesso del capoclasse modificano le liste.
+    // Capo, vice e docenti con il permesso del capoclasse modificano le liste (mai il docente di sostegno).
     function puoModificareListe(c) {
       return isMembro(c) && (
         mioRuolo(c) in ['capo', 'vice']
-        || (mioRuolo(c) == 'docente' && get(membroPath(c, request.auth.uid)).data.permessoModifica == true)
+        || (
+          mioRuolo(c) == 'docente'
+          && get(membroPath(c, request.auth.uid)).data.permessoModifica == true
+          && get(membroPath(c, request.auth.uid)).data.get('sostegno', false) != true
+        )
       );
     }
-    // Il docente a cui il capoclasse ha assegnato la materia s.
+    // Il docente a cui il capoclasse ha assegnato la materia s (il docente di sostegno non ne ha).
     function docenteDellaMateria(c, s) {
       return isMembro(c) && mioRuolo(c) == 'docente'
+        && get(membroPath(c, request.auth.uid)).data.get('sostegno', false) != true
         && s in get(membroPath(c, request.auth.uid)).data.get('materie', []);
     }
     // Nella materia s segnano gli interrogati, chiudono le lezioni e confermano le segnalazioni:
@@ -205,7 +210,7 @@ service cloud.firestore {
         && !existsAfter(membroPath(c, request.auth.uid));
 
       // ───── Membri ─────
-      // members/{uid} → { uid, nome, email, foto, ruolo, permessoModifica, richiestaPermesso, codiceUsato, entrato, materie (docenti) }
+      // members/{uid} → { uid, nome, email, foto, ruolo, permessoModifica, richiestaPermesso, codiceUsato, entrato, materie e sostegno (docenti) }
       // ruolo: capo | vice | studente | docente
 
       match /members/{u} {
@@ -250,7 +255,10 @@ service cloud.firestore {
             && request.resource.data.get('rifiutaScambi', false) is bool
             && (
               request.resource.data.richiestaPermesso == resource.data.richiestaPermesso
-              || (resource.data.ruolo == 'docente' && request.resource.data.richiestaPermesso is bool && resource.data.permessoModifica == false)
+              || (
+                resource.data.ruolo == 'docente' && request.resource.data.richiestaPermesso is bool && resource.data.permessoModifica == false
+                && resource.data.get('sostegno', false) != true
+              )
             )
           )
           ||
@@ -290,17 +298,34 @@ service cloud.firestore {
                 && request.resource.data.ruolo == 'docente'
                 && request.resource.data.permessoModifica is bool
                 && request.resource.data.richiestaPermesso == false
+                // al docente di sostegno niente permesso di riordinare
+                && (request.resource.data.permessoModifica == false || resource.data.get('sostegno', false) != true)
               )
             )
           )
         );
 
-        // Il capoclasse assegna le materie a un docente
+        // Il capoclasse assegna le materie a un docente, oppure lo segna come docente di sostegno:
+        // vede tutte le liste, ma senza materie e senza permesso di riordinare
         allow update: if isCapo(c) && u != request.auth.uid
           && resource.data.ruolo == 'docente'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['materie'])
           && request.resource.data.materie is list
-          && request.resource.data.materie.size() <= 30;
+          && request.resource.data.materie.size() <= 30
+          && request.resource.data.get('sostegno', false) is bool
+          && (
+            (
+              request.resource.data.get('sostegno', false) == false
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['materie', 'sostegno'])
+            )
+            ||
+            (
+              request.resource.data.sostegno == true
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['materie', 'sostegno', 'permessoModifica', 'richiestaPermesso'])
+              && request.resource.data.materie.size() == 0
+              && request.resource.data.permessoModifica == false
+              && request.resource.data.richiestaPermesso == false
+            )
+          );
 
         // Si esce da soli, oppure il capoclasse rimuove. Il capoclasse non può uscire,
         // ma i documenti di tutti (il suo compreso) spariscono quando elimina la classe.
@@ -349,8 +374,10 @@ service cloud.firestore {
           && request.resource.data.eccezioni is list && request.resource.data.eccezioni.size() <= 300
           && dataISO(request.resource.data.fineAnno)
           && request.resource.data.aggiornato == request.time;
-        // Il docente aggiunge o toglie un giorno senza interrogazioni, solo nelle sue materie (e nient'altro)
+        // Il docente aggiunge o toglie un giorno senza interrogazioni, solo nelle sue materie (e nient'altro);
+        // il docente di sostegno no
         allow update: if documento == 'settings' && isMembro(c) && mioRuolo(c) == 'docente'
+          && get(membroPath(c, request.auth.uid)).data.get('sostegno', false) != true
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['eccezioni', 'aggiornato'])
           && request.resource.data.aggiornato == request.time
           && request.resource.data.eccezioni is list

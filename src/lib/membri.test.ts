@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { chiaveCognome, confrontaCognomi, dividiMembri, nomeVisualizzato, puoGestireDSA, puoModificareListe } from './membri'
+import {
+  chiaveCognome,
+  confrontaCognomi,
+  dividiMembri,
+  docenteDellaMateria,
+  gestisceMateria,
+  materieDelDocente,
+  nomeVisualizzato,
+  puoGestireDSA,
+  puoModificareListe,
+} from './membri'
 import type { Membro, Ruolo } from './tipi'
 
 function m(nome: string, ruolo: Ruolo, permessoModifica = false): Membro {
@@ -52,6 +62,16 @@ describe('permessi', () => {
     expect(puoModificareListe(m('a', 'studente'))).toBe(false)
     expect(puoModificareListe(m('a', 'docente', false))).toBe(false)
     expect(puoModificareListe(null)).toBe(false)
+  })
+  it('il docente di sostegno non modifica le liste e non agisce come docente di una materia', () => {
+    const sostegno = { ...m('a', 'docente', true), sostegno: true, materie: ['mat'] }
+    expect(puoModificareListe(sostegno)).toBe(false)
+    expect(docenteDellaMateria(sostegno, 'mat')).toBe(false)
+    expect(gestisceMateria(sostegno, 'mat')).toBe(false)
+    expect(docenteDellaMateria({ ...sostegno, sostegno: false }, 'mat')).toBe(true)
+    expect(materieDelDocente(sostegno)).toEqual([])
+    expect(materieDelDocente({ ...sostegno, sostegno: false })).toEqual(['mat'])
+    expect(materieDelDocente({ ...m('a', 'capo'), materie: ['mat'] })).toEqual([])
   })
   it('solo capo e vice gestiscono i badge DSA, nemmeno i docenti con permesso', () => {
     expect(puoGestireDSA(m('a', 'capo'))).toBe(true)

@@ -232,7 +232,19 @@ export async function mostraMioDSA(db: Firestore, classi: string[], uid: string,
 
 /** Il capoclasse assegna le materie a un docente: in quelle segna gli interrogati e i giorni senza interrogazioni. */
 export async function impostaMaterieDocente(db: Firestore, classId: string, uid: string, materie: string[]): Promise<void> {
-  await updateDoc(rifMembro(db, classId, uid), { materie: [...new Set(materie)].slice(0, 30) })
+  // chi ha delle materie non è (più) di sostegno
+  await updateDoc(rifMembro(db, classId, uid), { materie: [...new Set(materie)].slice(0, 30), sostegno: false })
+}
+
+/**
+ * Il capoclasse segna (o toglie) un docente come docente di sostegno: vede tutte le liste di ogni materia
+ * ma non agisce come docente di una materia, quindi niente materie e niente permesso di riordinare.
+ */
+export async function impostaSostegno(db: Firestore, classId: string, uid: string, sostegno: boolean): Promise<void> {
+  await updateDoc(
+    rifMembro(db, classId, uid),
+    sostegno ? { sostegno: true, materie: [], permessoModifica: false, richiestaPermesso: false } : { sostegno: false, materie: [] },
+  )
 }
 
 /** Un docente chiede (o ritira la richiesta di) permesso di modifica. */

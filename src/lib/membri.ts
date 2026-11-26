@@ -28,10 +28,10 @@ export function dividiMembri(membri: Membro[]): { studenti: Membro[]; docenti: M
   return { studenti, docenti }
 }
 
-/** Chi può modificare le liste: capo, vice e docenti con permesso. */
-export function puoModificareListe(m: Pick<Membro, 'ruolo' | 'permessoModifica'> | null | undefined): boolean {
+/** Chi può modificare le liste: capo, vice e docenti con permesso (mai il docente di sostegno). */
+export function puoModificareListe(m: Pick<Membro, 'ruolo' | 'permessoModifica' | 'sostegno'> | null | undefined): boolean {
   if (!m) return false
-  return m.ruolo === 'capo' || m.ruolo === 'vice' || (m.ruolo === 'docente' && m.permessoModifica)
+  return m.ruolo === 'capo' || m.ruolo === 'vice' || (m.ruolo === 'docente' && m.permessoModifica && !m.sostegno)
 }
 
 /** Chi gestisce i badge DSA/BES: solo capo e vice. */
@@ -39,16 +39,21 @@ export function puoGestireDSA(m: Pick<Membro, 'ruolo'> | null | undefined): bool
   return m?.ruolo === 'capo' || m?.ruolo === 'vice'
 }
 
-/** Il docente a cui il capoclasse ha assegnato la materia. */
-export function docenteDellaMateria(m: Pick<Membro, 'ruolo' | 'materie'> | null | undefined, subjectId: string): boolean {
-  return m?.ruolo === 'docente' && !!m.materie?.includes(subjectId)
+/** Il docente a cui il capoclasse ha assegnato la materia (il docente di sostegno non ne ha). */
+export function docenteDellaMateria(m: Pick<Membro, 'ruolo' | 'materie' | 'sostegno'> | null | undefined, subjectId: string): boolean {
+  return m?.ruolo === 'docente' && !m.sostegno && !!m.materie?.includes(subjectId)
+}
+
+/** Le materie in cui il docente agisce come docente della materia (nessuna per chi non è docente o è di sostegno). */
+export function materieDelDocente(m: Pick<Membro, 'ruolo' | 'materie' | 'sostegno'> | null | undefined): string[] {
+  return m?.ruolo === 'docente' && !m.sostegno ? (m.materie ?? []) : []
 }
 
 /**
  * Chi, in una materia, segna gli interrogati, chiude le lezioni con "Fine" e segna i giorni senza interrogazioni:
  * capo, vice e il docente della materia.
  */
-export function gestisceMateria(m: Pick<Membro, 'ruolo' | 'materie'> | null | undefined, subjectId: string): boolean {
+export function gestisceMateria(m: Pick<Membro, 'ruolo' | 'materie' | 'sostegno'> | null | undefined, subjectId: string): boolean {
   return puoGestireDSA(m) || docenteDellaMateria(m, subjectId)
 }
 

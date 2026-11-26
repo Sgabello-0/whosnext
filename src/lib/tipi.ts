@@ -38,6 +38,8 @@ export type Membro = {
   rifiutaScambi?: boolean
   /** solo docenti: le materie (id) che il capoclasse gli ha assegnato */
   materie?: string[]
+  /** solo docenti: docente di sostegno (vede tutte le liste, senza materie e senza modificare niente) */
+  sostegno?: boolean
 }
 
 export type Invito = {

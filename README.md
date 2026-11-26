@@ -61,6 +61,7 @@ stima la data per ciascuno e la tiene aggiornata con vacanze, lezioni saltate e 
 - Accesso con l'account della scuola a tutte le liste delle proprie classi, con in evidenza le materie che il capoclasse gli ha assegnato.
 - Nelle sue materie il docente segna chi è stato interrogato, chiude le lezioni con "Fine" e segna i giorni senza interrogazioni (il capoclasse riceve una notifica).
 - Con il permesso del capoclasse può anche riordinare le liste.
+- **Docente di sostegno**: il capoclasse lo segna con "Sostegno" al posto delle materie; vede tutte le liste di ogni materia, ma non segna, non chiude e non riordina niente.
 
 ### Ovunque
 - **App installabile** sul telefono (Android e iPhone) e apertura veloce anche senza rete.

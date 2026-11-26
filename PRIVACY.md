@@ -2,7 +2,7 @@
 
 **WhosNext** · Informativa resa ai sensi dell'art. 13 del Regolamento (UE) 2016/679 ("GDPR")
 
-Ultimo aggiornamento: 16 novembre 2026
+Ultimo aggiornamento: 26 novembre 2026
 
 WhosNext è un servizio gratuito e privo di pubblicità, ideato da uno studente per organizzare l'ordine delle interrogazioni all'interno della propria classe. Non è un servizio ufficiale dell'ITTS di Rimini, che non è titolare del trattamento e non partecipa alla gestione del servizio.
 
@@ -15,7 +15,7 @@ Il titolare del trattamento è **Gabriele Demarchi**, ideatore e gestore di Whos
 | Categoria | Dati |
 |---|---|
 | Account | Nome e cognome, indirizzo email della scuola, foto del profilo e tipo di account (studente o docente), ricevuti da Google al momento dell'accesso |
-| Partecipazione alla classe | Classe, ruolo (capoclasse, vice, studente, docente), codice d'invito utilizzato, data di ingresso; per i docenti, materie assegnate ed eventuale permesso di riordinare le liste |
+| Partecipazione alla classe | Classe, ruolo (capoclasse, vice, studente, docente), codice d'invito utilizzato, data di ingresso; per i docenti, materie assegnate o indicazione di docente di sostegno ed eventuale permesso di riordinare le liste |
 | Organizzazione delle interrogazioni | Preferenze espresse, posizione e date nelle liste, esclusioni, richieste di scambio e relative risposte, segnalazioni di avvenuta interrogazione, interrogazioni svolte, lezioni chiuse, giorni senza interrogazioni con il motivo e chi li ha segnati |
 | Assenze | Dichiarazioni "Non ci sarò" con le relative date, indicazioni "Ha saltato", segnale di attenzione e numero di assenze oltre il termine. Il motivo dell'assenza non viene richiesto né registrato |
 | Storico | Registro delle modifiche apportate a ciascuna lista: autore, data, ora e contenuto della modifica |
@@ -50,7 +50,7 @@ L'indicazione è sempre visibile allo studente interessato, al capoclasse, al vi
 
 | Dato | Chi può vederlo |
 |---|---|
-| Nome, foto, email della scuola, ruolo e materie dei docenti | Membri della classe |
+| Nome, foto, email della scuola, ruolo, materie dei docenti e indicazione di docente di sostegno | Membri della classe |
 | Posizione nelle liste, date fissate, esclusioni, interrogazioni svolte e giorni senza interrogazioni | Membri della classe |
 | Dichiarazioni "Non ci sarò", indicazioni "Ha saltato" e segnale di attenzione | Membri della classe |
 | Storico delle modifiche alle liste | Membri della classe |

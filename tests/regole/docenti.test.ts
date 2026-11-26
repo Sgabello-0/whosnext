@@ -1,7 +1,16 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { assertFails, assertSucceeds, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import { getDoc, getDocs, serverTimestamp, Timestamp, updateDoc, writeBatch, type Firestore } from 'firebase/firestore'
-import { creaClasse, impostaMaterieDocente, impostaPermessoDocente, impostaVice, rifMembro, uniscitiConCodice } from '../../src/lib/classi'
+import {
+  creaClasse,
+  impostaMaterieDocente,
+  impostaPermessoDocente,
+  impostaSostegno,
+  impostaVice,
+  richiediPermesso,
+  rifMembro,
+  uniscitiConCodice,
+} from '../../src/lib/classi'
 import {
   creaInterrogazione,
   creaMateria,
@@ -219,5 +228,48 @@ describe('il docente della materia e gli interrogati', () => {
     await impostaMaterieDocente(dbDi(env, anna), classId, 'rossi', [altra])
     await assertFails(salvaLezione(dbDi(env, rossi), r, { data: '2026-11-03', segna: [ordine[0]!], togli: [] }, 'rossi'))
     await assertFails(getDocs(rifSegnalazioni(dbDi(env, rossi), r.classId, r.subjectId, r.interrogazioneId)))
+  })
+})
+
+describe('docente di sostegno', () => {
+  it('lo segna solo il capoclasse: niente materie e niente permesso di riordinare', async () => {
+    const { classId, subjectId } = await classe()
+    await assertFails(impostaSostegno(dbDi(env, bruno), classId, 'rossi', true)) // il vice no
+    await assertFails(impostaSostegno(dbDi(env, rossi), classId, 'rossi', true)) // da solo no
+    await assertFails(impostaSostegno(dbDi(env, anna), classId, 'carla', true)) // a uno studente no
+    // Bianchi aveva il permesso di riordinare: diventando di sostegno lo perde
+    await assertSucceeds(impostaSostegno(dbDi(env, anna), classId, 'bianchi', true))
+    const b = (await getDoc(rifMembro(dbDi(env, anna), classId, 'bianchi'))).data()
+    expect(b).toMatchObject({ sostegno: true, materie: [], permessoModifica: false, richiestaPermesso: false })
+    // di sostegno ma con una materia, o tenendo il permesso: no
+    await assertFails(updateDoc(rifMembro(dbDi(env, anna), classId, 'rossi'), { sostegno: true, materie: [subjectId] }))
+    await assertFails(
+      updateDoc(rifMembro(dbDi(env, anna), classId, 'rossi'), { sostegno: true, materie: [], permessoModifica: true, richiestaPermesso: false }),
+    )
+    // il permesso non si chiede e non si dà
+    await assertFails(richiediPermesso(dbDi(env, bianchi), classId, 'bianchi', true))
+    await assertFails(impostaPermessoDocente(dbDi(env, anna), classId, 'bianchi', true))
+    // assegnando una materia non è più di sostegno; e si può anche solo togliere
+    await assertSucceeds(impostaMaterieDocente(dbDi(env, anna), classId, 'bianchi', [subjectId]))
+    expect((await getDoc(rifMembro(dbDi(env, anna), classId, 'bianchi'))).data()).toMatchObject({ sostegno: false, materie: [subjectId] })
+    await assertSucceeds(impostaSostegno(dbDi(env, anna), classId, 'bianchi', true))
+    await assertSucceeds(impostaSostegno(dbDi(env, anna), classId, 'bianchi', false))
+    await assertSucceeds(impostaPermessoDocente(dbDi(env, anna), classId, 'bianchi', true))
+  })
+
+  it('vede le liste ma non segna, non chiude e non riordina (nemmeno con materia o permesso forzati)', async () => {
+    const { r, ordine, classId, subjectId } = await listaPronta()
+    await impostaSostegno(dbDi(env, anna), classId, 'rossi', true)
+    // se per assurdo avesse ancora la materia e il permesso, non varrebbero
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(rifMembro(ctx.firestore() as unknown as Firestore, classId, 'rossi'), { materie: [subjectId], permessoModifica: true })
+    })
+    const db = dbDi(env, rossi)
+    await assertSucceeds(getDoc(rifLista(db, r.classId, r.subjectId, r.interrogazioneId)))
+    await assertFails(salvaLezione(db, r, { data: '2026-11-03', segna: [ordine[0]!], togli: [] }, 'rossi'))
+    await assertFails(salvaLezione(db, r, { data: '2026-11-03', segna: [], togli: [], chiudi: true }, 'rossi'))
+    await assertFails(riordinaLista(db, r, [...ordine].reverse(), 'rossi'))
+    await assertFails(getDocs(rifSegnalazioni(db, r.classId, r.subjectId, r.interrogazioneId)))
+    await assertFails(segnaGiornoSenzaInterrogazioni(db, classId, { data: '2026-11-19', subjectId, motivo: 'verifica', chi: 'rossi' }, false))
   })
 })
